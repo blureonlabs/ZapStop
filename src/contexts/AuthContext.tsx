@@ -49,20 +49,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAppUser = async (userId: string) => {
     try {
+      console.log('Fetching app user for ID:', userId)
+      console.log('Current auth user:', await supabase.auth.getUser())
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single()
 
+      console.log('Query result:', { data, error })
+
       if (error) {
-        console.error('Error fetching app user:', error)
+        console.error('Error fetching app user:', {
+          error,
+          userId,
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorDetails: error.details,
+          errorHint: error.hint,
+          fullError: JSON.stringify(error, null, 2)
+        })
         setAppUser(null)
       } else {
+        console.log('Successfully fetched app user:', data)
         setAppUser(data)
       }
     } catch (error) {
-      console.error('Error fetching app user:', error)
+      console.error('Exception fetching app user:', {
+        error,
+        userId,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : 'No stack trace',
+        fullError: JSON.stringify(error, null, 2)
+      })
       setAppUser(null)
     } finally {
       setLoading(false)

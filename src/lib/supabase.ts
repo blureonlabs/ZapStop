@@ -58,6 +58,7 @@ export interface DriverExpense {
   date: string
   expense_type: string
   amount: number
+  description?: string
   proof_url?: string
   status: 'pending' | 'approved' | 'rejected'
   created_at: string

@@ -30,6 +30,7 @@ export default function AdminDashboard() {
     name: '',
     email: '',
     phone: '',
+    password: '',
     role: 'driver' as const,
     assigned_car_id: ''
   })
@@ -95,11 +96,40 @@ export default function AdminDashboard() {
 
   const handleCreateDriver = async () => {
     try {
-      const { error } = await supabase
-        .from('users')
-        .insert([driverForm])
+      // Validate form data
+      if (!driverForm.name.trim()) {
+        toast.error('Name is required')
+        return
+      }
+      
+      if (!driverForm.email.trim()) {
+        toast.error('Email is required')
+        return
+      }
 
-      if (error) throw error
+      // Create driver using the admin API with auto email confirmation
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: driverForm.name,
+          email: driverForm.email,
+          password: driverForm.password || 'defaultpassword123', // Use custom password or default
+          phone: driverForm.phone,
+          role: driverForm.role,
+          assigned_car_id: driverForm.assigned_car_id
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error('Driver creation error:', result)
+        toast.error(result.error || 'Failed to create driver')
+        return
+      }
 
       toast.success('Driver created successfully')
       setShowDriverDialog(false)
@@ -471,6 +501,16 @@ export default function AdminDashboard() {
                       id="driver_phone"
                       value={driverForm.phone}
                       onChange={(e) => setDriverForm({...driverForm, phone: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="driver_password">Password (optional)</Label>
+                    <Input
+                      id="driver_password"
+                      type="password"
+                      placeholder="Leave empty for default password"
+                      value={driverForm.password}
+                      onChange={(e) => setDriverForm({...driverForm, password: e.target.value})}
                     />
                   </div>
                   <div>
