@@ -133,7 +133,7 @@ export default function AdminDashboard() {
 
       toast.success('Driver created successfully')
       setShowDriverDialog(false)
-      setDriverForm({ name: '', email: '', phone: '', role: 'driver', assigned_car_id: '' })
+      setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: '' })
       fetchData()
     } catch (error) {
       console.error('Error creating driver:', error)

@@ -298,7 +298,7 @@ export default function DriverDashboard() {
       console.error('Error saving earnings - full error:', error)
       console.error('Error type:', typeof error)
       console.error('Error keys:', Object.keys(error || {}))
-      toast.error(`Failed to save earnings: ${error?.message || 'Unknown error'}`)
+      toast.error(`Failed to save earnings: ${(error as any)?.message || 'Unknown error'}`)
     }
   }
 
@@ -378,7 +378,7 @@ export default function DriverDashboard() {
       // Try to extract error message from different possible structures
       let errorMessage = 'Unknown error'
       if (error && typeof error === 'object') {
-        errorMessage = error.message || error.details || error.hint || JSON.stringify(error)
+        errorMessage = (error as any).message || (error as any).details || (error as any).hint || JSON.stringify(error)
       }
       
       toast.error(`Failed to submit expense: ${errorMessage}`)
@@ -481,7 +481,7 @@ export default function DriverDashboard() {
       console.error('Error type:', typeof error)
       console.error('Error keys:', Object.keys(error || {}))
       console.error('Error JSON:', JSON.stringify(error, null, 2))
-      toast.error(`Failed to record start time: ${error?.message || 'Unknown error'}`)
+      toast.error(`Failed to record start time: ${(error as any)?.message || 'Unknown error'}`)
     }
   }
 
@@ -539,7 +539,7 @@ export default function DriverDashboard() {
       console.error('Error type:', typeof error)
       console.error('Error keys:', Object.keys(error || {}))
       console.error('Error JSON:', JSON.stringify(error, null, 2))
-      toast.error(`Failed to record end time: ${error?.message || 'Unknown error'}`)
+      toast.error(`Failed to record end time: ${(error as any)?.message || 'Unknown error'}`)
     }
   }
 

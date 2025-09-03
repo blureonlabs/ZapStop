@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import DatabaseTest from '@/components/debug/DatabaseTest'
+import LoginDebug from '@/components/debug/LoginDebug'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -83,12 +83,12 @@ export default function LoginPage() {
               <div><strong>Driver:</strong> driver1@zapstop.com / driver123</div>
             </div>
           </div>
-          
-          <div className="mt-6">
-            <DatabaseTest />
-          </div>
         </CardContent>
       </Card>
+      
+      <div className="mt-6">
+        <LoginDebug />
+      </div>
     </div>
   )
 }
