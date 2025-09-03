@@ -16,6 +16,8 @@ export default function DriversPage() {
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(true)
   const [showDriverDialog, setShowDriverDialog] = useState(false)
+  const [creatingDriver, setCreatingDriver] = useState(false)
+  const [editingDriver, setEditingDriver] = useState<User | null>(null)
 
   // Form states
   const [driverForm, setDriverForm] = useState({
@@ -57,7 +59,32 @@ export default function DriversPage() {
   }
 
   const handleCreateDriver = async () => {
+    if (creatingDriver) return // Prevent multiple submissions
+    
     try {
+      setCreatingDriver(true)
+      
+      // Validate form data
+      if (!driverForm.name.trim()) {
+        toast.error('Name is required')
+        return
+      }
+      
+      if (!driverForm.email.trim()) {
+        toast.error('Email is required')
+        return
+      }
+      
+      if (!driverForm.password.trim()) {
+        toast.error('Password is required')
+        return
+      }
+      
+      if (driverForm.password.length < 6) {
+        toast.error('Password must be at least 6 characters long')
+        return
+      }
+
       // First, create the user in Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: driverForm.email,
@@ -70,22 +97,45 @@ export default function DriversPage() {
         }
       })
 
-      if (authError) throw authError
+      if (authError) {
+        console.error('Auth error:', authError)
+        if (authError.message.includes('Password should be at least 6 characters')) {
+          toast.error('Password must be at least 6 characters long')
+        } else if (authError.message.includes('User already registered')) {
+          toast.error('A user with this email already exists')
+        } else {
+          toast.error(authError.message || 'Failed to create user account')
+        }
+        return
+      }
 
       if (authData.user) {
-        // Then, create the user record in our users table
+                // Then, create the user record in our users table
         const { error: userError } = await supabase
           .from('users')
-                  .insert([{
-          id: authData.user.id,
-          name: driverForm.name,
-          email: driverForm.email,
-          phone: driverForm.phone,
-          role: driverForm.role,
-          assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
-        }])
+          .insert([{
+            id: authData.user.id,
+            name: driverForm.name,
+            email: driverForm.email,
+            phone: driverForm.phone,
+            role: driverForm.role,
+            assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
+          }])
 
         if (userError) throw userError
+
+        // If a car is assigned, update the cars table as well
+        if (driverForm.assigned_car_id && driverForm.assigned_car_id !== 'none') {
+          const { error: carError } = await supabase
+            .from('cars')
+            .update({ assigned_driver_id: authData.user.id })
+            .eq('id', driverForm.assigned_car_id)
+
+          if (carError) {
+            console.warn('Failed to update car assignment:', carError)
+            // Don't throw error here, driver was created successfully
+          }
+        }
 
         toast.success('Driver created successfully')
         setShowDriverDialog(false)
@@ -95,6 +145,94 @@ export default function DriversPage() {
     } catch (error: any) {
       console.error('Error creating driver:', error)
       toast.error(error.message || 'Failed to create driver')
+    } finally {
+      setCreatingDriver(false)
+    }
+  }
+
+  const handleEditDriver = (driver: User) => {
+    setEditingDriver(driver)
+    setDriverForm({
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone || '',
+      password: '', // Don't pre-fill password for editing
+      role: driver.role,
+      assigned_car_id: driver.assigned_car_id || 'none'
+    })
+    setShowDriverDialog(true)
+  }
+
+  const handleUpdateDriver = async () => {
+    if (creatingDriver || !editingDriver) return
+    
+    try {
+      setCreatingDriver(true)
+      
+      // Validate form data
+      if (!driverForm.name.trim()) {
+        toast.error('Name is required')
+        return
+      }
+      
+      if (!driverForm.email.trim()) {
+        toast.error('Email is required')
+        return
+      }
+
+      const oldCarId = editingDriver.assigned_car_id
+      const newCarId = driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id
+
+      // Update the driver record
+      const { error: userError } = await supabase
+        .from('users')
+        .update({
+          name: driverForm.name,
+          email: driverForm.email,
+          phone: driverForm.phone,
+          assigned_car_id: newCarId
+        })
+        .eq('id', editingDriver.id)
+
+      if (userError) throw userError
+
+      // Handle car assignment changes
+      if (oldCarId !== newCarId) {
+        // Remove driver from old car
+        if (oldCarId) {
+          const { error: oldCarError } = await supabase
+            .from('cars')
+            .update({ assigned_driver_id: null })
+            .eq('id', oldCarId)
+
+          if (oldCarError) {
+            console.warn('Failed to unassign old car:', oldCarError)
+          }
+        }
+
+        // Assign driver to new car
+        if (newCarId) {
+          const { error: newCarError } = await supabase
+            .from('cars')
+            .update({ assigned_driver_id: editingDriver.id })
+            .eq('id', newCarId)
+
+          if (newCarError) {
+            console.warn('Failed to assign new car:', newCarError)
+          }
+        }
+      }
+
+      toast.success('Driver updated successfully')
+      setShowDriverDialog(false)
+      setEditingDriver(null)
+      setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+      fetchData()
+    } catch (error: any) {
+      console.error('Error updating driver:', error)
+      toast.error(error.message || 'Failed to update driver')
+    } finally {
+      setCreatingDriver(false)
     }
   }
 
@@ -138,7 +276,13 @@ export default function DriversPage() {
           <Users className="h-8 w-8 text-blue-600" />
           <h1 className="text-3xl font-bold text-gray-900">Driver Management</h1>
         </div>
-        <Dialog open={showDriverDialog} onOpenChange={setShowDriverDialog}>
+        <Dialog open={showDriverDialog} onOpenChange={(open) => {
+          setShowDriverDialog(open)
+          if (!open) {
+            setEditingDriver(null)
+            setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+          }
+        }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -147,9 +291,9 @@ export default function DriversPage() {
           </DialogTrigger>
           <DialogContent className="max-w-md">
             <DialogHeader>
-              <DialogTitle>Add New Driver</DialogTitle>
+              <DialogTitle>{editingDriver ? 'Edit Driver' : 'Add New Driver'}</DialogTitle>
               <DialogDescription>
-                Create a new driver account with authentication
+                {editingDriver ? 'Update driver information' : 'Create a new driver account with authentication'}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -181,16 +325,22 @@ export default function DriversPage() {
                   placeholder="Enter phone number"
                 />
               </div>
-              <div>
-                <Label htmlFor="driver_password">Password</Label>
-                <Input
-                  id="driver_password"
-                  type="password"
-                  value={driverForm.password}
-                  onChange={(e) => setDriverForm({...driverForm, password: e.target.value})}
-                  placeholder="Enter temporary password"
-                />
-              </div>
+              {!editingDriver && (
+                <div>
+                  <Label htmlFor="driver_password">Password</Label>
+                  <Input
+                    id="driver_password"
+                    type="password"
+                    value={driverForm.password}
+                    onChange={(e) => setDriverForm({...driverForm, password: e.target.value})}
+                    placeholder="Enter temporary password (min 6 characters)"
+                    className={driverForm.password.length > 0 && driverForm.password.length < 6 ? 'border-red-500' : ''}
+                  />
+                  {driverForm.password.length > 0 && driverForm.password.length < 6 && (
+                    <p className="text-sm text-red-500 mt-1">Password must be at least 6 characters long</p>
+                  )}
+                </div>
+              )}
               <div>
                 <Label htmlFor="assigned_car">Assigned Car (Optional)</Label>
                 <Select value={driverForm.assigned_car_id} onValueChange={(value) => setDriverForm({...driverForm, assigned_car_id: value})}>
@@ -199,16 +349,42 @@ export default function DriversPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">No car assigned</SelectItem>
-                    {cars.map((car) => (
-                      <SelectItem key={car.id} value={car.id}>
-                        {car.plate_number} - {car.model}
-                      </SelectItem>
-                    ))}
+                    {(() => {
+                      const availableCars = cars.filter(car => {
+                        // If editing a driver, show their current car even if assigned
+                        if (editingDriver && car.id === editingDriver.assigned_car_id) {
+                          return true
+                        }
+                        // Otherwise, only show cars that are not assigned to any driver
+                        return !car.assigned_driver_id
+                      })
+                      
+                      if (availableCars.length === 0) {
+                        return (
+                          <div className="px-2 py-1.5 text-sm text-gray-500">
+                            No available cars
+                          </div>
+                        )
+                      }
+                      
+                      return availableCars.map((car) => (
+                        <SelectItem key={car.id} value={car.id}>
+                          {car.plate_number} - {car.model}
+                        </SelectItem>
+                      ))
+                    })()}
                   </SelectContent>
                 </Select>
               </div>
-              <Button onClick={handleCreateDriver} className="w-full">
-                Create Driver
+              <Button 
+                onClick={editingDriver ? handleUpdateDriver : handleCreateDriver} 
+                className="w-full"
+                disabled={creatingDriver}
+              >
+                {creatingDriver 
+                  ? (editingDriver ? 'Updating Driver...' : 'Creating Driver...') 
+                  : (editingDriver ? 'Update Driver' : 'Create Driver')
+                }
               </Button>
             </div>
           </DialogContent>
@@ -309,7 +485,11 @@ export default function DriversPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
-                          <Button size="sm" variant="outline">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditDriver(driver)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 

@@ -22,8 +22,7 @@ export default function CarsPage() {
   const [carForm, setCarForm] = useState({
     plate_number: '',
     model: '',
-    monthly_due: 7500,
-    assigned_driver_id: 'none'
+    monthly_due: 7500
   })
 
   useEffect(() => {
@@ -61,85 +60,38 @@ export default function CarsPage() {
   const handleCreateCar = async () => {
     try {
       if (editingCar) {
-        // Get the current car data to check for driver assignment changes
-        const currentCar = cars.find(c => c.id === editingCar.id)
-        const oldDriverId = currentCar?.assigned_driver_id
-        const newDriverId = carForm.assigned_driver_id === 'none' ? null : carForm.assigned_driver_id || null
-
-        // Update the car
+        // Update existing car (no driver assignment changes)
         const { error: carError } = await supabase
           .from('cars')
           .update({
             plate_number: carForm.plate_number,
             model: carForm.model,
-            monthly_due: carForm.monthly_due,
-            assigned_driver_id: newDriverId
+            monthly_due: carForm.monthly_due
           })
           .eq('id', editingCar.id)
 
         if (carError) throw carError
 
-        // If the driver assignment changed, update the users table
-        if (oldDriverId !== newDriverId) {
-          // Remove car assignment from old driver
-          if (oldDriverId) {
-            const { error: oldDriverError } = await supabase
-              .from('users')
-              .update({ assigned_car_id: null })
-              .eq('id', oldDriverId)
-
-            if (oldDriverError) {
-              console.warn('Failed to unassign old driver:', oldDriverError)
-            }
-          }
-
-          // Assign car to new driver
-          if (newDriverId) {
-            const { error: newDriverError } = await supabase
-              .from('users')
-              .update({ assigned_car_id: editingCar.id })
-              .eq('id', newDriverId)
-
-            if (newDriverError) {
-              console.warn('Failed to assign new driver:', newDriverError)
-            }
-          }
-        }
-
         toast.success('Car updated successfully')
       } else {
-        // Create new car
-        const { data: newCar, error: carError } = await supabase
+        // Create new car (no driver assignment)
+        const { error: carError } = await supabase
           .from('cars')
           .insert([{
             plate_number: carForm.plate_number,
             model: carForm.model,
             monthly_due: carForm.monthly_due,
-            assigned_driver_id: carForm.assigned_driver_id === 'none' ? null : carForm.assigned_driver_id || null
+            assigned_driver_id: null
           }])
-          .select()
-          .single()
 
         if (carError) throw carError
-
-        // If a driver is assigned, update the users table
-        if (carForm.assigned_driver_id && carForm.assigned_driver_id !== 'none' && newCar) {
-          const { error: driverError } = await supabase
-            .from('users')
-            .update({ assigned_car_id: newCar.id })
-            .eq('id', carForm.assigned_driver_id)
-
-          if (driverError) {
-            console.warn('Failed to assign driver to new car:', driverError)
-          }
-        }
 
         toast.success('Car created successfully')
       }
 
       setShowCarDialog(false)
       setEditingCar(null)
-      setCarForm({ plate_number: '', model: '', monthly_due: 7500, assigned_driver_id: 'none' })
+      setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
       fetchData()
     } catch (error: any) {
       console.error('Error saving car:', error)
@@ -152,17 +104,18 @@ export default function CarsPage() {
     setCarForm({
       plate_number: car.plate_number,
       model: car.model,
-      monthly_due: car.monthly_due,
-      assigned_driver_id: car.assigned_driver_id || 'none'
+      monthly_due: car.monthly_due
     })
     setShowCarDialog(true)
   }
 
   const handleDeleteCar = async (carId: string) => {
-    if (!confirm('Are you sure you want to delete this car?')) return
+    if (!confirm('Are you sure you want to delete this car? This will automatically unassign any drivers from this car.')) return
 
     try {
-      // Check if any drivers are assigned to this car in the users table
+      console.log('Attempting to delete car:', carId)
+      
+      // First, unassign any drivers from this car
       const { data: driversWithCar, error: checkError } = await supabase
         .from('users')
         .select('id, name')
@@ -173,19 +126,28 @@ export default function CarsPage() {
         throw new Error('Failed to check driver assignments')
       }
 
+      console.log('Drivers assigned to this car:', driversWithCar)
+
+      // Unassign all drivers from this car
       if (driversWithCar && driversWithCar.length > 0) {
-        const driverNames = driversWithCar.map(d => d.name).join(', ')
-        toast.error(`Cannot delete car. The following drivers are still assigned: ${driverNames}. Please unassign them first.`)
-        return
+        console.log('Unassigning drivers from car:', driversWithCar.map(d => d.name).join(', '))
+        
+        const { error: unassignError } = await supabase
+          .from('users')
+          .update({ assigned_car_id: null })
+          .eq('assigned_car_id', carId)
+
+        if (unassignError) {
+          console.error('Failed to unassign drivers:', unassignError)
+          throw new Error('Failed to unassign drivers from car')
+        }
+
+        console.log('Successfully unassigned all drivers from car')
+        toast.success(`Unassigned ${driversWithCar.length} driver(s) from car`)
       }
 
-      // Also check the car's assigned_driver_id field
-      const carToDelete = cars.find(car => car.id === carId)
-      if (carToDelete?.assigned_driver_id) {
-        toast.error('Cannot delete car with assigned driver. Please unassign the driver first.')
-        return
-      }
-
+      // Now delete the car
+      console.log('Proceeding with car deletion')
       const { error } = await supabase
         .from('cars')
         .delete()
@@ -223,7 +185,7 @@ export default function CarsPage() {
           setShowCarDialog(open)
           if (!open) {
             setEditingCar(null)
-            setCarForm({ plate_number: '', model: '', monthly_due: 7500, assigned_driver_id: 'none' })
+            setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
           }
         }}>
           <DialogTrigger asChild>
@@ -268,22 +230,7 @@ export default function CarsPage() {
                   placeholder="Enter monthly due amount"
                 />
               </div>
-              <div>
-                <Label htmlFor="assigned_driver">Assigned Driver (Optional)</Label>
-                <Select value={carForm.assigned_driver_id} onValueChange={(value) => setCarForm({...carForm, assigned_driver_id: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a driver" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No driver assigned</SelectItem>
-                    {drivers.map((driver) => (
-                      <SelectItem key={driver.id} value={driver.id}>
-                        {driver.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
               <Button onClick={handleCreateCar} className="w-full">
                 {editingCar ? 'Update Car' : 'Create Car'}
               </Button>
