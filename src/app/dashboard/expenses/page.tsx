@@ -126,9 +126,9 @@ export default function ExpensesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6 px-1 sm:px-2 lg:px-0 max-w-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Button
             variant="outline"
@@ -139,11 +139,11 @@ export default function ExpensesPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900">
               {appUser?.role === 'admin' ? 'All Expenses' : 'Expense History'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm sm:text-base">
               {appUser?.role === 'admin' 
                 ? 'View all driver expenses across the platform' 
                 : 'Track your daily expenses over time'
@@ -154,14 +154,14 @@ export default function ExpensesPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">AED {totalExpenses.toFixed(2)}</div>
+            <div className="text-xl sm:text-2xl font-bold">AED {totalExpenses.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
@@ -174,7 +174,7 @@ export default function ExpensesPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">AED {averageDaily.toFixed(2)}</div>
+            <div className="text-xl sm:text-2xl font-bold">AED {averageDaily.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Per day
             </p>
@@ -187,7 +187,7 @@ export default function ExpensesPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{expenses.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{expenses.length}</div>
             <p className="text-xs text-muted-foreground">
               {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
@@ -198,10 +198,10 @@ export default function ExpensesPage() {
       {/* Expenses Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="text-lg sm:text-xl">
             {appUser?.role === 'admin' ? 'All Expenses Breakdown' : 'Daily Expenses Breakdown'}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             {appUser?.role === 'admin' 
               ? 'Detailed view of all driver expenses by category' 
               : 'Detailed view of your daily expenses by category'
@@ -216,21 +216,61 @@ export default function ExpensesPage() {
               <p className="text-gray-600">Start logging your daily expenses to see them here.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-3">
+              {expenses.map((expense) => (
+                <div key={expense.id} className="bg-gray-50 rounded-lg p-3 border">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-medium text-sm">
+                      {new Date(expense.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-sm">AED {expense.amount.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  {appUser?.role === 'admin' && (
+                    <div className="mb-2">
+                      <div className="text-xs text-gray-600">{expense.users?.name || 'Unknown'}</div>
+                      <div className="text-xs text-gray-500">{expense.users?.email || 'No email'}</div>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-gray-600">Category:</span>
+                      <Badge className={`text-xs ${getCategoryColor(expense.category || 'other')}`}>
+                        {(expense.category || 'other').charAt(0).toUpperCase() + (expense.category || 'other').slice(1)}
+                      </Badge>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-600">Description:</span>
+                      <div className="text-xs mt-1">{expense.description || 'No description'}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    {appUser?.role === 'admin' && <TableHead>Driver</TableHead>}
-                    <TableHead>Category</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="text-xs">Date</TableHead>
+                    {appUser?.role === 'admin' && <TableHead className="text-xs">Driver</TableHead>}
+                    <TableHead className="text-xs">Category</TableHead>
+                    <TableHead className="text-xs">Description</TableHead>
+                    <TableHead className="text-right text-xs">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {expenses.map((expense) => (
                     <TableRow key={expense.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-sm">
                         {new Date(expense.date).toLocaleDateString('en-US', {
                           weekday: 'short',
                           month: 'short',
@@ -238,22 +278,22 @@ export default function ExpensesPage() {
                         })}
                       </TableCell>
                       {appUser?.role === 'admin' && (
-                        <TableCell>
+                        <TableCell className="text-sm">
                           <div className="space-y-1">
                             <div className="font-medium">{expense.users?.name || 'Unknown'}</div>
-                            <div className="text-sm text-gray-500">{expense.users?.email || 'No email'}</div>
+                            <div className="text-xs text-gray-500">{expense.users?.email || 'No email'}</div>
                           </div>
                         </TableCell>
                       )}
-                      <TableCell>
-                        <Badge className={getCategoryColor(expense.category || 'other')}>
+                      <TableCell className="text-sm">
+                        <Badge className={`text-xs ${getCategoryColor(expense.category || 'other')}`}>
                           {(expense.category || 'other').charAt(0).toUpperCase() + (expense.category || 'other').slice(1)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">
+                      <TableCell className="text-sm">
                         {expense.description || 'No description'}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className="text-right font-semibold text-sm">
                         AED {expense.amount.toFixed(2)}
                       </TableCell>
                     </TableRow>
@@ -261,6 +301,7 @@ export default function ExpensesPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
           {hasMore && (
             <div className="mt-4 text-center">

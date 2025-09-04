@@ -165,9 +165,9 @@ export default function EarningsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6 px-1 sm:px-2 lg:px-0 max-w-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Button
             variant="outline"
@@ -178,11 +178,11 @@ export default function EarningsPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900">
               {appUser?.role === 'admin' ? 'All Earnings' : 'Earnings History'}
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm sm:text-base">
               {appUser?.role === 'admin' 
                 ? 'View all driver earnings across the platform' 
                 : 'Track your daily earnings over time'
@@ -211,7 +211,7 @@ export default function EarningsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
               <div className="space-y-2">
                 <Label htmlFor="dateFrom">From Date</Label>
                 <Input
@@ -230,11 +230,11 @@ export default function EarningsPage() {
                   onChange={(e) => setDateTo(e.target.value)}
                 />
               </div>
-              <div className="flex space-x-2">
-                <Button onClick={applyFilters} size="sm">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
+                <Button onClick={applyFilters} size="sm" className="w-full sm:w-auto">
                   Apply Filter
                 </Button>
-                <Button onClick={clearFilters} variant="outline" size="sm">
+                <Button onClick={clearFilters} variant="outline" size="sm" className="w-full sm:w-auto">
                   <X className="h-4 w-4 mr-1" />
                   Clear
                 </Button>
@@ -254,14 +254,14 @@ export default function EarningsPage() {
       )}
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">AED {totalEarnings.toFixed(2)}</div>
+            <div className="text-xl sm:text-2xl font-bold">AED {totalEarnings.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
@@ -274,7 +274,7 @@ export default function EarningsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">AED {averageDaily.toFixed(2)}</div>
+            <div className="text-xl sm:text-2xl font-bold">AED {averageDaily.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Per day
             </p>
@@ -287,7 +287,7 @@ export default function EarningsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredEarnings.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{filteredEarnings.length}</div>
             <p className="text-xs text-muted-foreground">
               {dateFrom || dateTo ? 'Filtered period' : 'All time'}
             </p>
@@ -298,10 +298,10 @@ export default function EarningsPage() {
       {/* Earnings Table */}
       <Card>
         <CardHeader>
-          <CardTitle>
+          <CardTitle className="text-lg sm:text-xl">
             {appUser?.role === 'admin' ? 'All Earnings Breakdown' : 'Daily Earnings Breakdown'}
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             {appUser?.role === 'admin' 
               ? 'Detailed view of all driver earnings from different platforms'
               : 'Detailed view of your daily earnings from different platforms'
@@ -324,24 +324,74 @@ export default function EarningsPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-3">
+              {filteredEarnings.map((earning) => (
+                <div key={earning.id} className="bg-gray-50 rounded-lg p-3 border">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-medium text-sm">
+                      {new Date(earning.date).toLocaleDateString('en-US', {
+                        weekday: 'short',
+                        month: 'short',
+                        day: 'numeric'
+                      })}
+                    </div>
+                    <div className="text-right">
+                      <div className="font-semibold text-sm">AED {calculateTotal(earning).toFixed(2)}</div>
+                    </div>
+                  </div>
+                  {appUser?.role === 'admin' && (
+                    <div className="mb-2">
+                      <div className="text-xs text-gray-600">{earning.users?.name || 'Unknown'}</div>
+                      <div className="text-xs text-gray-500">{earning.users?.email || 'No email'}</div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Uber Cash:</span>
+                      <span>AED {earning.uber_cash.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Uber Acc:</span>
+                      <span>AED {earning.uber_account.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Bolt Cash:</span>
+                      <span>AED {earning.bolt_cash.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Bolt Acc:</span>
+                      <span>AED {earning.bolt_account.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between col-span-2">
+                      <span className="text-gray-600">Individual:</span>
+                      <span>AED {earning.individual_cash.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Date</TableHead>
-                    {appUser?.role === 'admin' && <TableHead>Driver</TableHead>}
-                    <TableHead>Uber Cash</TableHead>
-                    <TableHead>Uber Account</TableHead>
-                    <TableHead>Bolt Cash</TableHead>
-                    <TableHead>Bolt Account</TableHead>
-                    <TableHead>Individual</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-xs">Date</TableHead>
+                    {appUser?.role === 'admin' && <TableHead className="text-xs">Driver</TableHead>}
+                    <TableHead className="text-xs">Uber Cash</TableHead>
+                    <TableHead className="text-xs">Uber Account</TableHead>
+                    <TableHead className="text-xs">Bolt Cash</TableHead>
+                    <TableHead className="text-xs">Bolt Account</TableHead>
+                    <TableHead className="text-xs">Individual</TableHead>
+                    <TableHead className="text-right text-xs">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEarnings.map((earning) => (
                     <TableRow key={earning.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="font-medium text-sm">
                         {new Date(earning.date).toLocaleDateString('en-US', {
                           weekday: 'short',
                           month: 'short',
@@ -349,19 +399,19 @@ export default function EarningsPage() {
                         })}
                       </TableCell>
                       {appUser?.role === 'admin' && (
-                        <TableCell>
+                        <TableCell className="text-sm">
                           <div className="space-y-1">
                             <div className="font-medium">{earning.users?.name || 'Unknown'}</div>
-                            <div className="text-sm text-gray-500">{earning.users?.email || 'No email'}</div>
+                            <div className="text-xs text-gray-500">{earning.users?.email || 'No email'}</div>
                           </div>
                         </TableCell>
                       )}
-                      <TableCell>AED {earning.uber_cash.toFixed(2)}</TableCell>
-                      <TableCell>AED {earning.uber_account.toFixed(2)}</TableCell>
-                      <TableCell>AED {earning.bolt_cash.toFixed(2)}</TableCell>
-                      <TableCell>AED {earning.bolt_account.toFixed(2)}</TableCell>
-                      <TableCell>AED {earning.individual_cash.toFixed(2)}</TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className="text-sm">AED {earning.uber_cash.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">AED {earning.uber_account.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">AED {earning.bolt_cash.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">AED {earning.bolt_account.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">AED {earning.individual_cash.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-semibold text-sm">
                         AED {calculateTotal(earning).toFixed(2)}
                       </TableCell>
                     </TableRow>
@@ -369,6 +419,7 @@ export default function EarningsPage() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
           {hasMore && (
             <div className="mt-4 text-center">

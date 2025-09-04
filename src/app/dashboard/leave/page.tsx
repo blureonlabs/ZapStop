@@ -163,9 +163,9 @@ export default function LeavePage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6 px-1 sm:px-2 lg:px-0 max-w-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center space-x-4">
           <Button
             variant="outline"
@@ -176,9 +176,9 @@ export default function LeavePage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900">Leave Requests</h1>
-            <p className="text-gray-600">Manage your leave requests and track their status</p>
+            <p className="text-gray-600 text-sm sm:text-base">Manage your leave requests and track their status</p>
           </div>
         </div>
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -271,14 +271,14 @@ export default function LeavePage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{leaveRequests.length}</div>
+            <div className="text-xl sm:text-2xl font-bold">{leaveRequests.length}</div>
             <p className="text-xs text-muted-foreground">
               All time
             </p>
@@ -291,7 +291,7 @@ export default function LeavePage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl font-bold">
               {leaveRequests.filter(req => req.status === 'pending').length}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -306,7 +306,7 @@ export default function LeavePage() {
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-xl sm:text-2xl font-bold">
               {leaveRequests.filter(req => req.status === 'approved').length}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -319,8 +319,8 @@ export default function LeavePage() {
       {/* Leave Requests Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Your Leave Requests</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-lg sm:text-xl">Your Leave Requests</CardTitle>
+          <CardDescription className="text-sm">
             Track the status of your leave requests and view admin responses
           </CardDescription>
         </CardHeader>
@@ -332,82 +332,164 @@ export default function LeavePage() {
               <p className="text-gray-600">Submit your first leave request to get started.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>End Date</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Admin Notes</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaveRequests.map((request) => {
-                    const startDate = new Date(request.start_date)
-                    const endDate = new Date(request.end_date)
-                    const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+            <>
+              {/* Mobile Card View */}
+              <div className="block lg:hidden space-y-3">
+                {leaveRequests.map((request) => {
+                  const startDate = new Date(request.start_date)
+                  const endDate = new Date(request.end_date)
+                  const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
 
-                    return (
-                      <TableRow key={request.id}>
-                        <TableCell>
-                          <Badge className={getLeaveTypeColor(request.leave_type)}>
+                  return (
+                    <div key={request.id} className="bg-gray-50 rounded-lg p-3 border">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center space-x-2">
+                          <Badge className={`text-xs ${getLeaveTypeColor(request.leave_type)}`}>
                             {request.leave_type.charAt(0).toUpperCase() + request.leave_type.slice(1)}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {startDate.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          {endDate.toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </TableCell>
-                        <TableCell>
-                          {duration} day{duration !== 1 ? 's' : ''}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={getStatusColor(request.status)}>
+                          <Badge className={`text-xs ${getStatusColor(request.status)}`}>
                             <div className="flex items-center space-x-1">
                               {getStatusIcon(request.status)}
                               <span>{request.status.charAt(0).toUpperCase() + request.status.slice(1)}</span>
                             </div>
                           </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {request.reason}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {request.admin_notes || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {request.status === 'pending' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(request.id)}
-                              className="text-red-600 hover:text-red-700"
-                            >
-                              Delete
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                        </div>
+                        {request.status === 'pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(request.id)}
+                            className="text-red-600 hover:text-red-700 text-xs"
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-gray-600">Start:</span>
+                            <div className="font-medium">
+                              {startDate.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">End:</span>
+                            <div className="font-medium">
+                              {endDate.toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-600">Duration:</span>
+                          <span className="ml-1 font-medium">{duration} day{duration !== 1 ? 's' : ''}</span>
+                        </div>
+                        
+                        <div>
+                          <span className="text-gray-600">Reason:</span>
+                          <div className="mt-1">{request.reason}</div>
+                        </div>
+                        
+                        {request.admin_notes && (
+                          <div>
+                            <span className="text-gray-600">Admin Notes:</span>
+                            <div className="mt-1">{request.admin_notes}</div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden lg:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Type</TableHead>
+                      <TableHead className="text-xs">Start Date</TableHead>
+                      <TableHead className="text-xs">End Date</TableHead>
+                      <TableHead className="text-xs">Duration</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                      <TableHead className="text-xs">Reason</TableHead>
+                      <TableHead className="text-xs">Admin Notes</TableHead>
+                      <TableHead className="text-xs">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leaveRequests.map((request) => {
+                      const startDate = new Date(request.start_date)
+                      const endDate = new Date(request.end_date)
+                      const duration = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+                      return (
+                        <TableRow key={request.id}>
+                          <TableCell>
+                            <Badge className={`text-xs ${getLeaveTypeColor(request.leave_type)}`}>
+                              {request.leave_type.charAt(0).toUpperCase() + request.leave_type.slice(1)}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-medium text-sm">
+                            {startDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {endDate.toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </TableCell>
+                          <TableCell className="text-sm">
+                            {duration} day{duration !== 1 ? 's' : ''}
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={`text-xs ${getStatusColor(request.status)}`}>
+                              <div className="flex items-center space-x-1">
+                                {getStatusIcon(request.status)}
+                                <span>{request.status.charAt(0).toUpperCase() + request.status.slice(1)}</span>
+                              </div>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm max-w-xs truncate">
+                            {request.reason}
+                          </TableCell>
+                          <TableCell className="text-sm max-w-xs truncate">
+                            {request.admin_notes || '-'}
+                          </TableCell>
+                          <TableCell>
+                            {request.status === 'pending' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(request.id)}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                Delete
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
