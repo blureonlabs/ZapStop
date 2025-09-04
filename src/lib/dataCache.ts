@@ -8,6 +8,7 @@ interface CacheEntry<T> {
 export interface AdminDashboardData {
   drivers: any[]
   cars: any[]
+  owners: any[]
   earnings: any[]
   expenses: any[]
   attendance: any[]

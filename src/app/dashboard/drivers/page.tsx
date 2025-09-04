@@ -78,10 +78,17 @@ export default function DriversPage() {
         .select('*')
         .order('created_at', { ascending: false })
 
-      // Fetch all cars
+      // Fetch all cars with their owners
       const { data: carsData } = await supabase
         .from('cars')
-        .select('*')
+        .select(`
+          *,
+          owners (
+            id,
+            name,
+            email
+          )
+        `)
         .order('created_at', { ascending: false })
 
       setDrivers(usersData?.filter(u => u.role === 'driver') || [])
@@ -502,6 +509,7 @@ export default function DriversPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned Car</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Owned By</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -509,7 +517,7 @@ export default function DriversPage() {
               <tbody className="divide-y divide-gray-200">
                 {drivers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No drivers found. Create your first driver to get started.
                     </td>
                   </tr>
@@ -527,6 +535,12 @@ export default function DriversPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {cars.find(c => c.id === driver.assigned_car_id)?.plate_number || 'Not assigned'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {(() => {
+                          const assignedCar = cars.find(c => c.id === driver.assigned_car_id);
+                          return assignedCar?.owners?.name || 'No owner';
+                        })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(driver.created_at).toLocaleDateString()}

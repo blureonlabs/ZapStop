@@ -27,7 +27,8 @@ import {
   Menu, 
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Building2
 } from 'lucide-react'
 import Logo from './logo'
 import { toast } from 'sonner'
@@ -117,6 +118,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       name: 'Drivers',
       path: '/dashboard/drivers',
       icon: Users,
+      roles: ['admin']
+    },
+    {
+      name: 'Owners',
+      path: '/dashboard/owners',
+      icon: Building2,
       roles: ['admin']
     },
     {

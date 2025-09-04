@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Plus, Edit, Trash2 } from 'lucide-react'
+import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Plus, Edit, Trash2, Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
@@ -20,6 +20,7 @@ import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 export default function AdminDashboard() {
   const [drivers, setDrivers] = useState<User[]>([])
   const [cars, setCars] = useState<Car[]>([])
+  const [owners, setOwners] = useState<any[]>([])
   const [earnings, setEarnings] = useState<DriverEarning[]>([])
   const [expenses, setExpenses] = useState<DriverExpense[]>([])
   const [attendance, setAttendance] = useState<Attendance[]>([])
@@ -65,6 +66,7 @@ export default function AdminDashboard() {
           console.log('AdminDashboard: Using cached data')
           setDrivers(cachedData.drivers)
           setCars(cachedData.cars)
+          setOwners(cachedData.owners || [])
           setEarnings(cachedData.earnings)
           setExpenses(cachedData.expenses)
           setAttendance(cachedData.attendance || [])
@@ -97,6 +99,18 @@ export default function AdminDashboard() {
         console.error('AdminDashboard: Error fetching cars:', carsError)
       } else {
         console.log('AdminDashboard: Cars fetched successfully:', carsData?.length || 0, 'cars')
+      }
+
+      // Fetch all owners
+      console.log('AdminDashboard: Fetching owners...')
+      const { data: ownersData, error: ownersError } = await supabase
+        .from('owners_with_cars')
+        .select('*')
+      
+      if (ownersError) {
+        console.error('AdminDashboard: Error fetching owners:', ownersError)
+      } else {
+        console.log('AdminDashboard: Owners fetched successfully:', ownersData?.length || 0, 'owners')
       }
 
       // Fetch all earnings
@@ -151,6 +165,7 @@ export default function AdminDashboard() {
       dataCache.set('admin-dashboard-data', {
         drivers,
         cars: carsWithDrivers,
+        owners: ownersData || [],
         earnings: earningsData || [],
         expenses: expensesData || [],
         attendance: attendanceData || []
@@ -159,6 +174,7 @@ export default function AdminDashboard() {
       console.log('AdminDashboard: Data fetched successfully, setting state...')
       setDrivers(drivers)
       setCars(carsWithDrivers)
+      setOwners(ownersData || [])
       setEarnings(earningsData || [])
       setExpenses(expensesData || [])
       setAttendance(attendanceData || [])
@@ -562,14 +578,26 @@ export default function AdminDashboard() {
 
   const companyStats = useMemo(() => {
     const totalCars = cars.length
+    const totalOwners = owners.length
+    const ownersWithCars = owners.filter(owner => owner.total_cars > 0).length
+    const totalCarsAssignedToOwners = owners.reduce((sum, owner) => sum + (owner.total_cars || 0), 0)
     const totalMandatoryDues = totalCars * 7500
     const totalEarnings = earnings.reduce((sum, e) => 
       sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
     const totalExpenses = expenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
     const netProfit = totalEarnings - totalExpenses
 
-    return { totalCars, totalMandatoryDues, totalEarnings, totalExpenses, netProfit }
-  }, [cars.length, earnings, expenses])
+    return { 
+      totalCars, 
+      totalOwners, 
+      ownersWithCars, 
+      totalCarsAssignedToOwners,
+      totalMandatoryDues, 
+      totalEarnings, 
+      totalExpenses, 
+      netProfit 
+    }
+  }, [cars.length, owners, earnings, expenses])
 
   const carLevelPL = useMemo(() => {
     return cars.map(car => {
@@ -674,6 +702,48 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Owners</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{companyStats.totalOwners}</div>
+            <p className="text-xs text-muted-foreground">
+              Registered owners
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Owners with Cars</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{companyStats.ownersWithCars}</div>
+            <p className="text-xs text-muted-foreground">
+              Owners with assigned cars
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Cars Assigned to Owners</CardTitle>
+            <CarIcon className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{companyStats.totalCarsAssignedToOwners}</div>
+            <p className="text-xs text-muted-foreground">
+              Cars assigned to owners
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Financial KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Mandatory Dues</CardTitle>
