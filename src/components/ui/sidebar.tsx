@@ -161,7 +161,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       {/* Sidebar */}
       <div className={`
-        fixed top-0 left-0 z-50 h-full bg-white border-r border-gray-200 transition-all duration-300 ease-in-out
+        fixed top-0 left-0 z-50 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         ${isCollapsed ? 'w-16' : 'w-72'}
         lg:translate-x-0 lg:static lg:z-auto
@@ -200,7 +200,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 px-4 py-4 space-y-1">
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
             {filteredItems.map((item) => {
               const Icon = item.icon
               const active = isActive(item.path)
@@ -230,7 +230,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           </nav>
 
           {/* Bottom Section - User Profile with Dropdown */}
-          <div className="mt-auto">
+          <div className="mt-auto flex-shrink-0">
             {appUser && (
               <div className="hidden lg:block p-4 border-t border-gray-200">
                 {isCollapsed ? (
