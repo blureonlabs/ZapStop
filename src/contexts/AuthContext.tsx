@@ -35,13 +35,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        fetchAppUser(session.user.id)
-      } else {
+      console.log('Auth state change:', event, session?.user?.id)
+      
+      // Only process auth changes for the current user
+      // Ignore events that don't affect the current session
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        setUser(null)
         setAppUser(null)
         setLoading(false)
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setUser(session.user)
+        await fetchAppUser(session.user.id)
       }
+      // Ignore other events like 'USER_UPDATED' or 'PASSWORD_RECOVERY' 
+      // that shouldn't affect the current user's session
     })
 
     return () => subscription.unsubscribe()
@@ -75,19 +82,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           if (createError) {
             console.error('Error creating user:', createError)
-            setAppUser(null)
+            // Don't set appUser to null on error - keep current state
+            console.warn('Failed to create user, keeping current session')
           } else {
             setAppUser(newUser)
           }
         } else {
-          setAppUser(null)
+          // For other errors, don't immediately log out - just log the error
+          console.warn('Failed to fetch user data, keeping current session:', error)
         }
       } else {
         setAppUser(data)
       }
     } catch (error) {
       console.error('Exception fetching app user:', error)
-      setAppUser(null)
+      // Don't set appUser to null on exception - keep current state
+      console.warn('Exception fetching user data, keeping current session')
     } finally {
       setLoading(false)
     }

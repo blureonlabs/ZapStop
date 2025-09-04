@@ -64,6 +64,8 @@ export default function DriverDashboard() {
   const [loading, setLoading] = useState(true)
   const [submittingEarnings, setSubmittingEarnings] = useState(false)
   const [submittingExpense, setSubmittingExpense] = useState(false)
+  const [isOnLeave, setIsOnLeave] = useState(false)
+  const [leaveInfo, setLeaveInfo] = useState<any>(null)
 
   // Form states
   const [earningsForm, setEarningsForm] = useState({
@@ -85,12 +87,45 @@ export default function DriverDashboard() {
     }
   }, [appUser])
 
+  const checkLeaveStatus = async (driverId: string) => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      
+      const { data: leaveData, error: leaveError } = await supabase
+        .from('leave_requests')
+        .select('*')
+        .eq('driver_id', driverId)
+        .eq('status', 'approved')
+        .lte('start_date', today)
+        .gte('end_date', today)
+        .single()
+
+      if (leaveError && leaveError.code !== 'PGRST116') {
+        console.error('Error checking leave status:', leaveError)
+        return
+      }
+
+      if (leaveData) {
+        setIsOnLeave(true)
+        setLeaveInfo(leaveData)
+      } else {
+        setIsOnLeave(false)
+        setLeaveInfo(null)
+      }
+    } catch (error) {
+      console.error('Error checking leave status:', error)
+    }
+  }
+
   const fetchDriverData = async () => {
     try {
       setLoading(true)
       const authUserId = appUser?.id
 
       if (!authUserId) return
+
+      // Check if driver is on approved leave
+      await checkLeaveStatus(authUserId)
 
       // First get the driver's assigned_car_id from users table
       const { data: userData, error: userError } = await supabase
@@ -151,7 +186,11 @@ export default function DriverDashboard() {
         .single()
 
       if (expenseError) {
-        console.error('Error fetching expense:', expenseError)
+        // If no expense record exists for today, that's normal - don't log as error
+        if (expenseError.code !== 'PGRST116') {
+          console.error('Error fetching expense:', expenseError)
+        }
+        setTodayExpense(null)
       } else {
         setTodayExpense(expenseData)
         if (expenseData) {
@@ -171,9 +210,13 @@ export default function DriverDashboard() {
         .single()
       
       if (attendanceError) {
-        console.error('Error fetching attendance:', attendanceError)
+        // If no attendance record exists for today, that's normal - don't log as error
+        if (attendanceError.code !== 'PGRST116') {
+          console.error('Error fetching attendance:', attendanceError)
+        }
+        setAttendance(null)
       } else {
-      setAttendance(attendanceData)
+        setAttendance(attendanceData)
       }
 
     } catch (error) {
@@ -412,6 +455,50 @@ export default function DriverDashboard() {
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-2 text-gray-600">Loading driver data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show leave notice if driver is on approved leave
+  if (isOnLeave && leaveInfo) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-6">
+          <div className="flex items-center space-x-3">
+            <Clock className="h-8 w-8 text-orange-600" />
+            <div>
+              <h2 className="text-lg font-semibold text-orange-900">You are currently on approved leave</h2>
+              <p className="text-orange-700">
+                Leave Type: <span className="font-medium capitalize">{leaveInfo.leave_type}</span>
+              </p>
+              <p className="text-orange-700">
+                Period: {new Date(leaveInfo.start_date).toLocaleDateString()} - {new Date(leaveInfo.end_date).toLocaleDateString()}
+              </p>
+              {leaveInfo.admin_notes && (
+                <p className="text-orange-700 mt-2">
+                  <span className="font-medium">Admin Notes:</span> {leaveInfo.admin_notes}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="mt-4 p-4 bg-orange-100 rounded-md">
+            <p className="text-orange-800 text-sm">
+              <strong>Note:</strong> You cannot start work, update earnings, or log expenses while on approved leave. 
+              All work-related functions are disabled during this period.
+            </p>
+          </div>
+        </div>
+        
+        <div className="text-center py-8">
+          <Button
+            variant="outline"
+            onClick={() => router.push('/dashboard/leave')}
+            className="flex items-center mx-auto"
+          >
+            <Clock className="mr-2 h-4 w-4" />
+            View Leave Requests
+          </Button>
         </div>
       </div>
     )

@@ -19,6 +19,10 @@ interface DriverExpense {
   description: string
   category: string
   created_at: string
+  users?: {
+    name: string
+    email: string
+  }
 }
 
 export default function ExpensesPage() {
@@ -28,44 +32,75 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [totalExpenses, setTotalExpenses] = useState(0)
   const [averageDaily, setAverageDaily] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const itemsPerPage = 50
 
   useEffect(() => {
     if (appUser) {
-      fetchExpenses()
+      fetchExpenses(1, true)
     }
   }, [appUser])
 
-  const fetchExpenses = async () => {
+  const fetchExpenses = async (page = 1, reset = false) => {
     try {
-      setLoading(true)
+      if (reset) {
+        setLoading(true)
+        setCurrentPage(1)
+        setExpenses([])
+      }
+      
       const authUserId = appUser?.id
-
       if (!authUserId) return
 
-      // Fetch last 30 days of expenses
-      const { data: expensesData, error: expensesError } = await supabase
+      let query = supabase
         .from('driver_expenses')
-        .select('*')
-        .eq('driver_id', authUserId)
+        .select(`
+          *,
+          users!inner(name, email)
+        `)
         .order('date', { ascending: false })
-        .limit(30)
+        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
+
+      // If user is admin, show all expenses. Otherwise, show only their own
+      if (appUser?.role !== 'admin') {
+        query = query.eq('driver_id', authUserId)
+      }
+
+      const { data: expensesData, error: expensesError } = await query
 
       if (expensesError) {
         console.error('Error fetching expenses:', expensesError)
         toast.error('Failed to load expenses data')
       } else {
-        setExpenses(expensesData || [])
+        const newExpenses = expensesData || []
         
-        // Calculate totals
-        const total = expensesData?.reduce((sum, expense) => sum + expense.amount, 0) || 0
+        if (reset) {
+          setExpenses(newExpenses)
+        } else {
+          setExpenses(prev => [...prev, ...newExpenses])
+        }
+        
+        setHasMore(newExpenses.length === itemsPerPage)
+        setCurrentPage(page)
+        
+        // Calculate totals for all loaded expenses
+        const allExpenses = reset ? newExpenses : [...expenses, ...newExpenses]
+        const total = allExpenses.reduce((sum, expense) => sum + expense.amount, 0)
         setTotalExpenses(total)
-        setAverageDaily(expensesData?.length ? total / expensesData.length : 0)
+        setAverageDaily(allExpenses.length ? total / allExpenses.length : 0)
       }
     } catch (error) {
       console.error('Error fetching expenses:', error)
       toast.error('Failed to load expenses data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      fetchExpenses(currentPage + 1, false)
     }
   }
 
@@ -105,8 +140,15 @@ export default function ExpensesPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Expense History</h1>
-            <p className="text-gray-600">Track your daily expenses over time</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {appUser?.role === 'admin' ? 'All Expenses' : 'Expense History'}
+            </h1>
+            <p className="text-gray-600">
+              {appUser?.role === 'admin' 
+                ? 'View all driver expenses across the platform' 
+                : 'Track your daily expenses over time'
+              }
+            </p>
           </div>
         </div>
       </div>
@@ -121,7 +163,7 @@ export default function ExpensesPage() {
           <CardContent>
             <div className="text-2xl font-bold">AED {totalExpenses.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              Last 30 days
+              {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
           </CardContent>
         </Card>
@@ -147,7 +189,7 @@ export default function ExpensesPage() {
           <CardContent>
             <div className="text-2xl font-bold">{expenses.length}</div>
             <p className="text-xs text-muted-foreground">
-              Last 30 days
+              {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
           </CardContent>
         </Card>
@@ -156,9 +198,14 @@ export default function ExpensesPage() {
       {/* Expenses Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Expenses Breakdown</CardTitle>
+          <CardTitle>
+            {appUser?.role === 'admin' ? 'All Expenses Breakdown' : 'Daily Expenses Breakdown'}
+          </CardTitle>
           <CardDescription>
-            Detailed view of your daily expenses by category
+            {appUser?.role === 'admin' 
+              ? 'Detailed view of all driver expenses by category' 
+              : 'Detailed view of your daily expenses by category'
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -174,6 +221,7 @@ export default function ExpensesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    {appUser?.role === 'admin' && <TableHead>Driver</TableHead>}
                     <TableHead>Category</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead className="text-right">Amount</TableHead>
@@ -189,9 +237,17 @@ export default function ExpensesPage() {
                           day: 'numeric'
                         })}
                       </TableCell>
+                      {appUser?.role === 'admin' && (
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{expense.users?.name || 'Unknown'}</div>
+                            <div className="text-sm text-gray-500">{expense.users?.email || 'No email'}</div>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>
-                        <Badge className={getCategoryColor(expense.category)}>
-                          {expense.category.charAt(0).toUpperCase() + expense.category.slice(1)}
+                        <Badge className={getCategoryColor(expense.category || 'other')}>
+                          {(expense.category || 'other').charAt(0).toUpperCase() + (expense.category || 'other').slice(1)}
                         </Badge>
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
@@ -204,6 +260,18 @@ export default function ExpensesPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {hasMore && (
+            <div className="mt-4 text-center">
+              <Button 
+                onClick={loadMore} 
+                disabled={loading}
+                variant="outline"
+                className="w-full"
+              >
+                {loading ? 'Loading...' : 'Load More Expenses'}
+              </Button>
             </div>
           )}
         </CardContent>

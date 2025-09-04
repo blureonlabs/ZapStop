@@ -25,6 +25,10 @@ interface DriverEarning {
   notes?: string
   created_at: string
   updated_at: string
+  users?: {
+    name: string
+    email: string
+  }
 }
 
 export default function EarningsPage() {
@@ -38,6 +42,9 @@ export default function EarningsPage() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
   const [filteredEarnings, setFilteredEarnings] = useState<DriverEarning[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const itemsPerPage = 50
 
   // Helper function to calculate total earnings for a single day
   const calculateTotal = (earning: DriverEarning) => {
@@ -46,41 +53,69 @@ export default function EarningsPage() {
 
   useEffect(() => {
     if (appUser) {
-      fetchEarnings()
+      fetchEarnings(1, true)
     }
   }, [appUser])
 
-  const fetchEarnings = async () => {
+  const fetchEarnings = async (page = 1, reset = false) => {
     try {
-      setLoading(true)
+      if (reset) {
+        setLoading(true)
+        setCurrentPage(1)
+        setEarnings([])
+      }
+      
       const authUserId = appUser?.id
-
       if (!authUserId) return
 
-      // Fetch all earnings (no limit for filtering)
-      const { data: earningsData, error: earningsError } = await supabase
+      let query = supabase
         .from('driver_earnings')
-        .select('*')
-        .eq('driver_id', authUserId)
+        .select(`
+          *,
+          users!inner(name, email)
+        `)
         .order('date', { ascending: false })
+        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
+
+      // If user is admin, show all earnings. Otherwise, show only their own
+      if (appUser?.role !== 'admin') {
+        query = query.eq('driver_id', authUserId)
+      }
+
+      const { data: earningsData, error: earningsError } = await query
 
       if (earningsError) {
         console.error('Error fetching earnings:', earningsError)
         toast.error('Failed to load earnings data')
       } else {
-        setEarnings(earningsData || [])
-        setFilteredEarnings(earningsData || [])
+        const newEarnings = earningsData || []
         
-        // Calculate totals for all data
-        const total = earningsData?.reduce((sum, earning) => sum + calculateTotal(earning), 0) || 0
+        if (reset) {
+          setEarnings(newEarnings)
+        } else {
+          setEarnings(prev => [...prev, ...newEarnings])
+        }
+        
+        setHasMore(newEarnings.length === itemsPerPage)
+        setCurrentPage(page)
+        
+        // Calculate totals for all loaded earnings
+        const allEarnings = reset ? newEarnings : [...earnings, ...newEarnings]
+        const total = allEarnings.reduce((sum, earning) => sum + calculateTotal(earning), 0)
         setTotalEarnings(total)
-        setAverageDaily(earningsData?.length ? total / earningsData.length : 0)
+        setAverageDaily(allEarnings.length ? total / allEarnings.length : 0)
       }
     } catch (error) {
       console.error('Error fetching earnings:', error)
       toast.error('Failed to load earnings data')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMore = () => {
+    if (!loading && hasMore) {
+      fetchEarnings(currentPage + 1, false)
     }
   }
 
@@ -144,8 +179,15 @@ export default function EarningsPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Earnings History</h1>
-            <p className="text-gray-600">Track your daily earnings over time</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {appUser?.role === 'admin' ? 'All Earnings' : 'Earnings History'}
+            </h1>
+            <p className="text-gray-600">
+              {appUser?.role === 'admin' 
+                ? 'View all driver earnings across the platform' 
+                : 'Track your daily earnings over time'
+              }
+            </p>
           </div>
         </div>
         <Button
@@ -221,7 +263,7 @@ export default function EarningsPage() {
           <CardContent>
             <div className="text-2xl font-bold">AED {totalEarnings.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              Last 30 days
+              {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
           </CardContent>
         </Card>
@@ -256,9 +298,14 @@ export default function EarningsPage() {
       {/* Earnings Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Earnings Breakdown</CardTitle>
+          <CardTitle>
+            {appUser?.role === 'admin' ? 'All Earnings Breakdown' : 'Daily Earnings Breakdown'}
+          </CardTitle>
           <CardDescription>
-            Detailed view of your daily earnings from different platforms
+            {appUser?.role === 'admin' 
+              ? 'Detailed view of all driver earnings from different platforms'
+              : 'Detailed view of your daily earnings from different platforms'
+            }
             {dateFrom || dateTo ? ` (${filteredEarnings.length} days shown)` : ''}
           </CardDescription>
         </CardHeader>
@@ -282,6 +329,7 @@ export default function EarningsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    {appUser?.role === 'admin' && <TableHead>Driver</TableHead>}
                     <TableHead>Uber Cash</TableHead>
                     <TableHead>Uber Account</TableHead>
                     <TableHead>Bolt Cash</TableHead>
@@ -300,6 +348,14 @@ export default function EarningsPage() {
                           day: 'numeric'
                         })}
                       </TableCell>
+                      {appUser?.role === 'admin' && (
+                        <TableCell>
+                          <div className="space-y-1">
+                            <div className="font-medium">{earning.users?.name || 'Unknown'}</div>
+                            <div className="text-sm text-gray-500">{earning.users?.email || 'No email'}</div>
+                          </div>
+                        </TableCell>
+                      )}
                       <TableCell>AED {earning.uber_cash.toFixed(2)}</TableCell>
                       <TableCell>AED {earning.uber_account.toFixed(2)}</TableCell>
                       <TableCell>AED {earning.bolt_cash.toFixed(2)}</TableCell>
@@ -312,6 +368,18 @@ export default function EarningsPage() {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+          {hasMore && (
+            <div className="mt-4 text-center">
+              <Button 
+                onClick={loadMore} 
+                disabled={loading}
+                variant="outline"
+                className="w-full"
+              >
+                {loading ? 'Loading...' : 'Load More Earnings'}
+              </Button>
             </div>
           )}
         </CardContent>

@@ -75,3 +75,21 @@ export interface Attendance {
   created_at: string
   updated_at: string
 }
+
+export interface LeaveRequest {
+  id: string
+  driver_id: string
+  leave_type: 'sick' | 'personal' | 'vacation' | 'emergency' | 'other'
+  start_date: string
+  end_date: string
+  reason: string
+  status: 'pending' | 'approved' | 'rejected'
+  admin_notes?: string
+  approved_by?: string
+  created_at: string
+  updated_at: string
+  users?: {
+    name: string
+    email: string
+  }
+}

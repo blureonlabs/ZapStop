@@ -2,6 +2,8 @@
 CREATE TYPE user_role AS ENUM ('admin', 'accountant', 'driver');
 CREATE TYPE expense_status AS ENUM ('pending', 'approved', 'rejected');
 CREATE TYPE attendance_status AS ENUM ('present', 'absent', 'leave');
+CREATE TYPE leave_status AS ENUM ('pending', 'approved', 'rejected');
+CREATE TYPE leave_type AS ENUM ('sick', 'personal', 'vacation', 'emergency', 'other');
 
 -- Create users table (without car reference initially)
 CREATE TABLE users (
@@ -74,6 +76,21 @@ CREATE TABLE attendance (
     UNIQUE(driver_id, date)
 );
 
+-- Create leave_requests table
+CREATE TABLE leave_requests (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    driver_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    leave_type leave_type NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    reason TEXT NOT NULL,
+    status leave_status DEFAULT 'pending',
+    admin_notes TEXT,
+    approved_by UUID REFERENCES users(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_users_role ON users(role);
 CREATE INDEX idx_users_assigned_car ON users(assigned_car_id);
@@ -82,6 +99,9 @@ CREATE INDEX idx_driver_earnings_driver_date ON driver_earnings(driver_id, date)
 CREATE INDEX idx_driver_expenses_driver_date ON driver_expenses(driver_id, date);
 CREATE INDEX idx_driver_expenses_status ON driver_expenses(status);
 CREATE INDEX idx_attendance_driver_date ON attendance(driver_id, date);
+CREATE INDEX idx_leave_requests_driver ON leave_requests(driver_id);
+CREATE INDEX idx_leave_requests_status ON leave_requests(status);
+CREATE INDEX idx_leave_requests_dates ON leave_requests(start_date, end_date);
 
 -- Create updated_at trigger function
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -98,6 +118,7 @@ CREATE TRIGGER update_cars_updated_at BEFORE UPDATE ON cars FOR EACH ROW EXECUTE
 CREATE TRIGGER update_driver_earnings_updated_at BEFORE UPDATE ON driver_earnings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_driver_expenses_updated_at BEFORE UPDATE ON driver_expenses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_attendance_updated_at BEFORE UPDATE ON attendance FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_leave_requests_updated_at BEFORE UPDATE ON leave_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
@@ -105,6 +126,7 @@ ALTER TABLE cars ENABLE ROW LEVEL SECURITY;
 ALTER TABLE driver_earnings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE driver_expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
 
 -- Create RLS policies
 -- Users can view their own data and admins can view all
@@ -168,6 +190,25 @@ CREATE POLICY "Admins and accountants can view all attendance" ON attendance FOR
         AND role IN ('admin', 'accountant')
     )
 );
+
+-- Leave requests policies
+CREATE POLICY "Drivers can view own leave requests" ON leave_requests FOR SELECT USING (auth.uid()::text = driver_id::text);
+CREATE POLICY "Drivers can insert own leave requests" ON leave_requests FOR INSERT WITH CHECK (auth.uid()::text = driver_id::text);
+CREATE POLICY "Admins can view all leave requests" ON leave_requests FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE id::text = auth.uid()::text 
+        AND role = 'admin'
+    )
+);
+CREATE POLICY "Admins can update leave requests" ON leave_requests FOR UPDATE USING (
+    EXISTS (
+        SELECT 1 FROM users 
+        WHERE id::text = auth.uid()::text 
+        AND role = 'admin'
+    )
+);
+CREATE POLICY "Service role can manage leave requests" ON leave_requests FOR ALL USING (auth.role() = 'service_role');
 
 -- Insert sample data
 -- Insert cars first

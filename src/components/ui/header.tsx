@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings, Menu, X, Home, DollarSign, Receipt, Car, Users } from 'lucide-react'
+import { LogOut, User, Settings, Menu, X, Home, DollarSign, Receipt, Car, Users, Calendar } from 'lucide-react'
 import Logo from './logo'
 import { toast } from 'sonner'
 
@@ -142,6 +142,17 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
           >
             <Receipt className="mr-2 h-4 w-4" />
             Expenses
+          </Button>
+          
+          {/* Leave requests - drivers can request, admins can manage */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
+            className="text-gray-700 hover:text-gray-900"
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            {appUser?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}
           </Button>
         </div>
 
@@ -299,6 +310,15 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 >
                   <Receipt className="mr-3 h-5 w-5" />
                   <span className="text-base">Expenses</span>
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start h-12 text-left"
+                  onClick={() => handleNavigation(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
+                >
+                  <Calendar className="mr-3 h-5 w-5" />
+                  <span className="text-base">{appUser?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}</span>
                 </Button>
 
                 <div className="border-t pt-4 mt-4">
