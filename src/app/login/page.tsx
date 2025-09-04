@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import LoginDebug from '@/components/debug/LoginDebug'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -85,10 +84,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
-      
-      <div className="mt-6">
-        <LoginDebug />
-      </div>
     </div>
   )
 }

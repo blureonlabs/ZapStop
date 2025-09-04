@@ -15,10 +15,10 @@ export default function AccountantDashboard() {
   const [expenses, setExpenses] = useState<DriverExpense[]>([])
   const [earnings, setEarnings] = useState<DriverEarning[]>([])
   const [drivers, setDrivers] = useState<User[]>([])
-  // const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedExpense, setSelectedExpense] = useState<DriverExpense | null>(null)
   const [showExpenseDialog, setShowExpenseDialog] = useState(false)
+  const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -63,7 +63,11 @@ export default function AccountantDashboard() {
   }
 
   const handleExpenseAction = async (expenseId: string, status: 'approved' | 'rejected') => {
+    if (processing) return
+    
     try {
+      setProcessing(true)
+      
       const { error } = await supabase
         .from('driver_expenses')
         .update({ status })
@@ -78,6 +82,8 @@ export default function AccountantDashboard() {
     } catch (error) {
       console.error('Error updating expense:', error)
       toast.error('Failed to update expense')
+    } finally {
+      setProcessing(false)
     }
   }
 
@@ -145,9 +151,6 @@ export default function AccountantDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Accountant Dashboard</h1>
-      </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -435,17 +438,19 @@ export default function AccountantDashboard() {
                   onClick={() => handleExpenseAction(selectedExpense.id, 'approved')}
                   className="flex-1"
                   variant="default"
+                  disabled={processing}
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve
+                  {processing ? 'Processing...' : 'Approve'}
                 </Button>
                 <Button
                   onClick={() => handleExpenseAction(selectedExpense.id, 'rejected')}
                   className="flex-1"
                   variant="destructive"
+                  disabled={processing}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
-                  Reject
+                  {processing ? 'Processing...' : 'Reject'}
                 </Button>
               </div>
             </div>

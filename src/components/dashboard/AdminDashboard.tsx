@@ -22,8 +22,11 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [showDriverDialog, setShowDriverDialog] = useState(false)
   const [showCarDialog, setShowCarDialog] = useState(false)
-  // const [editingDriver, setEditingDriver] = useState<User | null>(null)
-  // const [editingCar, setEditingCar] = useState<Car | null>(null)
+  const [showEditDriverDialog, setShowEditDriverDialog] = useState(false)
+  const [creatingDriver, setCreatingDriver] = useState(false)
+  const [creatingCar, setCreatingCar] = useState(false)
+  const [editingDriver, setEditingDriver] = useState(false)
+  const [selectedDriver, setSelectedDriver] = useState<User | null>(null)
 
   // Form states
   const [driverForm, setDriverForm] = useState({
@@ -32,14 +35,14 @@ export default function AdminDashboard() {
     phone: '',
     password: '',
     role: 'driver' as const,
-    assigned_car_id: ''
+    assigned_car_id: 'none'
   })
 
   const [carForm, setCarForm] = useState({
     plate_number: '',
     model: '',
     monthly_due: 7500,
-    assigned_driver_id: ''
+    assigned_driver_id: 'none'
   })
 
   useEffect(() => {
@@ -95,7 +98,11 @@ export default function AdminDashboard() {
   }
 
   const handleCreateDriver = async () => {
+    if (creatingDriver) return // Prevent multiple submissions
+    
     try {
+      setCreatingDriver(true)
+      
       // Validate form data
       if (!driverForm.name.trim()) {
         toast.error('Name is required')
@@ -107,7 +114,17 @@ export default function AdminDashboard() {
         return
       }
 
-      // Create driver using the admin API with auto email confirmation
+      if (!driverForm.password.trim()) {
+        toast.error('Password is required')
+        return
+      }
+
+      if (driverForm.password.length < 6) {
+        toast.error('Password must be at least 6 characters long')
+        return
+      }
+
+      // Create user using admin API (prevents auto-login)
       const response = await fetch('/api/admin/create-user', {
         method: 'POST',
         headers: {
@@ -116,72 +133,238 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           name: driverForm.name,
           email: driverForm.email,
-          password: driverForm.password || 'defaultpassword123', // Use custom password or default
+          password: driverForm.password,
           phone: driverForm.phone,
           role: driverForm.role,
-          assigned_car_id: driverForm.assigned_car_id
+          assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
         }),
       })
 
-      const result = await response.json()
-
       if (!response.ok) {
-        console.error('Driver creation error:', result)
-        toast.error(result.error || 'Failed to create driver')
-        return
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create driver')
       }
 
-      toast.success('Driver created successfully')
-      setShowDriverDialog(false)
-      setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: '' })
-      fetchData()
-    } catch (error) {
+      const result = await response.json()
+      
+      if (result.success) {
+        toast.success(result.message || 'Driver created successfully')
+        setShowDriverDialog(false)
+        setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+        fetchData()
+      } else {
+        throw new Error(result.error || 'Failed to create driver')
+      }
+    } catch (error: any) {
       console.error('Error creating driver:', error)
-      toast.error('Failed to create driver')
+      toast.error(error.message || 'Failed to create driver')
+    } finally {
+      setCreatingDriver(false)
     }
   }
 
   const handleCreateCar = async () => {
+    if (creatingCar) return // Prevent multiple submissions
+    
     try {
+      setCreatingCar(true)
+      
+      // Validate form data
+      if (!carForm.plate_number.trim()) {
+        toast.error('Plate number is required')
+        return
+      }
+      
+      if (!carForm.model.trim()) {
+        toast.error('Model is required')
+        return
+      }
+
       const { error } = await supabase
         .from('cars')
-        .insert([carForm])
+        .insert([{
+          plate_number: carForm.plate_number,
+          model: carForm.model,
+          monthly_due: carForm.monthly_due,
+          assigned_driver_id: carForm.assigned_driver_id === 'none' ? null : carForm.assigned_driver_id || null
+        }])
 
       if (error) throw error
 
       toast.success('Car created successfully')
       setShowCarDialog(false)
-      setCarForm({ plate_number: '', model: '', monthly_due: 7500, assigned_driver_id: '' })
+      setCarForm({ plate_number: '', model: '', monthly_due: 7500, assigned_driver_id: 'none' })
       fetchData()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating car:', error)
-      toast.error('Failed to create car')
+      toast.error(error.message || 'Failed to create car')
+    } finally {
+      setCreatingCar(false)
+    }
+  }
+
+  const handleEditDriver = (driver: User) => {
+    setSelectedDriver(driver)
+    setDriverForm({
+      name: driver.name,
+      email: driver.email,
+      phone: driver.phone || '',
+      password: '', // Don't pre-fill password for security
+      role: driver.role,
+      assigned_car_id: driver.assigned_car_id || 'none'
+    })
+    setShowEditDriverDialog(true)
+  }
+
+  const handleUpdateDriver = async () => {
+    if (editingDriver || !selectedDriver) return
+    
+    try {
+      setEditingDriver(true)
+      
+      // Validate form data
+      if (!driverForm.name.trim()) {
+        toast.error('Name is required')
+        return
+      }
+      
+      if (!driverForm.email.trim()) {
+        toast.error('Email is required')
+        return
+      }
+
+      // Update driver in users table
+      const { error: userError } = await supabase
+        .from('users')
+        .update({
+          name: driverForm.name,
+          email: driverForm.email,
+          phone: driverForm.phone || null,
+          assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
+        })
+        .eq('id', selectedDriver.id)
+
+      if (userError) throw userError
+
+      // If password is provided, update it in auth
+      if (driverForm.password.trim()) {
+        if (driverForm.password.length < 6) {
+          toast.error('Password must be at least 6 characters long')
+          return
+        }
+
+        const { error: authError } = await supabase.auth.admin.updateUserById(selectedDriver.id, {
+          password: driverForm.password
+        })
+
+        if (authError) {
+          console.warn('Failed to update password:', authError)
+          // Don't fail the entire operation for this
+        }
+      }
+
+      toast.success('Driver updated successfully')
+      setShowEditDriverDialog(false)
+      setSelectedDriver(null)
+      setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+      fetchData()
+    } catch (error: any) {
+      console.error('Error updating driver:', error)
+      toast.error(error.message || 'Failed to update driver')
+    } finally {
+      setEditingDriver(false)
     }
   }
 
   const handleDeleteDriver = async (driverId: string) => {
-    if (!confirm('Are you sure you want to delete this driver?')) return
+    if (!confirm('Are you sure you want to delete this driver? This will also delete their authentication account and unassign any cars from this driver.')) return
 
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', driverId)
+      // First, unassign any cars from this driver
+      const { data: carsWithDriver, error: checkError } = await supabase
+        .from('cars')
+        .select('id, plate_number')
+        .eq('assigned_driver_id', driverId)
 
-      if (error) throw error
+      if (checkError) {
+        console.error('Error checking car assignments:', checkError)
+        throw new Error('Failed to check car assignments')
+      }
+
+      // Unassign all cars from this driver
+      if (carsWithDriver && carsWithDriver.length > 0) {
+        const { error: unassignError } = await supabase
+          .from('cars')
+          .update({ assigned_driver_id: null })
+          .eq('assigned_driver_id', driverId)
+
+        if (unassignError) {
+          console.error('Failed to unassign cars:', unassignError)
+          throw new Error('Failed to unassign cars from driver')
+        }
+
+        toast.success(`Unassigned ${carsWithDriver.length} car(s) from driver`)
+        
+        // Wait a moment before showing the next notification
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      // Now delete the driver
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: driverId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to delete driver')
+      }
 
       toast.success('Driver deleted successfully')
       fetchData()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting driver:', error)
-      toast.error('Failed to delete driver')
+      toast.error(error.message || 'Failed to delete driver')
     }
   }
 
   const handleDeleteCar = async (carId: string) => {
-    if (!confirm('Are you sure you want to delete this car?')) return
+    if (!confirm('Are you sure you want to delete this car? This will automatically unassign any drivers from this car.')) return
 
     try {
+      // First, unassign any drivers from this car
+      const { data: driversWithCar, error: checkError } = await supabase
+        .from('users')
+        .select('id, name')
+        .eq('assigned_car_id', carId)
+
+      if (checkError) {
+        console.error('Error checking driver assignments:', checkError)
+        throw new Error('Failed to check driver assignments')
+      }
+
+      // Unassign all drivers from this car
+      if (driversWithCar && driversWithCar.length > 0) {
+        const { error: unassignError } = await supabase
+          .from('users')
+          .update({ assigned_car_id: null })
+          .eq('assigned_car_id', carId)
+
+        if (unassignError) {
+          console.error('Failed to unassign drivers:', unassignError)
+          throw new Error('Failed to unassign drivers from car')
+        }
+
+        toast.success(`Unassigned ${driversWithCar.length} driver(s) from car`)
+        
+        // Wait a moment before showing the next notification
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+
+      // Now delete the car
       const { error } = await supabase
         .from('cars')
         .delete()
@@ -191,9 +374,9 @@ export default function AdminDashboard() {
 
       toast.success('Car deleted successfully')
       fetchData()
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting car:', error)
-      toast.error('Failed to delete car')
+      toast.error(error.message || 'Failed to delete car')
     }
   }
 
@@ -301,9 +484,6 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-      </div>
 
       {/* Company KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -520,21 +700,102 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="Select a car" />
                       </SelectTrigger>
                       <SelectContent>
-                        {cars.map((car) => (
-                          <SelectItem key={car.id} value={car.id}>
-                            {car.plate_number} - {car.model}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="none">No car assigned</SelectItem>
+                        {cars
+                          .filter(car => !drivers.some(driver => driver.assigned_car_id === car.id))
+                          .map((car) => (
+                            <SelectItem key={car.id} value={car.id}>
+                              {car.plate_number} - {car.model}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleCreateDriver} className="w-full">
-                    Create Driver
+                  <Button 
+                    onClick={handleCreateDriver} 
+                    className="w-full"
+                    disabled={creatingDriver}
+                  >
+                    {creatingDriver ? 'Creating Driver...' : 'Create Driver'}
                   </Button>
                 </div>
               </DialogContent>
             </Dialog>
           </div>
+
+          {/* Edit Driver Dialog */}
+          <Dialog open={showEditDriverDialog} onOpenChange={setShowEditDriverDialog}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Edit Driver</DialogTitle>
+                <DialogDescription>
+                  Update driver information
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="edit_driver_name">Name</Label>
+                  <Input
+                    id="edit_driver_name"
+                    value={driverForm.name}
+                    onChange={(e) => setDriverForm({...driverForm, name: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_driver_email">Email</Label>
+                  <Input
+                    id="edit_driver_email"
+                    type="email"
+                    value={driverForm.email}
+                    onChange={(e) => setDriverForm({...driverForm, email: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_driver_phone">Phone</Label>
+                  <Input
+                    id="edit_driver_phone"
+                    value={driverForm.phone}
+                    onChange={(e) => setDriverForm({...driverForm, phone: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_driver_password">New Password (optional)</Label>
+                  <Input
+                    id="edit_driver_password"
+                    type="password"
+                    placeholder="Leave empty to keep current password"
+                    value={driverForm.password}
+                    onChange={(e) => setDriverForm({...driverForm, password: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit_assigned_car">Assigned Car</Label>
+                  <Select value={driverForm.assigned_car_id} onValueChange={(value) => setDriverForm({...driverForm, assigned_car_id: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a car" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No car assigned</SelectItem>
+                      {cars
+                        .filter(car => !drivers.some(driver => driver.assigned_car_id === car.id) || car.id === selectedDriver?.assigned_car_id)
+                        .map((car) => (
+                          <SelectItem key={car.id} value={car.id}>
+                            {car.plate_number} - {car.model}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  onClick={handleUpdateDriver} 
+                  className="w-full"
+                  disabled={editingDriver}
+                >
+                  {editingDriver ? 'Updating Driver...' : 'Update Driver'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
 
           <Card>
             <CardContent className="p-0">
@@ -566,7 +827,11 @@ export default function AdminDashboard() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditDriver(driver)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -637,16 +902,23 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="Select a driver" />
                       </SelectTrigger>
                       <SelectContent>
-                        {drivers.map((driver) => (
-                          <SelectItem key={driver.id} value={driver.id}>
-                            {driver.name}
-                          </SelectItem>
-                        ))}
+                        <SelectItem value="none">No driver assigned</SelectItem>
+                        {drivers
+                          .filter(driver => !driver.assigned_car_id)
+                          .map((driver) => (
+                            <SelectItem key={driver.id} value={driver.id}>
+                              {driver.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleCreateCar} className="w-full">
-                    Create Car
+                  <Button 
+                    onClick={handleCreateCar} 
+                    className="w-full"
+                    disabled={creatingCar}
+                  >
+                    {creatingCar ? 'Creating Car...' : 'Create Car'}
                   </Button>
                 </div>
               </DialogContent>

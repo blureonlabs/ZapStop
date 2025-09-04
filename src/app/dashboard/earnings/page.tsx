@@ -7,76 +7,68 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Receipt, ArrowLeft, TrendingUp, Calendar, DollarSign } from 'lucide-react'
+import { DollarSign, ArrowLeft, TrendingUp, Calendar } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-interface DriverExpense {
+interface DriverEarning {
   id: string
   driver_id: string
   date: string
-  amount: number
-  description: string
-  category: string
+  uber_cash: number
+  uber_account: number
+  bolt_cash: number
+  bolt_account: number
+  total: number
   created_at: string
 }
 
-export default function ExpensesPage() {
+export default function EarningsPage() {
   const { appUser } = useAuth()
   const router = useRouter()
-  const [expenses, setExpenses] = useState<DriverExpense[]>([])
+  const [earnings, setEarnings] = useState<DriverEarning[]>([])
   const [loading, setLoading] = useState(true)
-  const [totalExpenses, setTotalExpenses] = useState(0)
+  const [totalEarnings, setTotalEarnings] = useState(0)
   const [averageDaily, setAverageDaily] = useState(0)
 
   useEffect(() => {
     if (appUser) {
-      fetchExpenses()
+      fetchEarnings()
     }
   }, [appUser])
 
-  const fetchExpenses = async () => {
+  const fetchEarnings = async () => {
     try {
       setLoading(true)
       const authUserId = appUser?.id
 
       if (!authUserId) return
 
-      // Fetch last 30 days of expenses
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('driver_expenses')
+      // Fetch last 30 days of earnings
+      const { data: earningsData, error: earningsError } = await supabase
+        .from('driver_earnings')
         .select('*')
         .eq('driver_id', authUserId)
         .order('date', { ascending: false })
         .limit(30)
 
-      if (expensesError) {
-        console.error('Error fetching expenses:', expensesError)
-        toast.error('Failed to load expenses data')
+      if (earningsError) {
+        console.error('Error fetching earnings:', earningsError)
+        toast.error('Failed to load earnings data')
       } else {
-        setExpenses(expensesData || [])
+        setEarnings(earningsData || [])
         
         // Calculate totals
-        const total = expensesData?.reduce((sum, expense) => sum + expense.amount, 0) || 0
-        setTotalExpenses(total)
-        setAverageDaily(expensesData?.length ? total / expensesData.length : 0)
+        const total = earningsData?.reduce((sum, earning) => sum + earning.total, 0) || 0
+        setTotalEarnings(total)
+        setAverageDaily(earningsData?.length ? total / earningsData.length : 0)
       }
     } catch (error) {
-      console.error('Error fetching expenses:', error)
-      toast.error('Failed to load expenses data')
+      console.error('Error fetching earnings:', error)
+      toast.error('Failed to load earnings data')
     } finally {
       setLoading(false)
     }
-  }
-
-  const getCategoryColor = (category: string) => {
-    const colors = {
-      fuel: 'bg-red-100 text-red-800',
-      maintenance: 'bg-blue-100 text-blue-800',
-      food: 'bg-green-100 text-green-800',
-      other: 'bg-gray-100 text-gray-800'
-    }
-    return colors[category as keyof typeof colors] || colors.other
   }
 
   if (loading) {
@@ -84,7 +76,7 @@ export default function ExpensesPage() {
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading expenses...</p>
+          <p className="mt-2 text-gray-600">Loading earnings...</p>
         </div>
       </div>
     )
@@ -105,8 +97,8 @@ export default function ExpensesPage() {
             Back
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Expense History</h1>
-            <p className="text-gray-600">Track your daily expenses over time</p>
+            <h1 className="text-2xl font-bold text-gray-900">Earnings History</h1>
+            <p className="text-gray-600">Track your daily earnings over time</p>
           </div>
         </div>
       </div>
@@ -115,11 +107,11 @@ export default function ExpensesPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalExpenses.toFixed(2)}</div>
+            <div className="text-2xl font-bold">${totalEarnings.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Last 30 days
             </p>
@@ -141,11 +133,11 @@ export default function ExpensesPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Days with Expenses</CardTitle>
+            <CardTitle className="text-sm font-medium">Days Worked</CardTitle>
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{expenses.length}</div>
+            <div className="text-2xl font-bold">{earnings.length}</div>
             <p className="text-xs text-muted-foreground">
               Last 30 days
             </p>
@@ -153,20 +145,20 @@ export default function ExpensesPage() {
         </Card>
       </div>
 
-      {/* Expenses Table */}
+      {/* Earnings Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Expenses Breakdown</CardTitle>
+          <CardTitle>Daily Earnings Breakdown</CardTitle>
           <CardDescription>
-            Detailed view of your daily expenses by category
+            Detailed view of your daily earnings from different platforms
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {expenses.length === 0 ? (
+          {earnings.length === 0 ? (
             <div className="text-center py-8">
-              <Receipt className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No expenses recorded</h3>
-              <p className="text-gray-600">Start logging your daily expenses to see them here.</p>
+              <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No earnings recorded</h3>
+              <p className="text-gray-600">Start logging your daily earnings to see them here.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -174,31 +166,29 @@ export default function ExpensesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>Uber Cash</TableHead>
+                    <TableHead>Uber Account</TableHead>
+                    <TableHead>Bolt Cash</TableHead>
+                    <TableHead>Bolt Account</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {expenses.map((expense) => (
-                    <TableRow key={expense.id}>
+                  {earnings.map((earning) => (
+                    <TableRow key={earning.id}>
                       <TableCell className="font-medium">
-                        {new Date(expense.date).toLocaleDateString('en-US', {
+                        {new Date(earning.date).toLocaleDateString('en-US', {
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric'
                         })}
                       </TableCell>
-                      <TableCell>
-                        <Badge className={getCategoryColor(expense.category)}>
-                          {expense.category.charAt(0).toUpperCase() + expense.category.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {expense.description || 'No description'}
-                      </TableCell>
+                      <TableCell>${earning.uber_cash.toFixed(2)}</TableCell>
+                      <TableCell>${earning.uber_account.toFixed(2)}</TableCell>
+                      <TableCell>${earning.bolt_cash.toFixed(2)}</TableCell>
+                      <TableCell>${earning.bolt_account.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${expense.amount.toFixed(2)}
+                        ${earning.total.toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}

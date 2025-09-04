@@ -15,11 +15,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin client not configured. Please add SUPABASE_SERVICE_ROLE_KEY to your environment variables.' }, { status: 500 })
     }
 
-    // Create user in Supabase Auth using Admin API with auto email confirmation
+    // Create user in Supabase Auth using Admin API
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Automatically confirm email - no confirmation required
+      email_confirm: true, // Try to confirm email during creation
       user_metadata: {
         name,
         role
@@ -33,6 +33,16 @@ export async function POST(request: NextRequest) {
 
     if (!authData.user) {
       return NextResponse.json({ error: 'Failed to create user in Supabase Auth' }, { status: 500 })
+    }
+
+    // Force email confirmation using admin API (works even if confirmations are enabled)
+    const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(authData.user.id, {
+      email_confirm: true
+    })
+
+    if (confirmError) {
+      console.warn('Failed to confirm email, but user was created:', confirmError)
+      // Don't fail the entire operation for this
     }
 
     // Create user record in users table
@@ -73,7 +83,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       success: true, 
       user: userData,
-      message: 'Driver created successfully with auto email confirmation. User can login immediately.'
+      message: 'Driver created successfully. User can login immediately without email confirmation.'
     })
   } catch (error: any) {
     console.error('Error in create-driver:', error)
