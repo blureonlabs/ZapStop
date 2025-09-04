@@ -171,7 +171,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         fixed top-0 left-0 z-50 h-screen bg-white border-r border-gray-200 transition-all duration-300 ease-in-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full'}
         ${isCollapsed ? 'w-16' : 'w-72'}
-        lg:translate-x-0 lg:static lg:z-auto
+        lg:translate-x-0 lg:fixed lg:z-40
         shadow-xl lg:shadow-none
         ${isCollapsed ? 'lg:w-16' : 'lg:w-64'}
       `}>

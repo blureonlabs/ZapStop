@@ -147,14 +147,16 @@ export default function DashboardLayout({
         </div>
       </header>
 
-      <div className="flex">
-        {/* Sidebar */}
-        <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <div className="flex min-h-screen">
+        {/* Sidebar - Fixed/Sticky */}
+        <div className="hidden lg:block">
+          <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+        </div>
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
+        {/* Main Content Area - Scrollable */}
+        <div className="flex-1 flex flex-col lg:ml-64 min-h-screen">
           {/* Desktop Header - Only visible on desktop */}
-          <header className="hidden lg:block bg-white border-b border-gray-200 px-6 py-3">
+          <header className="hidden lg:block bg-white border-b border-gray-200 px-6 py-3 sticky top-0 z-40">
             <div className="flex items-center justify-between">
               <h1 className="text-lg font-semibold text-gray-900">
                 Dashboard
@@ -162,12 +164,17 @@ export default function DashboardLayout({
             </div>
           </header>
 
-          {/* Page Content */}
-          <main className="flex-1 p-4 lg:p-6">
+          {/* Page Content - Scrollable */}
+          <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
             <div className="max-w-7xl mx-auto">
               {children}
             </div>
           </main>
+        </div>
+
+        {/* Mobile Sidebar Overlay */}
+        <div className="lg:hidden">
+          <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
         </div>
       </div>
     </div>
