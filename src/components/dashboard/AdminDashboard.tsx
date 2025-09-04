@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 // import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
@@ -21,11 +22,45 @@ export default function AdminDashboard() {
   const [expenses, setExpenses] = useState<DriverExpense[]>([])
   const [attendance, setAttendance] = useState<Attendance[]>([])
   const [loading, setLoading] = useState(true)
+  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly'>('monthly')
 
 
   useEffect(() => {
     fetchData()
   }, [])
+
+  const getDateRange = (filter: string) => {
+    const now = new Date()
+    const start = new Date()
+    
+    switch (filter) {
+      case 'daily':
+        start.setDate(now.getDate() - 1)
+        break
+      case 'weekly':
+        start.setDate(now.getDate() - 7)
+        break
+      case 'monthly':
+        start.setMonth(now.getMonth() - 1)
+        break
+      case '3months':
+        start.setMonth(now.getMonth() - 3)
+        break
+      case '6months':
+        start.setMonth(now.getMonth() - 6)
+        break
+      case 'yearly':
+        start.setFullYear(now.getFullYear() - 1)
+        break
+      default:
+        start.setMonth(now.getMonth() - 1)
+    }
+    
+    return {
+      start: start.toISOString().split('T')[0],
+      end: now.toISOString().split('T')[0]
+    }
+  }
 
   const fetchData = useCallback(async () => {
     console.log('AdminDashboard fetchData called')
@@ -176,10 +211,18 @@ export default function AdminDashboard() {
     const totalCars = cars.length
     const totalOwners = owners.length
     const totalActiveDrivers = attendance.filter(a => a.start_time && !a.end_time).length
+    
+    // Get date range based on filter
+    const dateRange = getDateRange(timeFilter)
+    
+    // Filter earnings and expenses based on time period
+    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
+    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    
     const totalMandatoryDues = totalCars * 7500
-    const totalEarnings = earnings.reduce((sum, e) => 
+    const totalEarnings = filteredEarnings.reduce((sum, e) => 
       sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
-    const totalExpenses = expenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
+    const totalExpenses = filteredExpenses.reduce((sum, e) => sum + e.amount, 0)
     const netProfit = totalEarnings - totalMandatoryDues - totalExpenses
 
     return { 
@@ -191,19 +234,23 @@ export default function AdminDashboard() {
       totalExpenses, 
       netProfit 
     }
-  }, [cars.length, owners, attendance, earnings, expenses])
+  }, [cars.length, owners, attendance, earnings, expenses, timeFilter])
 
   const carLevelPL = useMemo(() => {
+    const dateRange = getDateRange(timeFilter)
+    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
+    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    
     return cars.map(car => {
-      const carEarnings = earnings.filter(e => {
+      const carEarnings = filteredEarnings.filter(e => {
         const driver = drivers.find(d => d.id === e.driver_id)
         return driver?.assigned_car_id === car.id
       }).reduce((sum, e) => 
         sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
       
-      const carExpenses = expenses.filter(e => {
+      const carExpenses = filteredExpenses.filter(e => {
         const driver = drivers.find(d => d.id === e.driver_id)
-        return driver?.assigned_car_id === car.id && e.status === 'approved'
+        return driver?.assigned_car_id === car.id
       }).reduce((sum, e) => sum + e.amount, 0)
 
       return {
@@ -214,15 +261,19 @@ export default function AdminDashboard() {
         due: car.monthly_due
       }
     })
-  }, [cars, earnings, expenses, drivers])
+  }, [cars, earnings, expenses, drivers, timeFilter])
 
   const driverLevelPL = useMemo(() => {
+    const dateRange = getDateRange(timeFilter)
+    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
+    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    
     return drivers.map(driver => {
-      const driverEarnings = earnings.filter(e => e.driver_id === driver.id)
+      const driverEarnings = filteredEarnings.filter(e => e.driver_id === driver.id)
         .reduce((sum, e) => 
           sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
       
-      const driverExpenses = expenses.filter(e => e.driver_id === driver.id && e.status === 'approved')
+      const driverExpenses = filteredExpenses.filter(e => e.driver_id === driver.id)
         .reduce((sum, e) => sum + e.amount, 0)
 
       return {
@@ -232,28 +283,36 @@ export default function AdminDashboard() {
         net: driverEarnings - driverExpenses
       }
     })
-  }, [drivers, earnings, expenses])
+  }, [drivers, earnings, expenses, timeFilter])
 
   const earningsByPlatform = useMemo(() => {
-    const uberEarnings = earnings.reduce((sum, e) => sum + e.uber_cash + e.uber_account, 0)
-    const boltEarnings = earnings.reduce((sum, e) => sum + e.bolt_cash + e.bolt_account, 0)
-    const individualEarnings = earnings.reduce((sum, e) => sum + e.individual_cash, 0)
+    const dateRange = getDateRange(timeFilter)
+    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
+    
+    const uberEarnings = filteredEarnings.reduce((sum, e) => sum + e.uber_cash + e.uber_account, 0)
+    const boltEarnings = filteredEarnings.reduce((sum, e) => sum + e.bolt_cash + e.bolt_account, 0)
+    const individualEarnings = filteredEarnings.reduce((sum, e) => sum + e.individual_cash, 0)
 
     return [
       { name: 'Uber', value: uberEarnings, color: '#3b82f6' },
       { name: 'Bolt', value: boltEarnings, color: '#10b981' },
       { name: 'Individual', value: individualEarnings, color: '#f59e0b' }
     ]
-  }, [earnings])
+  }, [earnings, timeFilter])
 
   const dailyTrends = useMemo(() => {
-    const last30Days = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
+    const dateRange = getDateRange(timeFilter)
+    const startDate = new Date(dateRange.start)
+    const endDate = new Date(dateRange.end)
+    const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    
+    const days = Array.from({ length: Math.min(daysDiff + 1, 30) }, (_, i) => {
+      const date = new Date(startDate)
+      date.setDate(startDate.getDate() + i)
       return date.toISOString().split('T')[0]
-    }).reverse()
+    })
 
-    return last30Days.map(date => {
+    return days.map(date => {
       const dayEarnings = earnings.filter(e => e.date === date)
         .reduce((sum, e) => 
           sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
@@ -268,7 +327,7 @@ export default function AdminDashboard() {
         net: dayEarnings - dayExpenses
       }
     })
-  }, [earnings, expenses])
+  }, [earnings, expenses, timeFilter])
 
 
   if (loading) {
@@ -321,6 +380,30 @@ export default function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Visual Separation */}
+      <div className="border-t border-gray-200 my-8"></div>
+
+      {/* Time Filter */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold">Financial Overview</h2>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm font-medium">Time Period:</span>
+          <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value)}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="3months">3 Months</SelectItem>
+              <SelectItem value="6months">6 Months</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Financial KPI Cards */}
