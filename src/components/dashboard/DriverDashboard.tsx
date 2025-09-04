@@ -30,6 +30,11 @@ interface DriverEarning {
   uber_account: number
   bolt_cash: number
   bolt_account: number
+  uber_rides_count: number
+  bolt_rides_count: number
+  individual_rides_count: number
+  individual_rides_cash: number
+  individual_rides_account: number
   total: number
   created_at: string
 }
@@ -72,7 +77,12 @@ export default function DriverDashboard() {
     uber_cash: 0,
     uber_account: 0,
     bolt_cash: 0,
-    bolt_account: 0
+    bolt_account: 0,
+    uber_rides_count: 0,
+    bolt_rides_count: 0,
+    individual_rides_count: 0,
+    individual_rides_cash: 0,
+    individual_rides_account: 0
   })
 
   const [expenseForm, setExpenseForm] = useState({
@@ -172,7 +182,12 @@ export default function DriverDashboard() {
             uber_cash: 0,
             uber_account: 0,
             bolt_cash: 0,
-            bolt_account: 0
+            bolt_account: 0,
+            uber_rides_count: 0,
+            bolt_rides_count: 0,
+            individual_rides_count: 0,
+            individual_rides_cash: 0,
+            individual_rides_account: 0
           })
         } else {
           console.error('Error fetching earnings:', {
@@ -188,7 +203,12 @@ export default function DriverDashboard() {
             uber_cash: earningsData.uber_cash || 0,
             uber_account: earningsData.uber_account || 0,
             bolt_cash: earningsData.bolt_cash || 0,
-            bolt_account: earningsData.bolt_account || 0
+            bolt_account: earningsData.bolt_account || 0,
+            uber_rides_count: earningsData.uber_rides_count || 0,
+            bolt_rides_count: earningsData.bolt_rides_count || 0,
+            individual_rides_count: earningsData.individual_rides_count || 0,
+            individual_rides_cash: earningsData.individual_rides_cash || 0,
+            individual_rides_account: earningsData.individual_rides_account || 0
           })
         }
       }
@@ -360,8 +380,11 @@ export default function DriverDashboard() {
       
       // Validate form
       if (earningsForm.uber_cash < 0 || earningsForm.uber_account < 0 || 
-          earningsForm.bolt_cash < 0 || earningsForm.bolt_account < 0) {
-        toast.error('Earnings cannot be negative')
+          earningsForm.bolt_cash < 0 || earningsForm.bolt_account < 0 ||
+          earningsForm.uber_rides_count < 0 || earningsForm.bolt_rides_count < 0 || 
+          earningsForm.individual_rides_count < 0 || earningsForm.individual_rides_cash < 0 || 
+          earningsForm.individual_rides_account < 0) {
+        toast.error('Earnings and ride counts cannot be negative')
                     return
                   }
                   
@@ -379,7 +402,12 @@ export default function DriverDashboard() {
             uber_cash: earningsForm.uber_cash,
             uber_account: earningsForm.uber_account,
             bolt_cash: earningsForm.bolt_cash,
-            bolt_account: earningsForm.bolt_account
+            bolt_account: earningsForm.bolt_account,
+            uber_rides_count: earningsForm.uber_rides_count,
+            bolt_rides_count: earningsForm.bolt_rides_count,
+            individual_rides_count: earningsForm.individual_rides_count,
+            individual_rides_cash: earningsForm.individual_rides_cash,
+            individual_rides_account: earningsForm.individual_rides_account
           })
           .eq('id', todayEarnings.id)
                       .select()
@@ -400,7 +428,12 @@ export default function DriverDashboard() {
             uber_cash: earningsForm.uber_cash,
             uber_account: earningsForm.uber_account,
             bolt_cash: earningsForm.bolt_cash,
-            bolt_account: earningsForm.bolt_account
+            bolt_account: earningsForm.bolt_account,
+            uber_rides_count: earningsForm.uber_rides_count,
+            bolt_rides_count: earningsForm.bolt_rides_count,
+            individual_rides_count: earningsForm.individual_rides_count,
+            individual_rides_cash: earningsForm.individual_rides_cash,
+            individual_rides_account: earningsForm.individual_rides_account
                       })
                       .select()
                     
@@ -642,55 +675,122 @@ export default function DriverDashboard() {
             </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-                <div>
-                <Label htmlFor="uber_cash" className="text-xs">Uber Cash</Label>
-                                  <Input
-                  id="uber_cash"
-                  type="number"
-                  value={earningsForm.uber_cash}
-                  onChange={(e) => setEarningsForm({...earningsForm, uber_cash: Number(e.target.value)})}
-                  className="h-9"
-                  disabled={!isWorking}
-                />
+            <div className="space-y-4">
+                {/* Uber Section */}
+                <div className="grid grid-cols-3 gap-3">
+                    <div>
+                        <Label htmlFor="uber_rides_count" className="text-xs">Uber Rides</Label>
+                        <Input
+                            id="uber_rides_count"
+                            type="number"
+                            value={earningsForm.uber_rides_count}
+                            onChange={(e) => setEarningsForm({...earningsForm, uber_rides_count: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="uber_cash" className="text-xs">Uber Cash</Label>
+                        <Input
+                            id="uber_cash"
+                            type="number"
+                            value={earningsForm.uber_cash}
+                            onChange={(e) => setEarningsForm({...earningsForm, uber_cash: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="uber_account" className="text-xs">Uber Account</Label>
+                        <Input
+                            id="uber_account"
+                            type="number"
+                            value={earningsForm.uber_account}
+                            onChange={(e) => setEarningsForm({...earningsForm, uber_account: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
                 </div>
-                <div>
-                <Label htmlFor="uber_account" className="text-xs">Uber Account</Label>
-                  <Input
-                    id="uber_account"
-                    type="number"
-                    value={earningsForm.uber_account}
-                    onChange={(e) => setEarningsForm({...earningsForm, uber_account: Number(e.target.value)})}
-                    className="h-9"
-                    disabled={!isWorking}
-                  />
+
+                {/* Bolt Section */}
+                <div className="grid grid-cols-3 gap-3">
+                    <div>
+                        <Label htmlFor="bolt_rides_count" className="text-xs">Bolt Rides</Label>
+                        <Input
+                            id="bolt_rides_count"
+                            type="number"
+                            value={earningsForm.bolt_rides_count}
+                            onChange={(e) => setEarningsForm({...earningsForm, bolt_rides_count: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="bolt_cash" className="text-xs">Bolt Cash</Label>
+                        <Input
+                            id="bolt_cash"
+                            type="number"
+                            value={earningsForm.bolt_cash}
+                            onChange={(e) => setEarningsForm({...earningsForm, bolt_cash: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="bolt_account" className="text-xs">Bolt Account</Label>
+                        <Input
+                            id="bolt_account"
+                            type="number"
+                            value={earningsForm.bolt_account}
+                            onChange={(e) => setEarningsForm({...earningsForm, bolt_account: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
                 </div>
-                <div>
-                <Label htmlFor="bolt_cash" className="text-xs">Bolt Cash</Label>
-                  <Input
-                    id="bolt_cash"
-                    type="number"
-                    value={earningsForm.bolt_cash}
-                    onChange={(e) => setEarningsForm({...earningsForm, bolt_cash: Number(e.target.value)})}
-                    className="h-9"
-                    disabled={!isWorking}
-                  />
+
+                {/* Individual Section */}
+                <div className="grid grid-cols-3 gap-3">
+                    <div>
+                        <Label htmlFor="individual_rides_count" className="text-xs">Individual Rides</Label>
+                        <Input
+                            id="individual_rides_count"
+                            type="number"
+                            value={earningsForm.individual_rides_count}
+                            onChange={(e) => setEarningsForm({...earningsForm, individual_rides_count: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="individual_rides_cash" className="text-xs">Individual Rides Cash</Label>
+                        <Input
+                            id="individual_rides_cash"
+                            type="number"
+                            value={earningsForm.individual_rides_cash}
+                            onChange={(e) => setEarningsForm({...earningsForm, individual_rides_cash: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="individual_rides_account" className="text-xs">Individual Rides Account</Label>
+                        <Input
+                            id="individual_rides_account"
+                            type="number"
+                            value={earningsForm.individual_rides_account}
+                            onChange={(e) => setEarningsForm({...earningsForm, individual_rides_account: Number(e.target.value)})}
+                            className="h-9"
+                            disabled={!isWorking}
+                        />
+                    </div>
                 </div>
-                <div>
-                <Label htmlFor="bolt_account" className="text-xs">Bolt Account</Label>
-                  <Input
-                    id="bolt_account"
-                    type="number"
-                    value={earningsForm.bolt_account}
-                    onChange={(e) => setEarningsForm({...earningsForm, bolt_account: Number(e.target.value)})}
-                    className="h-9"
-                    disabled={!isWorking}
-                  />
-                </div>
-                </div>
+
+            </div>
                 <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
-                Total: AED {earningsForm.uber_cash + earningsForm.uber_account + earningsForm.bolt_cash + earningsForm.bolt_account}
+                Total: AED {earningsForm.uber_cash + earningsForm.uber_account + earningsForm.bolt_cash + earningsForm.bolt_account + earningsForm.individual_rides_cash + earningsForm.individual_rides_account}
               </span>
                   <Button 
                 onClick={handleUpdateEarnings} 

@@ -21,7 +21,11 @@ interface DriverEarning {
   uber_account: number
   bolt_cash: number
   bolt_account: number
-  individual_cash: number
+  uber_rides_count: number
+  bolt_rides_count: number
+  individual_rides_count: number
+  individual_rides_cash: number
+  individual_rides_account: number
   notes?: string
   created_at: string
   updated_at: string
@@ -48,7 +52,7 @@ export default function EarningsPage() {
 
   // Helper function to calculate total earnings for a single day
   const calculateTotal = (earning: DriverEarning) => {
-    return earning.uber_cash + earning.uber_account + earning.bolt_cash + earning.bolt_account + earning.individual_cash
+    return earning.uber_cash + earning.uber_account + earning.bolt_cash + earning.bolt_account + earning.individual_rides_cash + earning.individual_rides_account
   }
 
   useEffect(() => {
@@ -364,9 +368,25 @@ export default function EarningsPage() {
                       <span className="text-gray-600">Bolt Acc:</span>
                       <span>AED {earning.bolt_account.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between col-span-2">
-                      <span className="text-gray-600">Individual:</span>
-                      <span>AED {earning.individual_cash.toFixed(2)}</span>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Ind. Rides Cash:</span>
+                      <span>AED {earning.individual_rides_cash.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Ind. Rides Acc:</span>
+                      <span>AED {earning.individual_rides_account.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Uber Rides:</span>
+                      <span>{earning.uber_rides_count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Bolt Rides:</span>
+                      <span>{earning.bolt_rides_count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Ind. Rides:</span>
+                      <span>{earning.individual_rides_count}</span>
                     </div>
                   </div>
                 </div>
@@ -384,7 +404,11 @@ export default function EarningsPage() {
                     <TableHead className="text-xs">Uber Account</TableHead>
                     <TableHead className="text-xs">Bolt Cash</TableHead>
                     <TableHead className="text-xs">Bolt Account</TableHead>
-                    <TableHead className="text-xs">Individual</TableHead>
+                    <TableHead className="text-xs">Ind. Rides Cash</TableHead>
+                    <TableHead className="text-xs">Ind. Rides Acc</TableHead>
+                    <TableHead className="text-xs">Uber Rides</TableHead>
+                    <TableHead className="text-xs">Bolt Rides</TableHead>
+                    <TableHead className="text-xs">Ind. Rides</TableHead>
                     <TableHead className="text-right text-xs">Total</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -410,7 +434,11 @@ export default function EarningsPage() {
                       <TableCell className="text-sm">AED {earning.uber_account.toFixed(2)}</TableCell>
                       <TableCell className="text-sm">AED {earning.bolt_cash.toFixed(2)}</TableCell>
                       <TableCell className="text-sm">AED {earning.bolt_account.toFixed(2)}</TableCell>
-                      <TableCell className="text-sm">AED {earning.individual_cash.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">AED {earning.individual_rides_cash.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">AED {earning.individual_rides_account.toFixed(2)}</TableCell>
+                      <TableCell className="text-sm">{earning.uber_rides_count}</TableCell>
+                      <TableCell className="text-sm">{earning.bolt_rides_count}</TableCell>
+                      <TableCell className="text-sm">{earning.individual_rides_count}</TableCell>
                       <TableCell className="text-right font-semibold text-sm">
                         AED {calculateTotal(earning).toFixed(2)}
                       </TableCell>

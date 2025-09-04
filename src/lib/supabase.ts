@@ -46,7 +46,11 @@ export interface DriverEarning {
   uber_account: number
   bolt_cash: number
   bolt_account: number
-  individual_cash: number
+  uber_rides_count: number
+  bolt_rides_count: number
+  individual_rides_count: number
+  individual_rides_cash: number
+  individual_rides_account: number
   notes?: string
   created_at: string
   updated_at: string
