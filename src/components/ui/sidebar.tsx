@@ -229,96 +229,110 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             })}
           </nav>
 
-          {/* Bottom Section - User Info and Profile Actions */}
+          {/* Bottom Section - User Profile with Dropdown */}
           <div className="mt-auto">
-            {/* User Info Section - Desktop Only */}
-            {appUser && (
-              <div className="hidden lg:block p-4 border-t border-gray-200">
-                <div className="flex items-center space-x-3">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-blue-100 text-blue-600">
-                      {getInitials(appUser.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {!isCollapsed && (
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {appUser.name}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {appUser.email}
-                      </p>
-                      <Badge className={`text-xs ${getRoleBadgeColor(appUser.role)}`}>
-                        {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Profile Actions - Bottom Left - Desktop Only */}
             {appUser && (
               <div className="hidden lg:block p-4 border-t border-gray-200">
                 {isCollapsed ? (
-                  <div className="flex flex-col space-y-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleProfile}
-                      className="h-8 w-8 p-0 mx-auto"
-                      title="Profile"
-                    >
-                      <User className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSettings}
-                      className="h-8 w-8 p-0 mx-auto"
-                      title="Settings"
-                    >
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleLogout}
-                      className="h-8 w-8 p-0 mx-auto text-red-600 hover:text-red-700 hover:bg-red-50"
-                      title="Logout"
-                    >
-                      <LogOut className="h-4 w-4" />
-                    </Button>
+                  <div className="flex justify-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-10 w-10 p-0">
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-blue-100 text-blue-600">
+                              {getInitials(appUser.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56" align="end" forceMount>
+                        <DropdownMenuLabel className="font-normal">
+                          <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                            <p className="text-xs leading-none text-muted-foreground">
+                              {appUser.email}
+                            </p>
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-xs mt-1 w-fit ${getRoleBadgeColor(appUser.role)}`}
+                            >
+                              {appUser.role}
+                            </Badge>
+                          </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleProfile}>
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleSettings}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Settings</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Log out</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 ) : (
-                  <div className="flex space-x-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleProfile}
-                      className="flex-1 text-xs"
-                    >
-                      <User className="h-3 w-3 mr-1" />
-                      Profile
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleSettings}
-                      className="flex-1 text-xs"
-                    >
-                      <Settings className="h-3 w-3 mr-1" />
-                      Settings
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleLogout}
-                      className="flex-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <LogOut className="h-3 w-3 mr-1" />
-                      Logout
-                    </Button>
+                  <div className="flex items-center space-x-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarFallback className="bg-blue-100 text-blue-600">
+                                {getInitials(appUser.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0 text-left">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {appUser.name}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {appUser.email}
+                              </p>
+                              <Badge className={`text-xs ${getRoleBadgeColor(appUser.role)}`}>
+                                {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
+                              </Badge>
+                            </div>
+                          </div>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-56" align="end" forceMount>
+                        <DropdownMenuLabel className="font-normal">
+                          <div className="flex flex-col space-y-1">
+                            <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                            <p className="text-xs leading-none text-muted-foreground">
+                              {appUser.email}
+                            </p>
+                            <Badge 
+                              variant="secondary" 
+                              className={`text-xs mt-1 w-fit ${getRoleBadgeColor(appUser.role)}`}
+                            >
+                              {appUser.role}
+                            </Badge>
+                          </div>
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleProfile}>
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleSettings}>
+                          <Settings className="mr-2 h-4 w-4" />
+                          <span>Settings</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={handleLogout}>
+                          <LogOut className="mr-2 h-4 w-4" />
+                          <span>Log out</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 )}
               </div>
