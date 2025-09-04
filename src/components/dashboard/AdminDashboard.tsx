@@ -579,8 +579,7 @@ export default function AdminDashboard() {
   const companyStats = useMemo(() => {
     const totalCars = cars.length
     const totalOwners = owners.length
-    const ownersWithCars = owners.filter(owner => owner.total_cars > 0).length
-    const totalCarsAssignedToOwners = owners.reduce((sum, owner) => sum + (owner.total_cars || 0), 0)
+    const totalActiveDrivers = attendance.filter(a => a.start_time && !a.end_time).length
     const totalMandatoryDues = totalCars * 7500
     const totalEarnings = earnings.reduce((sum, e) => 
       sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
@@ -590,14 +589,13 @@ export default function AdminDashboard() {
     return { 
       totalCars, 
       totalOwners, 
-      ownersWithCars, 
-      totalCarsAssignedToOwners,
+      totalActiveDrivers,
       totalMandatoryDues, 
       totalEarnings, 
       totalExpenses, 
       netProfit 
     }
-  }, [cars.length, owners, earnings, expenses])
+  }, [cars.length, owners, attendance, earnings, expenses])
 
   const carLevelPL = useMemo(() => {
     return cars.map(car => {
@@ -688,7 +686,7 @@ export default function AdminDashboard() {
 
 
       {/* Company KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cars</CardTitle>
@@ -717,26 +715,13 @@ export default function AdminDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Owners with Cars</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{companyStats.ownersWithCars}</div>
-            <p className="text-xs text-muted-foreground">
-              Owners with assigned cars
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Cars Assigned to Owners</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Active Drivers</CardTitle>
             <CarIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{companyStats.totalCarsAssignedToOwners}</div>
+            <div className="text-2xl font-bold">{companyStats.totalActiveDrivers}</div>
             <p className="text-xs text-muted-foreground">
-              Cars assigned to owners
+              Active drivers
             </p>
           </CardContent>
         </Card>
