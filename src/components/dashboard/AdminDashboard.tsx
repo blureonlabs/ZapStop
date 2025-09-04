@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { supabase, User, Car, DriverEarning, DriverExpense } from '@/lib/supabase'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { supabase, User, Car, DriverEarning, DriverExpense, Attendance } from '@/lib/supabase'
+import { dataCache, AdminDashboardData } from '@/lib/dataCache'
+import { PerformanceMonitor } from '@/lib/performance'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 // import { Badge } from '@/components/ui/badge'
@@ -10,15 +12,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Plus, Edit, Trash2 } from 'lucide-react'
+import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Plus, Edit, Trash2, Users, Clock, MapPin, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
+import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 
 export default function AdminDashboard() {
   const [drivers, setDrivers] = useState<User[]>([])
   const [cars, setCars] = useState<Car[]>([])
   const [earnings, setEarnings] = useState<DriverEarning[]>([])
   const [expenses, setExpenses] = useState<DriverExpense[]>([])
+  const [attendance, setAttendance] = useState<Attendance[]>([])
   const [loading, setLoading] = useState(true)
   const [showDriverDialog, setShowDriverDialog] = useState(false)
   const [showCarDialog, setShowCarDialog] = useState(false)
@@ -30,6 +34,7 @@ export default function AdminDashboard() {
   const [editingCar, setEditingCar] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState<User | null>(null)
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
 
   // Form states
   const [driverForm, setDriverForm] = useState({
@@ -51,8 +56,21 @@ export default function AdminDashboard() {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
-    try {
+  const fetchData = useCallback(async () => {
+    return PerformanceMonitor.measureAsync('admin-dashboard-fetch', async () => {
+      try {
+        // Check cache first
+        const cachedData = dataCache.get<AdminDashboardData>('admin-dashboard-data')
+        if (cachedData) {
+                  setDrivers(cachedData.drivers)
+        setCars(cachedData.cars)
+        setEarnings(cachedData.earnings)
+        setExpenses(cachedData.expenses)
+        setAttendance(cachedData.attendance || [])
+        setLoading(false)
+        return
+        }
+
       // Fetch all users
       const { data: usersData } = await supabase
         .from('users')
@@ -77,8 +95,15 @@ export default function AdminDashboard() {
         .select('*')
         .order('created_at', { ascending: false })
 
+      // Fetch today's attendance
+      const today = new Date().toISOString().split('T')[0]
+      const { data: attendanceData } = await supabase
+        .from('attendance')
+        .select('*')
+        .eq('date', today)
+        .order('start_time', { ascending: false })
+
       const drivers = usersData?.filter(u => u.role === 'driver') || []
-      setDrivers(drivers)
       
       // Manually join driver data with cars
       const carsWithDrivers = carsData?.map(car => {
@@ -89,17 +114,41 @@ export default function AdminDashboard() {
         }
       }) || []
       
+      // Cache the data for 2 minutes
+      dataCache.set('admin-dashboard-data', {
+        drivers,
+        cars: carsWithDrivers,
+        earnings: earningsData || [],
+        expenses: expensesData || [],
+        attendance: attendanceData || []
+      }, 2 * 60 * 1000)
+
+      setDrivers(drivers)
       setCars(carsWithDrivers)
       setEarnings(earningsData || [])
       setExpenses(expensesData || [])
+      setAttendance(attendanceData || [])
 
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      toast.error('Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }
+      } catch (error) {
+        console.error('Error fetching data:', error)
+        toast.error('Failed to load data')
+      } finally {
+        setLoading(false)
+      }
+    })
+  }, [])
+
+  // Auto-refresh active drivers every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!refreshing) {
+        dataCache.delete('admin-dashboard-data')
+        fetchData()
+      }
+    }, 30000) // 30 seconds
+
+    return () => clearInterval(interval)
+  }, [fetchData, refreshing])
 
   const handleCreateDriver = async () => {
     if (creatingDriver) return // Prevent multiple submissions
@@ -155,6 +204,7 @@ export default function AdminDashboard() {
         toast.success(result.message || 'Driver created successfully')
         setShowDriverDialog(false)
         setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+        dataCache.delete('admin-dashboard-data') // Invalidate cache
         fetchData()
       } else {
         throw new Error(result.error || 'Failed to create driver')
@@ -198,6 +248,7 @@ export default function AdminDashboard() {
       toast.success('Car created successfully')
       setShowCarDialog(false)
       setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
+      dataCache.delete('admin-dashboard-data') // Invalidate cache
       fetchData()
     } catch (error: any) {
       console.error('Error creating car:', error)
@@ -301,6 +352,7 @@ export default function AdminDashboard() {
       setShowEditDriverDialog(false)
       setSelectedDriver(null)
       setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+      dataCache.delete('admin-dashboard-data') // Invalidate cache
       fetchData()
     } catch (error: any) {
       console.error('Error updating driver:', error)
@@ -358,6 +410,7 @@ export default function AdminDashboard() {
       setShowEditCarDialog(false)
       setSelectedCar(null)
       setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
+      dataCache.delete('admin-dashboard-data') // Invalidate cache
       fetchData()
     } catch (error: any) {
       console.error('Error updating car:', error)
@@ -415,6 +468,7 @@ export default function AdminDashboard() {
       }
 
       toast.success('Driver deleted successfully')
+      dataCache.delete('admin-dashboard-data') // Invalidate cache
       fetchData()
     } catch (error: any) {
       console.error('Error deleting driver:', error)
@@ -464,6 +518,7 @@ export default function AdminDashboard() {
       if (error) throw error
 
       toast.success('Car deleted successfully')
+      dataCache.delete('admin-dashboard-data') // Invalidate cache
       fetchData()
     } catch (error: any) {
       console.error('Error deleting car:', error)
@@ -471,7 +526,7 @@ export default function AdminDashboard() {
     }
   }
 
-  const getCompanyStats = () => {
+  const companyStats = useMemo(() => {
     const totalCars = cars.length
     const totalMandatoryDues = totalCars * 7500
     const totalEarnings = earnings.reduce((sum, e) => 
@@ -480,9 +535,9 @@ export default function AdminDashboard() {
     const netProfit = totalEarnings - totalExpenses
 
     return { totalCars, totalMandatoryDues, totalEarnings, totalExpenses, netProfit }
-  }
+  }, [cars.length, earnings, expenses])
 
-  const getCarLevelPL = () => {
+  const carLevelPL = useMemo(() => {
     return cars.map(car => {
       const carEarnings = earnings.filter(e => {
         const driver = drivers.find(d => d.id === e.driver_id)
@@ -503,9 +558,9 @@ export default function AdminDashboard() {
         due: car.monthly_due
       }
     })
-  }
+  }, [cars, earnings, expenses, drivers])
 
-  const getDriverLevelPL = () => {
+  const driverLevelPL = useMemo(() => {
     return drivers.map(driver => {
       const driverEarnings = earnings.filter(e => e.driver_id === driver.id)
         .reduce((sum, e) => 
@@ -521,9 +576,9 @@ export default function AdminDashboard() {
         net: driverEarnings - driverExpenses
       }
     })
-  }
+  }, [drivers, earnings, expenses])
 
-  const getEarningsByPlatform = () => {
+  const earningsByPlatform = useMemo(() => {
     const uberEarnings = earnings.reduce((sum, e) => sum + e.uber_cash + e.uber_account, 0)
     const boltEarnings = earnings.reduce((sum, e) => sum + e.bolt_cash + e.bolt_account, 0)
     const individualEarnings = earnings.reduce((sum, e) => sum + e.individual_cash, 0)
@@ -533,9 +588,9 @@ export default function AdminDashboard() {
       { name: 'Bolt', value: boltEarnings, color: '#10b981' },
       { name: 'Individual', value: individualEarnings, color: '#f59e0b' }
     ]
-  }
+  }, [earnings])
 
-  const getDailyTrends = () => {
+  const dailyTrends = useMemo(() => {
     const last30Days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date()
       date.setDate(date.getDate() - i)
@@ -557,24 +612,121 @@ export default function AdminDashboard() {
         net: dayEarnings - dayExpenses
       }
     })
-  }
+  }, [earnings, expenses])
+
+  const activeDrivers = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0]
+    
+    return attendance
+      .filter(att => 
+        att.date === today && 
+        att.start_time && 
+        !att.end_time && 
+        att.status === 'present'
+      )
+      .map(att => {
+        const driver = drivers.find(d => d.id === att.driver_id)
+        const car = cars.find(c => c.assigned_driver_id === att.driver_id)
+        
+        // Calculate work duration
+        const startTime = new Date(`2000-01-01T${att.start_time}`)
+        const now = new Date()
+        const workDuration = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60 * 60)) // hours
+        
+        return {
+          ...att,
+          driver,
+          car,
+          workDuration: Math.max(0, workDuration)
+        }
+      })
+      .filter(att => att.driver) // Only include drivers that exist
+  }, [attendance, drivers, cars])
+
+  const handleRefreshActiveDrivers = useCallback(async () => {
+    try {
+      setRefreshing(true)
+      dataCache.delete('admin-dashboard-data') // Clear cache to force refresh
+      await fetchData()
+      toast.success('Active drivers updated')
+    } catch (error) {
+      console.error('Error refreshing active drivers:', error)
+      toast.error('Failed to refresh active drivers')
+    } finally {
+      setRefreshing(false)
+    }
+  }, [fetchData])
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    )
+    return <DashboardSkeleton />
   }
 
-  const companyStats = getCompanyStats()
-  const carLevelPL = getCarLevelPL()
-  const driverLevelPL = getDriverLevelPL()
-  const earningsByPlatform = getEarningsByPlatform()
-  const dailyTrends = getDailyTrends()
+  // Memoized values are already calculated above
 
   return (
     <div className="space-y-6">
+
+      {/* Active Drivers Card */}
+      <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center text-lg">
+              <Users className="h-5 w-5 mr-2 text-green-600" />
+              Active Drivers Riding
+              <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
+                {activeDrivers.length}
+              </span>
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefreshActiveDrivers}
+              disabled={refreshing}
+              className="text-green-600 border-green-200 hover:bg-green-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {activeDrivers.length === 0 ? (
+            <div className="text-center py-4">
+              <MapPin className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+              <p className="text-gray-600">No drivers currently riding</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {activeDrivers.map((att) => (
+                <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-100">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                      <span className="text-green-600 font-semibold text-sm">
+                        {att.driver?.name?.charAt(0) || 'D'}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">{att.driver?.name}</p>
+                      <p className="text-sm text-gray-600">
+                        {att.car?.plate_number || 'No car assigned'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="flex items-center text-sm text-green-600">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {att.workDuration}h
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      Started: {att.start_time}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Company KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

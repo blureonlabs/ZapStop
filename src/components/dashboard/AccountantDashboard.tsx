@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase, DriverExpense, DriverEarning, User, Car } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,7 +24,7 @@ export default function AccountantDashboard() {
     fetchData()
   }, [])
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       // Fetch all expenses
       const { data: expensesData } = await supabase
@@ -60,7 +60,7 @@ export default function AccountantDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const handleExpenseAction = async (expenseId: string, status: 'approved' | 'rejected') => {
     if (processing) return
@@ -87,7 +87,7 @@ export default function AccountantDashboard() {
     }
   }
 
-  const getExpenseStats = () => {
+  const expenseStats = useMemo(() => {
     const total = expenses.length
     const pending = expenses.filter(e => e.status === 'pending').length
     const approved = expenses.filter(e => e.status === 'approved').length
@@ -96,9 +96,9 @@ export default function AccountantDashboard() {
     const approvedAmount = expenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
 
     return { total, pending, approved, rejected, totalAmount, approvedAmount }
-  }
+  }, [expenses])
 
-  const getEarningsStats = () => {
+  const earningsStats = useMemo(() => {
     const totalEarnings = earnings.reduce((sum, e) => 
       sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
     
@@ -107,9 +107,9 @@ export default function AccountantDashboard() {
     const individualEarnings = earnings.reduce((sum, e) => sum + e.individual_cash, 0)
 
     return { totalEarnings, uberEarnings, boltEarnings, individualEarnings }
-  }
+  }, [earnings])
 
-  const getDriverStats = () => {
+  const driverStats = useMemo(() => {
     return drivers.map(driver => {
       const driverEarnings = earnings.filter(e => e.driver_id === driver.id)
       const totalEarnings = driverEarnings.reduce((sum, e) => 
@@ -125,16 +125,15 @@ export default function AccountantDashboard() {
         net: totalEarnings - totalExpenses
       }
     })
-  }
+  }, [drivers, earnings, expenses])
 
-  const getEarningsByType = () => {
-    const stats = getEarningsStats()
+  const earningsByType = useMemo(() => {
     return [
-      { name: 'Uber', value: stats.uberEarnings, color: '#3b82f6' },
-      { name: 'Bolt', value: stats.boltEarnings, color: '#10b981' },
-      { name: 'Individual', value: stats.individualEarnings, color: '#f59e0b' }
+      { name: 'Uber', value: earningsStats.uberEarnings, color: '#3b82f6' },
+      { name: 'Bolt', value: earningsStats.boltEarnings, color: '#10b981' },
+      { name: 'Individual', value: earningsStats.individualEarnings, color: '#f59e0b' }
     ]
-  }
+  }, [earningsStats])
 
   if (loading) {
     return (
@@ -144,10 +143,7 @@ export default function AccountantDashboard() {
     )
   }
 
-  const expenseStats = getExpenseStats()
-  const earningsStats = getEarningsStats()
-  const driverStats = getDriverStats()
-  const earningsByType = getEarningsByType()
+  // Memoized values are already calculated above
 
   return (
     <div className="space-y-6">

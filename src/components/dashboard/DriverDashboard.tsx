@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -117,7 +117,7 @@ export default function DriverDashboard() {
     }
   }
 
-  const fetchDriverData = async () => {
+  const fetchDriverData = useCallback(async () => {
     try {
       setLoading(true)
       const authUserId = appUser?.id
@@ -225,7 +225,7 @@ export default function DriverDashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [appUser?.id])
 
   const handleStartWork = async () => {
     try {

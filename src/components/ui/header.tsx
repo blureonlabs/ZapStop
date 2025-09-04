@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -26,6 +26,7 @@ interface HeaderProps {
 export default function Header({ title, showUserMenu = true }: HeaderProps) {
   const { appUser, signOut } = useAuth()
   const router = useRouter()
+  const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -74,6 +75,13 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
       .slice(0, 2)
   }
 
+  const isActive = (path: string) => {
+    if (path === '/dashboard') {
+      return pathname === '/dashboard'
+    }
+    return pathname.startsWith(path)
+  }
+
   return (
     <header className="bg-white border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -94,7 +102,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
             variant="ghost"
             size="sm"
             onClick={() => handleNavigation('/dashboard')}
-            className="text-gray-700 hover:text-gray-900"
+            className={`text-gray-700 hover:text-gray-900 ${
+              isActive('/dashboard') 
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                : ''
+            }`}
           >
             <Home className="mr-2 h-4 w-4" />
             Dashboard
@@ -107,7 +119,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleNavigation('/dashboard/cars')}
-                className="text-gray-700 hover:text-gray-900"
+                className={`text-gray-700 hover:text-gray-900 ${
+                  isActive('/dashboard/cars') 
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                    : ''
+                }`}
               >
                 <Car className="mr-2 h-4 w-4" />
                 Cars
@@ -116,7 +132,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => handleNavigation('/dashboard/drivers')}
-                className="text-gray-700 hover:text-gray-900"
+                className={`text-gray-700 hover:text-gray-900 ${
+                  isActive('/dashboard/drivers') 
+                    ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                    : ''
+                }`}
               >
                 <Users className="mr-2 h-4 w-4" />
                 Drivers
@@ -129,7 +149,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
             variant="ghost"
             size="sm"
             onClick={() => handleNavigation('/dashboard/earnings')}
-            className="text-gray-700 hover:text-gray-900"
+            className={`text-gray-700 hover:text-gray-900 ${
+              isActive('/dashboard/earnings') 
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                : ''
+            }`}
           >
             <DollarSign className="mr-2 h-4 w-4" />
             Earnings
@@ -138,7 +162,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
             variant="ghost"
             size="sm"
             onClick={() => handleNavigation('/dashboard/expenses')}
-            className="text-gray-700 hover:text-gray-900"
+            className={`text-gray-700 hover:text-gray-900 ${
+              isActive('/dashboard/expenses') 
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                : ''
+            }`}
           >
             <Receipt className="mr-2 h-4 w-4" />
             Expenses
@@ -149,7 +177,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
             variant="ghost"
             size="sm"
             onClick={() => handleNavigation(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
-            className="text-gray-700 hover:text-gray-900"
+            className={`text-gray-700 hover:text-gray-900 ${
+              isActive(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave') 
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
+                : ''
+            }`}
           >
             <Calendar className="mr-2 h-4 w-4" />
             {appUser?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}
@@ -264,7 +296,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
               <nav className="space-y-2">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start h-12 text-left"
+                  className={`w-full justify-start h-12 text-left ${
+                    isActive('/dashboard') 
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
+                      : ''
+                  }`}
                   onClick={() => handleNavigation('/dashboard')}
                 >
                   <Home className="mr-3 h-5 w-5" />
@@ -276,7 +312,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                   <>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start h-12 text-left"
+                      className={`w-full justify-start h-12 text-left ${
+                        isActive('/dashboard/cars') 
+                          ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
+                          : ''
+                      }`}
                       onClick={() => handleNavigation('/dashboard/cars')}
                     >
                       <Car className="mr-3 h-5 w-5" />
@@ -284,7 +324,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                     </Button>
                     <Button
                       variant="ghost"
-                      className="w-full justify-start h-12 text-left"
+                      className={`w-full justify-start h-12 text-left ${
+                        isActive('/dashboard/drivers') 
+                          ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
+                          : ''
+                      }`}
                       onClick={() => handleNavigation('/dashboard/drivers')}
                     >
                       <Users className="mr-3 h-5 w-5" />
@@ -296,7 +340,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 {/* All roles can access earnings and expenses */}
                 <Button
                   variant="ghost"
-                  className="w-full justify-start h-12 text-left"
+                  className={`w-full justify-start h-12 text-left ${
+                    isActive('/dashboard/earnings') 
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
+                      : ''
+                  }`}
                   onClick={() => handleNavigation('/dashboard/earnings')}
                 >
                   <DollarSign className="mr-3 h-5 w-5" />
@@ -305,7 +353,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
 
                 <Button
                   variant="ghost"
-                  className="w-full justify-start h-12 text-left"
+                  className={`w-full justify-start h-12 text-left ${
+                    isActive('/dashboard/expenses') 
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
+                      : ''
+                  }`}
                   onClick={() => handleNavigation('/dashboard/expenses')}
                 >
                   <Receipt className="mr-3 h-5 w-5" />
@@ -314,7 +366,11 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
 
                 <Button
                   variant="ghost"
-                  className="w-full justify-start h-12 text-left"
+                  className={`w-full justify-start h-12 text-left ${
+                    isActive(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave') 
+                      ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
+                      : ''
+                  }`}
                   onClick={() => handleNavigation(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
                 >
                   <Calendar className="mr-3 h-5 w-5" />
