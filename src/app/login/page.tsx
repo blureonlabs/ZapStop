@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
@@ -13,8 +13,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, user, appUser, loading: authLoading } = useAuth()
   const router = useRouter()
+
+  // Redirect to dashboard when user is authenticated
+  useEffect(() => {
+    if (!authLoading && user && appUser) {
+      router.push('/dashboard')
+    }
+  }, [user, appUser, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,15 +32,25 @@ export default function LoginPage() {
       
       if (error) {
         toast.error('Invalid credentials')
+        setLoading(false)
       } else {
         toast.success('Login successful')
-        router.push('/dashboard')
+        // Don't redirect immediately - let the AuthContext handle the redirect
+        // The useEffect in the main page will handle the redirect when user state is ready
       }
     } catch {
       toast.error('An error occurred during login')
-    } finally {
       setLoading(false)
     }
+  }
+
+  // Show loading spinner while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
 
   return (

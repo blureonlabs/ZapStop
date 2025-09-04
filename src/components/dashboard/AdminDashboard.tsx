@@ -23,10 +23,13 @@ export default function AdminDashboard() {
   const [showDriverDialog, setShowDriverDialog] = useState(false)
   const [showCarDialog, setShowCarDialog] = useState(false)
   const [showEditDriverDialog, setShowEditDriverDialog] = useState(false)
+  const [showEditCarDialog, setShowEditCarDialog] = useState(false)
   const [creatingDriver, setCreatingDriver] = useState(false)
   const [creatingCar, setCreatingCar] = useState(false)
   const [editingDriver, setEditingDriver] = useState(false)
+  const [editingCar, setEditingCar] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState<User | null>(null)
+  const [selectedCar, setSelectedCar] = useState<Car | null>(null)
 
   // Form states
   const [driverForm, setDriverForm] = useState({
@@ -41,8 +44,7 @@ export default function AdminDashboard() {
   const [carForm, setCarForm] = useState({
     plate_number: '',
     model: '',
-    monthly_due: 7500,
-    assigned_driver_id: 'none'
+    monthly_due: 7500
   })
 
   useEffect(() => {
@@ -60,32 +62,34 @@ export default function AdminDashboard() {
       // Fetch all cars
       const { data: carsData } = await supabase
         .from('cars')
-        .select(`
-          *,
-          users!cars_assigned_driver_id_fkey(name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       // Fetch all earnings
       const { data: earningsData } = await supabase
         .from('driver_earnings')
-        .select(`
-          *,
-          users!inner(name, email)
-        `)
+        .select('*')
         .order('date', { ascending: false })
 
       // Fetch all expenses
       const { data: expensesData } = await supabase
         .from('driver_expenses')
-        .select(`
-          *,
-          users!inner(name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
-      setDrivers(usersData?.filter(u => u.role === 'driver') || [])
-      setCars(carsData || [])
+      const drivers = usersData?.filter(u => u.role === 'driver') || []
+      setDrivers(drivers)
+      
+      // Manually join driver data with cars
+      const carsWithDrivers = carsData?.map(car => {
+        const assignedDriver = usersData?.find(user => user.id === car.assigned_driver_id)
+        return {
+          ...car,
+          assigned_driver: assignedDriver ? { name: assignedDriver.name, email: assignedDriver.email } : null
+        }
+      }) || []
+      
+      setCars(carsWithDrivers)
       setEarnings(earningsData || [])
       setExpenses(expensesData || [])
 
@@ -186,14 +190,14 @@ export default function AdminDashboard() {
           plate_number: carForm.plate_number,
           model: carForm.model,
           monthly_due: carForm.monthly_due,
-          assigned_driver_id: carForm.assigned_driver_id === 'none' ? null : carForm.assigned_driver_id || null
+          assigned_driver_id: null
         }])
 
       if (error) throw error
 
       toast.success('Car created successfully')
       setShowCarDialog(false)
-      setCarForm({ plate_number: '', model: '', monthly_due: 7500, assigned_driver_id: 'none' })
+      setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
       fetchData()
     } catch (error: any) {
       console.error('Error creating car:', error)
@@ -210,7 +214,7 @@ export default function AdminDashboard() {
       email: driver.email,
       phone: driver.phone || '',
       password: '', // Don't pre-fill password for security
-      role: driver.role,
+      role: 'driver' as const,
       assigned_car_id: driver.assigned_car_id || 'none'
     })
     setShowEditDriverDialog(true)
@@ -233,6 +237,9 @@ export default function AdminDashboard() {
         return
       }
 
+      const oldCarId = selectedDriver.assigned_car_id
+      const newCarId = driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id
+
       // Update driver in users table
       const { error: userError } = await supabase
         .from('users')
@@ -240,11 +247,38 @@ export default function AdminDashboard() {
           name: driverForm.name,
           email: driverForm.email,
           phone: driverForm.phone || null,
-          assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
+          assigned_car_id: newCarId
         })
         .eq('id', selectedDriver.id)
 
       if (userError) throw userError
+
+      // Handle car assignment changes
+      if (oldCarId !== newCarId) {
+        // Remove driver from old car
+        if (oldCarId) {
+          const { error: oldCarError } = await supabase
+            .from('cars')
+            .update({ assigned_driver_id: null })
+            .eq('id', oldCarId)
+
+          if (oldCarError) {
+            console.warn('Failed to unassign old car:', oldCarError)
+          }
+        }
+
+        // Assign driver to new car
+        if (newCarId) {
+          const { error: newCarError } = await supabase
+            .from('cars')
+            .update({ assigned_driver_id: selectedDriver.id })
+            .eq('id', newCarId)
+
+          if (newCarError) {
+            console.warn('Failed to assign new car:', newCarError)
+          }
+        }
+      }
 
       // If password is provided, update it in auth
       if (driverForm.password.trim()) {
@@ -273,6 +307,63 @@ export default function AdminDashboard() {
       toast.error(error.message || 'Failed to update driver')
     } finally {
       setEditingDriver(false)
+    }
+  }
+
+  const handleEditCar = (car: Car) => {
+    setSelectedCar(car)
+    setCarForm({
+      plate_number: car.plate_number,
+      model: car.model,
+      monthly_due: car.monthly_due
+    })
+    setShowEditCarDialog(true)
+  }
+
+  const handleUpdateCar = async () => {
+    if (editingCar || !selectedCar) return
+    
+    try {
+      setEditingCar(true)
+      
+      // Validate form data
+      if (!carForm.plate_number.trim()) {
+        toast.error('Plate number is required')
+        return
+      }
+      
+      if (!carForm.model.trim()) {
+        toast.error('Model is required')
+        return
+      }
+
+      if (carForm.monthly_due <= 0) {
+        toast.error('Monthly due must be greater than 0')
+        return
+      }
+
+      // Update car in cars table
+      const { error: carError } = await supabase
+        .from('cars')
+        .update({
+          plate_number: carForm.plate_number,
+          model: carForm.model,
+          monthly_due: carForm.monthly_due
+        })
+        .eq('id', selectedCar.id)
+
+      if (carError) throw carError
+
+      toast.success('Car updated successfully')
+      setShowEditCarDialog(false)
+      setSelectedCar(null)
+      setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
+      fetchData()
+    } catch (error: any) {
+      console.error('Error updating car:', error)
+      toast.error(error.message || 'Failed to update car')
+    } finally {
+      setEditingCar(false)
     }
   }
 
@@ -895,24 +986,6 @@ export default function AdminDashboard() {
                       onChange={(e) => setCarForm({...carForm, monthly_due: Number(e.target.value)})}
                     />
                   </div>
-                  <div>
-                    <Label htmlFor="assigned_driver">Assigned Driver</Label>
-                    <Select value={carForm.assigned_driver_id} onValueChange={(value) => setCarForm({...carForm, assigned_driver_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a driver" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">No driver assigned</SelectItem>
-                        {drivers
-                          .filter(driver => !driver.assigned_car_id)
-                          .map((driver) => (
-                            <SelectItem key={driver.id} value={driver.id}>
-                              {driver.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                   <Button 
                     onClick={handleCreateCar} 
                     className="w-full"
@@ -951,11 +1024,15 @@ export default function AdminDashboard() {
                           AED {car.monthly_due.toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {(car as { users?: { name?: string } }).users?.name || 'Not assigned'}
+                          {(car as { assigned_driver?: { name?: string } }).assigned_driver?.name || 'Not assigned'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex space-x-2">
-                            <Button size="sm" variant="outline">
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={() => handleEditCar(car)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button 
@@ -1038,6 +1115,52 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Edit Car Dialog */}
+      <Dialog open={showEditCarDialog} onOpenChange={setShowEditCarDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Car</DialogTitle>
+            <DialogDescription>
+              Update car information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit_car_plate">Plate Number</Label>
+              <Input
+                id="edit_car_plate"
+                value={carForm.plate_number}
+                onChange={(e) => setCarForm({...carForm, plate_number: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_car_model">Model</Label>
+              <Input
+                id="edit_car_model"
+                value={carForm.model}
+                onChange={(e) => setCarForm({...carForm, model: e.target.value})}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_car_due">Monthly Due (AED)</Label>
+              <Input
+                id="edit_car_due"
+                type="number"
+                value={carForm.monthly_due}
+                onChange={(e) => setCarForm({...carForm, monthly_due: Number(e.target.value)})}
+              />
+            </div>
+            <Button 
+              onClick={handleUpdateCar} 
+              className="w-full"
+              disabled={editingCar}
+            >
+              {editingCar ? 'Updating Car...' : 'Update Car'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

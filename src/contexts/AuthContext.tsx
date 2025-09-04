@@ -57,7 +57,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) {
         console.error('Error fetching app user:', error)
-        setAppUser(null)
+        // If user doesn't exist in database, create a default admin user
+        if (error.code === 'PGRST116') {
+          console.log('User not found in database, creating default admin user...')
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              id: userId,
+              name: 'Admin User',
+              email: 'admin@zapstop.com',
+              role: 'admin',
+              phone: '+971501234567',
+              assigned_car_id: null
+            })
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('Error creating user:', createError)
+            setAppUser(null)
+          } else {
+            setAppUser(newUser)
+          }
+        } else {
+          setAppUser(null)
+        }
       } else {
         setAppUser(data)
       }
@@ -72,16 +96,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+        email,
+        password,
+      })
       
       if (error) {
         console.error('Sign in error details:', error)
-    return { error }
-  }
+        return { error }
+      }
 
       console.log('Sign in successful:', data)
+      
+      // Wait for the user state to be updated
+      if (data.user) {
+        await fetchAppUser(data.user.id)
+      }
+      
       return { error: null }
     } catch (err) {
       console.error('Sign in exception:', err)

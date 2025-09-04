@@ -111,7 +111,7 @@ export default function EarningsPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalEarnings.toFixed(2)}</div>
+            <div className="text-2xl font-bold">AED {totalEarnings.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Last 30 days
             </p>
@@ -124,7 +124,7 @@ export default function EarningsPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${averageDaily.toFixed(2)}</div>
+            <div className="text-2xl font-bold">AED {averageDaily.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Per day
             </p>
@@ -183,12 +183,12 @@ export default function EarningsPage() {
                           day: 'numeric'
                         })}
                       </TableCell>
-                      <TableCell>${earning.uber_cash.toFixed(2)}</TableCell>
-                      <TableCell>${earning.uber_account.toFixed(2)}</TableCell>
-                      <TableCell>${earning.bolt_cash.toFixed(2)}</TableCell>
-                      <TableCell>${earning.bolt_account.toFixed(2)}</TableCell>
+                      <TableCell>AED {earning.uber_cash.toFixed(2)}</TableCell>
+                      <TableCell>AED {earning.uber_account.toFixed(2)}</TableCell>
+                      <TableCell>AED {earning.bolt_cash.toFixed(2)}</TableCell>
+                      <TableCell>AED {earning.bolt_account.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${earning.total.toFixed(2)}
+                        AED {earning.total.toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}

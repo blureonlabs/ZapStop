@@ -119,7 +119,7 @@ export default function ExpensesPage() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalExpenses.toFixed(2)}</div>
+            <div className="text-2xl font-bold">AED {totalExpenses.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Last 30 days
             </p>
@@ -132,7 +132,7 @@ export default function ExpensesPage() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${averageDaily.toFixed(2)}</div>
+            <div className="text-2xl font-bold">AED {averageDaily.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
               Per day
             </p>
@@ -198,7 +198,7 @@ export default function ExpensesPage() {
                         {expense.description || 'No description'}
                       </TableCell>
                       <TableCell className="text-right font-semibold">
-                        ${expense.amount.toFixed(2)}
+                        AED {expense.amount.toFixed(2)}
                       </TableCell>
                     </TableRow>
                   ))}

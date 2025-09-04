@@ -569,7 +569,7 @@ export default function DriverDashboard() {
                 </div>
                 <div className="flex items-center justify-between">
               <span className="text-sm font-medium">
-                Total: ${earningsForm.uber_cash + earningsForm.uber_account + earningsForm.bolt_cash + earningsForm.bolt_account}
+                Total: AED {earningsForm.uber_cash + earningsForm.uber_account + earningsForm.bolt_cash + earningsForm.bolt_account}
               </span>
                   <Button 
                 onClick={handleUpdateEarnings} 

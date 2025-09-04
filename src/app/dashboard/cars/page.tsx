@@ -1,22 +1,22 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { supabase, User, Car } from '@/lib/supabase'
+import { supabase, Car } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Edit, Trash2, Car as CarIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CarsPage() {
-  const [drivers, setDrivers] = useState<User[]>([])
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(true)
   const [showCarDialog, setShowCarDialog] = useState(false)
   const [editingCar, setEditingCar] = useState<Car | null>(null)
+  const [creatingCar, setCreatingCar] = useState(false)
+  const [updatingCar, setUpdatingCar] = useState(false)
 
   // Form states
   const [carForm, setCarForm] = useState({
@@ -31,23 +31,28 @@ export default function CarsPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch all users
+      // Fetch all users (drivers)
       const { data: usersData } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false })
 
-      // Fetch all cars with assigned driver info
+      // Fetch all cars
       const { data: carsData } = await supabase
         .from('cars')
-        .select(`
-          *,
-          users!cars_assigned_driver_id_fkey(name, email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
-      setDrivers(usersData?.filter(u => u.role === 'driver') || [])
-      setCars(carsData || [])
+      // Manually join driver data with cars
+      const carsWithDrivers = carsData?.map(car => {
+        const assignedDriver = usersData?.find(user => user.id === car.assigned_driver_id)
+        return {
+          ...car,
+          assigned_driver: assignedDriver ? { name: assignedDriver.name, email: assignedDriver.email } : null
+        }
+      }) || []
+
+      setCars(carsWithDrivers)
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -58,44 +63,95 @@ export default function CarsPage() {
   }
 
   const handleCreateCar = async () => {
+    if (creatingCar) return // Prevent multiple submissions
+    
     try {
-      if (editingCar) {
-        // Update existing car (no driver assignment changes)
-        const { error: carError } = await supabase
-          .from('cars')
-          .update({
-            plate_number: carForm.plate_number,
-            model: carForm.model,
-            monthly_due: carForm.monthly_due
-          })
-          .eq('id', editingCar.id)
-
-        if (carError) throw carError
-
-        toast.success('Car updated successfully')
-      } else {
-        // Create new car (no driver assignment)
-        const { error: carError } = await supabase
-          .from('cars')
-          .insert([{
-            plate_number: carForm.plate_number,
-            model: carForm.model,
-            monthly_due: carForm.monthly_due,
-            assigned_driver_id: null
-          }])
-
-        if (carError) throw carError
-
-        toast.success('Car created successfully')
+      setCreatingCar(true)
+      
+      // Validate form data
+      if (!carForm.plate_number.trim()) {
+        toast.error('Plate number is required')
+        return
+      }
+      
+      if (!carForm.model.trim()) {
+        toast.error('Model is required')
+        return
       }
 
+      if (carForm.monthly_due <= 0) {
+        toast.error('Monthly due must be greater than 0')
+        return
+      }
+
+      // Create new car
+      const { error: carError } = await supabase
+        .from('cars')
+        .insert([{
+          plate_number: carForm.plate_number,
+          model: carForm.model,
+          monthly_due: carForm.monthly_due,
+          assigned_driver_id: null
+        }])
+
+      if (carError) throw carError
+
+      toast.success('Car created successfully')
+      setShowCarDialog(false)
+      setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
+      fetchData()
+    } catch (error: any) {
+      console.error('Error creating car:', error)
+      toast.error(error.message || 'Failed to create car')
+    } finally {
+      setCreatingCar(false)
+    }
+  }
+
+  const handleUpdateCar = async () => {
+    if (!editingCar || updatingCar) return
+
+    try {
+      setUpdatingCar(true)
+      
+      // Validate form data
+      if (!carForm.plate_number.trim()) {
+        toast.error('Plate number is required')
+        return
+      }
+      
+      if (!carForm.model.trim()) {
+        toast.error('Model is required')
+        return
+      }
+
+      if (carForm.monthly_due <= 0) {
+        toast.error('Monthly due must be greater than 0')
+        return
+      }
+
+      // Update existing car
+      const { error: carError } = await supabase
+        .from('cars')
+        .update({
+          plate_number: carForm.plate_number,
+          model: carForm.model,
+          monthly_due: carForm.monthly_due
+        })
+        .eq('id', editingCar.id)
+
+      if (carError) throw carError
+
+      toast.success('Car updated successfully')
       setShowCarDialog(false)
       setEditingCar(null)
       setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
       fetchData()
     } catch (error: any) {
-      console.error('Error saving car:', error)
-      toast.error(error.message || 'Failed to save car')
+      console.error('Error updating car:', error)
+      toast.error(error.message || 'Failed to update car')
+    } finally {
+      setUpdatingCar(false)
     }
   }
 
@@ -231,8 +287,12 @@ export default function CarsPage() {
                 />
               </div>
 
-              <Button onClick={handleCreateCar} className="w-full">
-                {editingCar ? 'Update Car' : 'Create Car'}
+              <Button 
+                onClick={editingCar ? handleUpdateCar : handleCreateCar} 
+                className="w-full"
+                disabled={creatingCar || updatingCar}
+              >
+                {creatingCar ? 'Creating Car...' : updatingCar ? 'Updating Car...' : editingCar ? 'Update Car' : 'Create Car'}
               </Button>
             </div>
           </DialogContent>
@@ -326,7 +386,7 @@ export default function CarsPage() {
                         AED {car.monthly_due.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {(car as { users?: { name?: string } }).users?.name || 'Not assigned'}
+                        {(car as { assigned_driver?: { name?: string } }).assigned_driver?.name || 'Not assigned'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(car.created_at).toLocaleDateString()}
