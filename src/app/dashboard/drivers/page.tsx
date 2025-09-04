@@ -98,87 +98,98 @@ export default function DriversPage() {
   const handleCreateDriver = async () => {
     if (creatingDriver) return // Prevent multiple submissions
     
+    console.log('Starting driver creation with form data:', {
+      name: driverForm.name,
+      email: driverForm.email,
+      phone: driverForm.phone,
+      role: driverForm.role,
+      assigned_car_id: driverForm.assigned_car_id
+    })
+    
     try {
       setCreatingDriver(true)
       
       // Validate form data
       if (!driverForm.name.trim()) {
         toast.error('Name is required')
+        setCreatingDriver(false)
         return
       }
       
       if (!driverForm.email.trim()) {
         toast.error('Email is required')
+        setCreatingDriver(false)
         return
       }
       
       if (!driverForm.password.trim()) {
         toast.error('Password is required')
+        setCreatingDriver(false)
         return
       }
       
       if (driverForm.password.length < 6) {
         toast.error('Password must be at least 6 characters long')
+        setCreatingDriver(false)
         return
       }
 
-      // First, create the user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: driverForm.email,
-        password: driverForm.password,
-        options: {
-          data: {
-            name: driverForm.name,
-            role: driverForm.role
-          }
-        }
+      // Check if user already exists in our system before attempting to create
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, email, name')
+        .eq('email', driverForm.email)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing user:', checkError)
+        toast.error('Failed to validate email address')
+        setCreatingDriver(false)
+        return
+      }
+
+      if (existingUser) {
+        toast.error('A driver with this email already exists in the system')
+        setCreatingDriver(false)
+        return
+      }
+
+      // Use the server-side API to create the user (doesn't auto-login)
+      const response = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: driverForm.name,
+          email: driverForm.email,
+          password: driverForm.password,
+          phone: driverForm.phone,
+          role: driverForm.role,
+          assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
+        }),
       })
 
-      if (authError) {
-        console.error('Auth error:', authError)
-        if (authError.message.includes('Password should be at least 6 characters')) {
-          toast.error('Password must be at least 6 characters long')
-        } else if (authError.message.includes('User already registered')) {
+      const result = await response.json()
+
+      if (!response.ok) {
+        console.error('API error:', result)
+        if (result.error.includes('already exists')) {
           toast.error('A user with this email already exists')
+        } else if (result.error.includes('Password should be at least 6 characters')) {
+          toast.error('Password must be at least 6 characters long')
         } else {
-          toast.error(authError.message || 'Failed to create user account')
+          toast.error(result.error || 'Failed to create user account')
         }
+        setCreatingDriver(false)
         return
       }
 
-      if (authData.user) {
-                // Then, create the user record in our users table
-        const { error: userError } = await supabase
-          .from('users')
-          .insert([{
-            id: authData.user.id,
-            name: driverForm.name,
-            email: driverForm.email,
-            phone: driverForm.phone,
-            role: driverForm.role,
-            assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
-          }])
-
-        if (userError) throw userError
-
-        // If a car is assigned, update the cars table as well
-        if (driverForm.assigned_car_id && driverForm.assigned_car_id !== 'none') {
-          const { error: carError } = await supabase
-            .from('cars')
-            .update({ assigned_driver_id: authData.user.id })
-            .eq('id', driverForm.assigned_car_id)
-
-          if (carError) {
-            console.warn('Failed to update car assignment:', carError)
-            // Don't throw error here, driver was created successfully
-          }
-        }
-
-        toast.success('Driver created successfully')
-        setShowDriverDialog(false)
-        setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
-        fetchData()
-      }
+      console.log('User created successfully:', result.user)
+      toast.success(result.message || 'Driver created successfully')
+      setShowDriverDialog(false)
+      setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
+      fetchData()
     } catch (error: any) {
       console.error('Error creating driver:', error)
       toast.error(error.message || 'Failed to create driver')

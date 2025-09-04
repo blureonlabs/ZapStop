@@ -22,10 +22,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session check:', { hasUser: !!session?.user, userId: session?.user?.id })
       setUser(session?.user ?? null)
       if (session?.user) {
         fetchAppUser(session.user.id)
       } else {
+        console.log('No initial session, setting loading to false')
         setAppUser(null)
         setLoading(false)
       }
@@ -44,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAppUser(null)
         setLoading(false)
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('SIGNED_IN or TOKEN_REFRESHED event, fetching app user...')
         setUser(session.user)
         await fetchAppUser(session.user.id)
       }
@@ -55,6 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const fetchAppUser = async (userId: string) => {
+    console.log('fetchAppUser called with userId:', userId)
     try {
       const { data, error } = await supabase
         .from('users')
@@ -63,42 +67,161 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .single()
 
       if (error) {
-        console.error('Error fetching app user:', error)
-        // If user doesn't exist in database, create a default admin user
+        console.error('Error fetching app user:', {
+          message: error.message || 'No message',
+          code: error.code || 'No code',
+          details: error.details || 'No details',
+          hint: error.hint || 'No hint',
+          fullError: error
+        })
+        // If user doesn't exist in database, try to find by email first
         if (error.code === 'PGRST116') {
-          console.log('User not found in database, creating default admin user...')
-          const { data: newUser, error: createError } = await supabase
-            .from('users')
-            .insert({
-              id: userId,
-              name: 'Admin User',
-              email: 'admin@zapstop.com',
-              role: 'admin',
-              phone: '+971501234567',
-              assigned_car_id: null
-            })
-            .select()
-            .single()
+          console.log('User not found in database by ID, trying to find by email...')
+          
+          // Get user email from Supabase auth user if available
+          const authUser = user || await supabase.auth.getUser().then(({ data }) => data.user)
+          const userEmail = authUser?.email
+          
+          console.log('Auth user details:', {
+            id: authUser?.id,
+            email: authUser?.email,
+            user_metadata: authUser?.user_metadata,
+            app_metadata: authUser?.app_metadata
+          })
+          
+          if (userEmail) {
+            // Try to find user by email first
+            const { data: existingUser, error: emailError } = await supabase
+              .from('users')
+              .select('*')
+              .eq('email', userEmail)
+              .single()
+            
+            if (emailError) {
+              console.log('User not found by email either, creating new user...')
+              console.log('Creating user with ID:', userId)
+              
+              const userName = authUser?.user_metadata?.full_name || 'Admin User'
+              const userRole = authUser?.user_metadata?.role || 'admin' // Use role from metadata, default to admin
+              
+              const { data: newUser, error: createError } = await supabase
+                .from('users')
+                .insert({
+                  id: userId,
+                  name: userName,
+                  email: userEmail,
+                  role: userRole,
+                  phone: '+971501234567',
+                  assigned_car_id: null
+                })
+                .select()
+                .single()
 
-          if (createError) {
-            console.error('Error creating user:', createError)
-            // Don't set appUser to null on error - keep current state
-            console.warn('Failed to create user, keeping current session')
+              if (createError) {
+                console.error('Error creating user - Full error object:', JSON.stringify(createError, null, 2))
+                console.error('Error details:', {
+                  message: createError.message || 'No message',
+                  details: createError.details || 'No details',
+                  hint: createError.hint || 'No hint',
+                  code: createError.code || 'No code'
+                })
+                
+                // If it's a duplicate key error (user already exists), try to fetch the existing user
+                if (createError.code === '23505') {
+                  console.log('User already exists (duplicate key), fetching existing user...')
+                  
+                  // Try to find user by email first (more reliable than ID)
+                  const { data: existingUser, error: fetchError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('email', userEmail)
+                    .single()
+                  
+                  if (fetchError) {
+                    console.error('Error fetching existing user by email:', {
+                      message: fetchError.message || 'No message',
+                      code: fetchError.code || 'No code',
+                      details: fetchError.details || 'No details'
+                    })
+                    console.warn('Failed to fetch existing user, keeping current session')
+                  } else {
+                    console.log('Found existing user by email:', existingUser)
+                    setAppUser(existingUser)
+                  }
+                } else {
+                  // Don't set appUser to null on error - keep current state
+                  console.warn('Failed to create user, keeping current session')
+                }
+              } else {
+                console.log('User created successfully:', newUser)
+                setAppUser(newUser)
+              }
+            } else {
+              console.log('Found existing user by email:', existingUser)
+              setAppUser(existingUser)
+            }
           } else {
-            setAppUser(newUser)
+            console.log('No email available, trying to create user with fallback email...')
+            
+            // Try to create a user with a fallback email based on user ID
+            const fallbackEmail = `user-${userId}@zapstop.com`
+            const userName = authUser?.user_metadata?.full_name || authUser?.user_metadata?.name || 'User'
+            const userRole = authUser?.user_metadata?.role || authUser?.app_metadata?.role || 'driver'
+            
+            console.log('Creating user with fallback email:', {
+              id: userId,
+              email: fallbackEmail,
+              name: userName,
+              role: userRole
+            })
+            
+            const { data: newUser, error: createError } = await supabase
+              .from('users')
+              .insert({
+                id: userId,
+                name: userName,
+                email: fallbackEmail,
+                role: userRole,
+                phone: '+971501234567',
+                assigned_car_id: null
+              })
+              .select()
+              .single()
+
+            if (createError) {
+              console.error('Error creating user with fallback email:', {
+                message: createError.message || 'No message',
+                code: createError.code || 'No code',
+                details: createError.details || 'No details'
+              })
+              console.warn('Failed to create user, keeping current session')
+            } else {
+              console.log('User created successfully with fallback email:', newUser)
+              setAppUser(newUser)
+            }
           }
         } else {
           // For other errors, don't immediately log out - just log the error
-          console.warn('Failed to fetch user data, keeping current session:', error)
+          console.warn('Failed to fetch user data, keeping current session:', {
+            message: error.message || 'No message',
+            code: error.code || 'No code',
+            details: error.details || 'No details',
+            fullError: error
+          })
         }
       } else {
         setAppUser(data)
       }
     } catch (error) {
-      console.error('Exception fetching app user:', error)
+      console.error('Exception fetching app user:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        fullError: error
+      })
       // Don't set appUser to null on exception - keep current state
       console.warn('Exception fetching user data, keeping current session')
     } finally {
+      console.log('fetchAppUser finally block - setting loading to false')
       setLoading(false)
     }
   }

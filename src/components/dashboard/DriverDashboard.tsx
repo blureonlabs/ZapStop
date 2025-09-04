@@ -164,9 +164,25 @@ export default function DriverDashboard() {
         .single()
       
       if (earningsError) {
-        console.error('Error fetching earnings:', earningsError)
+        // If no earnings record exists for today, that's normal - don't log as error
+        if (earningsError.code === 'PGRST116') {
+          console.log('No earnings record found for today - this is normal')
+          setTodayEarnings(null)
+          setEarningsForm({
+            uber_cash: 0,
+            uber_account: 0,
+            bolt_cash: 0,
+            bolt_account: 0
+          })
+        } else {
+          console.error('Error fetching earnings:', {
+            message: earningsError.message || 'No message',
+            code: earningsError.code || 'No code',
+            details: earningsError.details || 'No details'
+          })
+        }
       } else {
-      setTodayEarnings(earningsData)
+        setTodayEarnings(earningsData)
         if (earningsData) {
           setEarningsForm({
             uber_cash: earningsData.uber_cash || 0,
@@ -187,10 +203,21 @@ export default function DriverDashboard() {
 
       if (expenseError) {
         // If no expense record exists for today, that's normal - don't log as error
-        if (expenseError.code !== 'PGRST116') {
-          console.error('Error fetching expense:', expenseError)
+        if (expenseError.code === 'PGRST116') {
+          console.log('No expense record found for today - this is normal')
+          setTodayExpense(null)
+          setExpenseForm({
+            amount: 0,
+            expense_type: 'fuel'
+          })
+        } else {
+          console.error('Error fetching expense:', {
+            message: expenseError.message || 'No message',
+            code: expenseError.code || 'No code',
+            details: expenseError.details || 'No details'
+          })
+          setTodayExpense(null)
         }
-        setTodayExpense(null)
       } else {
         setTodayExpense(expenseData)
         if (expenseData) {
@@ -211,10 +238,17 @@ export default function DriverDashboard() {
       
       if (attendanceError) {
         // If no attendance record exists for today, that's normal - don't log as error
-        if (attendanceError.code !== 'PGRST116') {
-          console.error('Error fetching attendance:', attendanceError)
+        if (attendanceError.code === 'PGRST116') {
+          console.log('No attendance record found for today - this is normal')
+          setAttendance(null)
+        } else {
+          console.error('Error fetching attendance:', {
+            message: attendanceError.message || 'No message',
+            code: attendanceError.code || 'No code',
+            details: attendanceError.details || 'No details'
+          })
+          setAttendance(null)
         }
-        setAttendance(null)
       } else {
         setAttendance(attendanceData)
       }

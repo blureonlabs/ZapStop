@@ -56,51 +56,85 @@ export default function AdminDashboard() {
   }, [])
 
   const fetchData = useCallback(async () => {
+    console.log('AdminDashboard fetchData called')
     return PerformanceMonitor.measureAsync('admin-dashboard-fetch', async () => {
       try {
         // Check cache first
         const cachedData = dataCache.get<AdminDashboardData>('admin-dashboard-data')
         if (cachedData) {
-                  setDrivers(cachedData.drivers)
-        setCars(cachedData.cars)
-        setEarnings(cachedData.earnings)
-        setExpenses(cachedData.expenses)
-        setAttendance(cachedData.attendance || [])
-        setLoading(false)
-        return
+          console.log('AdminDashboard: Using cached data')
+          setDrivers(cachedData.drivers)
+          setCars(cachedData.cars)
+          setEarnings(cachedData.earnings)
+          setExpenses(cachedData.expenses)
+          setAttendance(cachedData.attendance || [])
+          setLoading(false)
+          return
         }
+        
+        console.log('AdminDashboard: No cached data, fetching from database...')
 
       // Fetch all users
-      const { data: usersData } = await supabase
+      console.log('AdminDashboard: Fetching users...')
+      const { data: usersData, error: usersError } = await supabase
         .from('users')
         .select('*')
         .order('created_at', { ascending: false })
+      
+      if (usersError) {
+        console.error('AdminDashboard: Error fetching users:', usersError)
+      } else {
+        console.log('AdminDashboard: Users fetched successfully:', usersData?.length || 0, 'users')
+      }
 
       // Fetch all cars
-      const { data: carsData } = await supabase
+      console.log('AdminDashboard: Fetching cars...')
+      const { data: carsData, error: carsError } = await supabase
         .from('cars')
         .select('*')
-        .order('created_at', { ascending: false })
+      
+      if (carsError) {
+        console.error('AdminDashboard: Error fetching cars:', carsError)
+      } else {
+        console.log('AdminDashboard: Cars fetched successfully:', carsData?.length || 0, 'cars')
+      }
 
       // Fetch all earnings
-      const { data: earningsData } = await supabase
+      console.log('AdminDashboard: Fetching earnings...')
+      const { data: earningsData, error: earningsError } = await supabase
         .from('driver_earnings')
         .select('*')
-        .order('date', { ascending: false })
+      
+      if (earningsError) {
+        console.error('AdminDashboard: Error fetching earnings:', earningsError)
+      } else {
+        console.log('AdminDashboard: Earnings fetched successfully:', earningsData?.length || 0, 'earnings')
+      }
 
       // Fetch all expenses
-      const { data: expensesData } = await supabase
+      console.log('AdminDashboard: Fetching expenses...')
+      const { data: expensesData, error: expensesError } = await supabase
         .from('driver_expenses')
         .select('*')
-        .order('created_at', { ascending: false })
+      
+      if (expensesError) {
+        console.error('AdminDashboard: Error fetching expenses:', expensesError)
+      } else {
+        console.log('AdminDashboard: Expenses fetched successfully:', expensesData?.length || 0, 'expenses')
+      }
 
       // Fetch today's attendance
       const today = new Date().toISOString().split('T')[0]
-      const { data: attendanceData } = await supabase
+      console.log('AdminDashboard: Fetching attendance for today:', today)
+      const { data: attendanceData, error: attendanceError } = await supabase
         .from('attendance')
         .select('*')
-        .eq('date', today)
-        .order('start_time', { ascending: false })
+      
+      if (attendanceError) {
+        console.error('AdminDashboard: Error fetching attendance:', attendanceError)
+      } else {
+        console.log('AdminDashboard: Attendance fetched successfully:', attendanceData?.length || 0, 'attendance records')
+      }
 
       const drivers = usersData?.filter(u => u.role === 'driver') || []
       
@@ -122,16 +156,19 @@ export default function AdminDashboard() {
         attendance: attendanceData || []
       }, 2 * 60 * 1000)
 
+      console.log('AdminDashboard: Data fetched successfully, setting state...')
       setDrivers(drivers)
       setCars(carsWithDrivers)
       setEarnings(earningsData || [])
       setExpenses(expensesData || [])
       setAttendance(attendanceData || [])
+      console.log('AdminDashboard: State set, data will be cached')
 
       } catch (error) {
         console.error('Error fetching data:', error)
         toast.error('Failed to load data')
       } finally {
+        console.log('AdminDashboard: fetchData finally block - setting loading to false')
         setLoading(false)
       }
     })

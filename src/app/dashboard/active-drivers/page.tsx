@@ -98,7 +98,7 @@ export default function ActiveDriversPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    await PerformanceMonitor.measureAsync(fetchActiveDrivers)
+    await PerformanceMonitor.measureAsync('active-drivers-refresh', fetchActiveDrivers)
     setRefreshing(false)
   }
 
