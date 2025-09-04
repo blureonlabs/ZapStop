@@ -30,12 +30,7 @@ export default function DashboardPage() {
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">User Not Found</h2>
         <p className="text-gray-600 mb-4">Your user account was not found in the database.</p>
-        <button 
-          onClick={() => window.location.href = '/setup-admin'}
-          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-        >
-          Setup Admin User
-        </button>
+        <p className="text-sm text-gray-500">Please contact your administrator to set up your account.</p>
       </div>
     )
   }

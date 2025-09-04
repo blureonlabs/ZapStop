@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 import { supabase, Car } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,6 +13,8 @@ import { Plus, Edit, Trash2, Car as CarIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CarsPage() {
+  const { appUser, loading: authLoading } = useAuth()
+  const router = useRouter()
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(true)
   const [showCarDialog, setShowCarDialog] = useState(false)
@@ -26,8 +30,41 @@ export default function CarsPage() {
   })
 
   useEffect(() => {
-    fetchData()
-  }, [])
+    // Check if user has permission to access this page
+    if (!authLoading && appUser) {
+      if (appUser.role !== 'admin') {
+        toast.error('Access denied. Admin privileges required.')
+        router.push('/dashboard')
+        return
+      }
+      fetchData()
+    }
+  }, [appUser, authLoading, router])
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show access denied if not admin
+  if (appUser && appUser.role !== 'admin') {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
+        <p className="text-gray-600 mb-4">You don't have permission to access the cars management page.</p>
+        <Button onClick={() => router.push('/dashboard')}>
+          Return to Dashboard
+        </Button>
+      </div>
+    )
+  }
 
   const fetchData = async () => {
     try {

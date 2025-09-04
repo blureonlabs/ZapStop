@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu'
-import { LogOut, User, Settings, Menu, X, Home, DollarSign, Receipt } from 'lucide-react'
+import { LogOut, User, Settings, Menu, X, Home, DollarSign, Receipt, Car, Users } from 'lucide-react'
 import Logo from './logo'
 import { toast } from 'sonner'
 
@@ -86,6 +86,63 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
               <h1 className="text-xl font-bold text-gray-900">{title}</h1>
             </div>
           )}
+        </div>
+
+        {/* Center - Desktop Navigation Menu */}
+        <div className="hidden md:flex items-center space-x-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation('/dashboard')}
+            className="text-gray-700 hover:text-gray-900"
+          >
+            <Home className="mr-2 h-4 w-4" />
+            Dashboard
+          </Button>
+          
+          {/* Admin-only pages */}
+          {appUser?.role === 'admin' && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleNavigation('/dashboard/cars')}
+                className="text-gray-700 hover:text-gray-900"
+              >
+                <Car className="mr-2 h-4 w-4" />
+                Cars
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleNavigation('/dashboard/drivers')}
+                className="text-gray-700 hover:text-gray-900"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Drivers
+              </Button>
+            </>
+          )}
+          
+          {/* All roles can access earnings and expenses */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation('/dashboard/earnings')}
+            className="text-gray-700 hover:text-gray-900"
+          >
+            <DollarSign className="mr-2 h-4 w-4" />
+            Earnings
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleNavigation('/dashboard/expenses')}
+            className="text-gray-700 hover:text-gray-900"
+          >
+            <Receipt className="mr-2 h-4 w-4" />
+            Expenses
+          </Button>
         </div>
 
         {/* Right side - Hamburger Menu & User Menu */}
@@ -203,6 +260,29 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                   <span className="text-base">Dashboard</span>
                 </Button>
 
+                {/* Admin-only pages */}
+                {appUser?.role === 'admin' && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start h-12 text-left"
+                      onClick={() => handleNavigation('/dashboard/cars')}
+                    >
+                      <Car className="mr-3 h-5 w-5" />
+                      <span className="text-base">Cars</span>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start h-12 text-left"
+                      onClick={() => handleNavigation('/dashboard/drivers')}
+                    >
+                      <Users className="mr-3 h-5 w-5" />
+                      <span className="text-base">Drivers</span>
+                    </Button>
+                  </>
+                )}
+
+                {/* All roles can access earnings and expenses */}
                 <Button
                   variant="ghost"
                   className="w-full justify-start h-12 text-left"
