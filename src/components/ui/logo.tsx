@@ -19,7 +19,7 @@ export default function Logo({ className = '', size = 'md' }: LogoProps) {
   }
 
   return (
-    <div className={`flex items-center space-x-3 ${className}`}>
+    <div className={`flex items-center space-x-2 ${className}`}>
       {/* Lightning Bolt Icon */}
       <div className={`${sizeClasses[size]} relative`}>
         <svg

@@ -7,6 +7,7 @@ import { supabase, Car } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import PageHeader from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Plus, Edit, Trash2, Car as CarIcon } from 'lucide-react'
@@ -269,11 +270,10 @@ export default function CarsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <CarIcon className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Car Management</h1>
-        </div>
+      <PageHeader 
+        title="Car Management" 
+        description="Manage your vehicle fleet and driver assignments"
+      >
         <Dialog open={showCarDialog} onOpenChange={(open) => {
           setShowCarDialog(open)
           if (!open) {
@@ -334,7 +334,7 @@ export default function CarsPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
