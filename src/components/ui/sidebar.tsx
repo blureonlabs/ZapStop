@@ -120,6 +120,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       roles: ['admin']
     },
     {
+      name: 'Active Drivers',
+      path: '/dashboard/active-drivers',
+      icon: Users,
+      roles: ['admin']
+    },
+    {
       name: 'Earnings',
       path: '/dashboard/earnings',
       icon: DollarSign,
@@ -223,17 +229,39 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
             })}
           </nav>
 
-          {/* User Section - Desktop Only */}
-          {appUser && (
-            <div className="hidden lg:block p-4 border-t border-gray-200">
-              {isCollapsed ? (
-                <div className="flex flex-col items-center space-y-3">
+          {/* Bottom Section - User Info and Profile Actions */}
+          <div className="mt-auto">
+            {/* User Info Section - Desktop Only */}
+            {appUser && (
+              <div className="hidden lg:block p-4 border-t border-gray-200">
+                <div className="flex items-center space-x-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-blue-100 text-blue-600 text-sm font-semibold">
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
                       {getInitials(appUser.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="flex flex-col space-y-1 w-full">
+                  {!isCollapsed && (
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {appUser.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {appUser.email}
+                      </p>
+                      <Badge className={`text-xs ${getRoleBadgeColor(appUser.role)}`}>
+                        {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
+                      </Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Profile Actions - Bottom Left - Desktop Only */}
+            {appUser && (
+              <div className="hidden lg:block p-4 border-t border-gray-200">
+                {isCollapsed ? (
+                  <div className="flex flex-col space-y-1">
                     <Button
                       variant="ghost"
                       size="sm"
@@ -262,28 +290,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       <LogOut className="h-4 w-4" />
                     </Button>
                   </div>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-blue-100 text-blue-600">
-                        {getInitials(appUser.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
-                        {appUser.name}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {appUser.email}
-                      </p>
-                      <Badge className={`text-xs ${getRoleBadgeColor(appUser.role)}`}>
-                        {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
-                      </Badge>
-                    </div>
-                  </div>
-                  
+                ) : (
                   <div className="flex space-x-1">
                     <Button
                       variant="ghost"
@@ -313,10 +320,10 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       Logout
                     </Button>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </>

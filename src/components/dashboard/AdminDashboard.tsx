@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Plus, Edit, Trash2, Users, Clock, MapPin, RefreshCw } from 'lucide-react'
+import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Plus, Edit, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
@@ -34,7 +34,6 @@ export default function AdminDashboard() {
   const [editingCar, setEditingCar] = useState(false)
   const [selectedDriver, setSelectedDriver] = useState<User | null>(null)
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
-  const [refreshing, setRefreshing] = useState(false)
 
   // Form states
   const [driverForm, setDriverForm] = useState({
@@ -138,17 +137,15 @@ export default function AdminDashboard() {
     })
   }, [])
 
-  // Auto-refresh active drivers every 30 seconds
+  // Auto-refresh data every 30 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      if (!refreshing) {
-        dataCache.delete('admin-dashboard-data')
-        fetchData()
-      }
+      dataCache.delete('admin-dashboard-data')
+      fetchData()
     }, 30000) // 30 seconds
 
     return () => clearInterval(interval)
-  }, [fetchData, refreshing])
+  }, [fetchData])
 
   const handleCreateDriver = async () => {
     if (creatingDriver) return // Prevent multiple submissions
@@ -614,48 +611,6 @@ export default function AdminDashboard() {
     })
   }, [earnings, expenses])
 
-  const activeDrivers = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]
-    
-    return attendance
-      .filter(att => 
-        att.date === today && 
-        att.start_time && 
-        !att.end_time && 
-        att.status === 'present'
-      )
-      .map(att => {
-        const driver = drivers.find(d => d.id === att.driver_id)
-        const car = cars.find(c => c.assigned_driver_id === att.driver_id)
-        
-        // Calculate work duration
-        const startTime = new Date(`2000-01-01T${att.start_time}`)
-        const now = new Date()
-        const workDuration = Math.floor((now.getTime() - startTime.getTime()) / (1000 * 60 * 60)) // hours
-        
-        return {
-          ...att,
-          driver,
-          car,
-          workDuration: Math.max(0, workDuration)
-        }
-      })
-      .filter(att => att.driver) // Only include drivers that exist
-  }, [attendance, drivers, cars])
-
-  const handleRefreshActiveDrivers = useCallback(async () => {
-    try {
-      setRefreshing(true)
-      dataCache.delete('admin-dashboard-data') // Clear cache to force refresh
-      await fetchData()
-      toast.success('Active drivers updated')
-    } catch (error) {
-      console.error('Error refreshing active drivers:', error)
-      toast.error('Failed to refresh active drivers')
-    } finally {
-      setRefreshing(false)
-    }
-  }, [fetchData])
 
   if (loading) {
     return <DashboardSkeleton />
@@ -666,67 +621,6 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
 
-      {/* Active Drivers Card */}
-      <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center text-lg">
-              <Users className="h-5 w-5 mr-2 text-green-600" />
-              Active Drivers Riding
-              <span className="ml-2 bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                {activeDrivers.length}
-              </span>
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefreshActiveDrivers}
-              disabled={refreshing}
-              className="text-green-600 border-green-200 hover:bg-green-50"
-            >
-              <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {activeDrivers.length === 0 ? (
-            <div className="text-center py-4">
-              <MapPin className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-gray-600">No drivers currently riding</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {activeDrivers.map((att) => (
-                <div key={att.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-green-100">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                      <span className="text-green-600 font-semibold text-sm">
-                        {att.driver?.name?.charAt(0) || 'D'}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{att.driver?.name}</p>
-                      <p className="text-sm text-gray-600">
-                        {att.car?.plate_number || 'No car assigned'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center text-sm text-green-600">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {att.workDuration}h
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      Started: {att.start_time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Company KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
