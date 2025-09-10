@@ -1,0 +1,104 @@
+"""
+Attendance API routes
+"""
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+from typing import List
+
+from app.database import get_db
+from app.schemas.attendance import AttendanceCreate, AttendanceUpdate, AttendanceResponse
+from app.services.attendance_service import AttendanceService
+from app.middleware.auth import get_current_user
+from app.models.user import User
+
+router = APIRouter()
+
+@router.get("/", response_model=List[AttendanceResponse])
+async def get_attendance(
+    driver_id: str = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get attendance records"""
+    attendance_service = AttendanceService(db)
+    
+    # If driver_id is provided, check permissions
+    if driver_id and current_user.role not in ["admin", "accountant"]:
+        if current_user.id != driver_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions"
+            )
+    
+    attendance = attendance_service.get_attendance(
+        driver_id=driver_id or current_user.id,
+        skip=skip,
+        limit=limit
+    )
+    return attendance
+
+@router.post("/start-work")
+async def start_work(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Start work session"""
+    if current_user.role != "driver":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only drivers can start work"
+        )
+    
+    attendance_service = AttendanceService(db)
+    result = attendance_service.start_work(current_user.id)
+    
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to start work session"
+        )
+    
+    return {"message": "Work started successfully"}
+
+@router.post("/end-work")
+async def end_work(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """End work session"""
+    if current_user.role != "driver":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only drivers can end work"
+        )
+    
+    attendance_service = AttendanceService(db)
+    result = attendance_service.end_work(current_user.id)
+    
+    if not result:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to end work session"
+        )
+    
+    return {"message": "Work ended successfully"}
+
+@router.get("/current-status")
+async def get_current_status(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get current work status"""
+    if current_user.role != "driver":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only drivers can check work status"
+        )
+    
+    attendance_service = AttendanceService(db)
+    status = attendance_service.get_current_status(current_user.id)
+    
+    return status
