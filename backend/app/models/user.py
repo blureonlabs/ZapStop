@@ -36,5 +36,5 @@ class User(Base):
     earnings = relationship("DriverEarning", back_populates="driver")
     expenses = relationship("DriverExpense", back_populates="driver")
     attendance = relationship("Attendance", back_populates="driver")
-    leave_requests = relationship("LeaveRequest", back_populates="driver")
-    approved_leave_requests = relationship("LeaveRequest", back_populates="approved_by", foreign_keys="LeaveRequest.approved_by")
+    leave_requests = relationship("LeaveRequest", back_populates="driver", foreign_keys="[LeaveRequest.driver_id]")
+    approved_leave_requests = relationship("LeaveRequest", back_populates="approved_by_user", foreign_keys="[LeaveRequest.approved_by]")

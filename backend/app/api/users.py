@@ -8,9 +8,9 @@ from typing import List
 
 from app.database import get_db
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
-from app.services.user_service import UserService
-from app.middleware.auth import get_current_user
-from app.models.user import User, UserRole
+from app.services.user_service_simple import UserServiceSimple as UserService
+from app.middleware.auth_simple import get_current_user
+from app.models.user import UserRole
 
 router = APIRouter()
 
@@ -19,7 +19,7 @@ async def get_users(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get all users"""
     user_service = UserService(db)
@@ -30,7 +30,7 @@ async def get_users(
 async def get_user(
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get user by ID"""
     user_service = UserService(db)
@@ -48,10 +48,10 @@ async def get_user(
 async def create_user(
     user: UserCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Create new user (Admin only)"""
-    if current_user.role != UserRole.ADMIN:
+    if current_user["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -75,10 +75,10 @@ async def update_user(
     user_id: str,
     user_update: UserUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Update user (Admin only)"""
-    if current_user.role != UserRole.ADMIN:
+    if current_user["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -100,10 +100,10 @@ async def update_user(
 async def delete_user(
     user_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Delete user (Admin only)"""
-    if current_user.role != UserRole.ADMIN:
+    if current_user["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

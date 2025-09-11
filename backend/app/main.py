@@ -12,8 +12,8 @@ import os
 from contextlib import asynccontextmanager
 
 from app.database import engine, Base
-from app.api import auth, users, cars, analytics, earnings, expenses, attendance, leave_requests
-from app.middleware.auth import get_current_user
+from app.api import auth_simple as auth, users, cars, analytics, earnings, expenses, attendance, leave_requests
+from app.middleware.auth_simple import get_current_user
 from app.models.user import User
 from app.config import settings
 

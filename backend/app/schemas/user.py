@@ -6,11 +6,12 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 from app.models.user import UserRole
+from typing import Union
 
 class UserBase(BaseModel):
     email: EmailStr
     name: str
-    role: UserRole
+    role: Union[UserRole, str]
     phone: Optional[str] = None
 
 class UserCreate(UserBase):
