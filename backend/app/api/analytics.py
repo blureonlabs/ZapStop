@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 
 from app.database import get_db
-from app.services.analytics_service import AnalyticsService
+from app.services.analytics_service_simple import AnalyticsServiceSimple as AnalyticsService
 from app.middleware.auth_simple import get_current_user
 
 router = APIRouter()
@@ -29,6 +29,13 @@ async def get_dashboard_data(
     - Company statistics (cars, drivers, owners)
     - Daily trends and car performance metrics
     """
+    # Only admin and accountant can access analytics
+    if current_user["role"] not in ["admin", "accountant"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
     analytics_service = AnalyticsService(db)
     
     try:
@@ -47,6 +54,13 @@ async def get_earnings_analytics(
     current_user: dict = Depends(get_current_user)
 ):
     """Get earnings analytics"""
+    # Only admin and accountant can access analytics
+    if current_user["role"] not in ["admin", "accountant"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
     analytics_service = AnalyticsService(db)
     
     try:

@@ -8,7 +8,7 @@ from typing import List
 
 from app.database import get_db
 from app.schemas.expenses import DriverExpenseCreate, DriverExpenseUpdate, DriverExpenseResponse
-from app.services.expenses_service import ExpensesService
+from app.services.expenses_service_simple import ExpensesServiceSimple as ExpensesService
 from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
@@ -25,16 +25,15 @@ async def get_expenses(
     expenses_service = ExpensesService(db)
     
     # If driver_id is provided, check permissions
-    if driver_id and current_user.role not in ["admin", "accountant"]:
-        if current_user.id != driver_id:
+    if driver_id and current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
             )
     
     expenses = expenses_service.get_expenses(
-        driver_id=driver_id or current_user.id,
-        status=status,
+        driver_id=driver_id or current_user["id"],
         skip=skip,
         limit=limit
     )
@@ -50,8 +49,8 @@ async def create_expense(
     expenses_service = ExpensesService(db)
     
     # Check permissions
-    if current_user.role not in ["admin", "accountant"]:
-        if current_user.id != expense.driver_id:
+    if current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != expense.driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
@@ -79,8 +78,8 @@ async def update_expense(
         )
     
     # Check permissions
-    if current_user.role not in ["admin", "accountant"]:
-        if current_user.id != existing_expense.driver_id:
+    if current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != existing_expense.driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
@@ -96,14 +95,14 @@ async def approve_expense(
     current_user: dict = Depends(get_current_user)
 ):
     """Approve expense (Admin/Accountant only)"""
-    if current_user.role not in ["admin", "accountant"]:
+    if current_user["role"] not in ["admin", "accountant"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
     
     expenses_service = ExpensesService(db)
-    result = expenses_service.approve_expense(expense_id, current_user.id)
+    result = expenses_service.approve_expense(expense_id, current_user["id"])
     
     if not result:
         raise HTTPException(
@@ -121,14 +120,14 @@ async def reject_expense(
     current_user: dict = Depends(get_current_user)
 ):
     """Reject expense (Admin/Accountant only)"""
-    if current_user.role not in ["admin", "accountant"]:
+    if current_user["role"] not in ["admin", "accountant"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
     
     expenses_service = ExpensesService(db)
-    result = expenses_service.reject_expense(expense_id, current_user.id, admin_notes)
+    result = expenses_service.reject_expense(expense_id, current_user["id"], admin_notes)
     
     if not result:
         raise HTTPException(

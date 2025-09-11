@@ -8,7 +8,7 @@ from typing import List
 
 from app.database import get_db
 from app.schemas.earnings import DriverEarningCreate, DriverEarningUpdate, DriverEarningResponse
-from app.services.earnings_service import EarningsService
+from app.services.earnings_service_simple import EarningsServiceSimple as EarningsService
 from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
@@ -24,15 +24,15 @@ async def get_earnings(
     earnings_service = EarningsService(db)
     
     # If driver_id is provided, check permissions
-    if driver_id and current_user.role not in ["admin", "accountant"]:
-        if current_user.id != driver_id:
+    if driver_id and current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
             )
     
     earnings = earnings_service.get_earnings(
-        driver_id=driver_id or current_user.id,
+        driver_id=driver_id or current_user["id"],
         skip=skip,
         limit=limit
     )
@@ -48,8 +48,8 @@ async def create_earning(
     earnings_service = EarningsService(db)
     
     # Check permissions
-    if current_user.role not in ["admin", "accountant"]:
-        if current_user.id != earning.driver_id:
+    if current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != earning.driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
@@ -77,8 +77,8 @@ async def update_earning(
         )
     
     # Check permissions
-    if current_user.role not in ["admin", "accountant"]:
-        if current_user.id != existing_earning.driver_id:
+    if current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != existing_earning.driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
@@ -94,7 +94,7 @@ async def delete_earning(
     current_user: dict = Depends(get_current_user)
 ):
     """Delete earnings record (Admin only)"""
-    if current_user.role != "admin":
+    if current_user["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"

@@ -5,13 +5,12 @@ Attendance schemas
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from app.models.attendance import AttendanceStatus
 
 class AttendanceBase(BaseModel):
     date: datetime
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-    status: AttendanceStatus = AttendanceStatus.PRESENT
+    status: str = "present"
 
 class AttendanceCreate(AttendanceBase):
     driver_id: str
@@ -19,7 +18,7 @@ class AttendanceCreate(AttendanceBase):
 class AttendanceUpdate(BaseModel):
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-    status: Optional[AttendanceStatus] = None
+    status: Optional[str] = None
 
 class AttendanceResponse(AttendanceBase):
     id: str

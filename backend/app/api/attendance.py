@@ -8,7 +8,7 @@ from typing import List
 
 from app.database import get_db
 from app.schemas.attendance import AttendanceCreate, AttendanceUpdate, AttendanceResponse
-from app.services.attendance_service import AttendanceService
+from app.services.attendance_service_simple import AttendanceServiceSimple as AttendanceService
 from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
@@ -24,19 +24,45 @@ async def get_attendance(
     attendance_service = AttendanceService(db)
     
     # If driver_id is provided, check permissions
-    if driver_id and current_user.role not in ["admin", "accountant"]:
-        if current_user.id != driver_id:
+    if driver_id and current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != driver_id:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Not enough permissions"
             )
     
     attendance = attendance_service.get_attendance(
-        driver_id=driver_id or current_user.id,
+        driver_id=driver_id or current_user["id"],
         skip=skip,
         limit=limit
     )
     return attendance
+
+@router.post("/", response_model=AttendanceResponse)
+async def create_attendance(
+    attendance: AttendanceCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Create attendance record"""
+    # Only admin, accountant, or the driver themselves can create attendance
+    if current_user["role"] not in ["admin", "accountant"]:
+        if current_user["id"] != attendance.driver_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not enough permissions"
+            )
+    
+    attendance_service = AttendanceService(db)
+    
+    try:
+        created_attendance = attendance_service.create_attendance(attendance)
+        return created_attendance
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to create attendance: {str(e)}"
+        )
 
 @router.post("/start-work")
 async def start_work(
@@ -44,14 +70,14 @@ async def start_work(
     current_user: dict = Depends(get_current_user)
 ):
     """Start work session"""
-    if current_user.role != "driver":
+    if current_user["role"] != "driver":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only drivers can start work"
         )
     
     attendance_service = AttendanceService(db)
-    result = attendance_service.start_work(current_user.id)
+    result = attendance_service.start_work(current_user["id"])
     
     if not result:
         raise HTTPException(
@@ -67,14 +93,14 @@ async def end_work(
     current_user: dict = Depends(get_current_user)
 ):
     """End work session"""
-    if current_user.role != "driver":
+    if current_user["role"] != "driver":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only drivers can end work"
         )
     
     attendance_service = AttendanceService(db)
-    result = attendance_service.end_work(current_user.id)
+    result = attendance_service.end_work(current_user["id"])
     
     if not result:
         raise HTTPException(
@@ -90,13 +116,13 @@ async def get_current_status(
     current_user: dict = Depends(get_current_user)
 ):
     """Get current work status"""
-    if current_user.role != "driver":
+    if current_user["role"] != "driver":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only drivers can check work status"
         )
     
     attendance_service = AttendanceService(db)
-    status = attendance_service.get_current_status(current_user.id)
+    status = attendance_service.get_current_status(current_user["id"])
     
     return status
