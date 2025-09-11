@@ -9,9 +9,7 @@ from typing import List
 from app.database import get_db
 from app.schemas.leave_requests import LeaveRequestCreate, LeaveRequestUpdate, LeaveRequestResponse
 from app.services.leave_requests_service import LeaveRequestsService
-from app.middleware.auth import get_current_user
-from app.models.user import User
-
+from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
 @router.get("/", response_model=List[LeaveRequestResponse])
@@ -21,7 +19,7 @@ async def get_leave_requests(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get leave requests"""
     leave_requests_service = LeaveRequestsService(db)
@@ -46,7 +44,7 @@ async def get_leave_requests(
 async def create_leave_request(
     leave_request: LeaveRequestCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Create new leave request"""
     leave_requests_service = LeaveRequestsService(db)
@@ -67,7 +65,7 @@ async def update_leave_request(
     leave_request_id: str,
     leave_request_update: LeaveRequestUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Update leave request"""
     leave_requests_service = LeaveRequestsService(db)
@@ -96,7 +94,7 @@ async def approve_leave_request(
     leave_request_id: str,
     admin_notes: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Approve leave request (Admin only)"""
     if current_user.role != "admin":
@@ -121,7 +119,7 @@ async def reject_leave_request(
     leave_request_id: str,
     admin_notes: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Reject leave request (Admin only)"""
     if current_user.role != "admin":

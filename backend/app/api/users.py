@@ -21,7 +21,13 @@ async def get_users(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all users"""
+    """Get all users (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
     user_service = UserService(db)
     users = user_service.get_users(skip=skip, limit=limit)
     return users

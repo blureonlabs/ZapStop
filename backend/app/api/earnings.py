@@ -9,9 +9,7 @@ from typing import List
 from app.database import get_db
 from app.schemas.earnings import DriverEarningCreate, DriverEarningUpdate, DriverEarningResponse
 from app.services.earnings_service import EarningsService
-from app.middleware.auth import get_current_user
-from app.models.user import User
-
+from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
 @router.get("/", response_model=List[DriverEarningResponse])
@@ -20,7 +18,7 @@ async def get_earnings(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get earnings records"""
     earnings_service = EarningsService(db)
@@ -44,7 +42,7 @@ async def get_earnings(
 async def create_earning(
     earning: DriverEarningCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Create new earnings record"""
     earnings_service = EarningsService(db)
@@ -65,7 +63,7 @@ async def update_earning(
     earning_id: str,
     earning_update: DriverEarningUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Update earnings record"""
     earnings_service = EarningsService(db)
@@ -93,7 +91,7 @@ async def update_earning(
 async def delete_earning(
     earning_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Delete earnings record (Admin only)"""
     if current_user.role != "admin":

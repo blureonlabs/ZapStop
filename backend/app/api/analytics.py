@@ -8,8 +8,7 @@ from typing import Dict, Any
 
 from app.database import get_db
 from app.services.analytics_service import AnalyticsService
-from app.middleware.auth import get_current_user
-from app.models.user import User
+from app.middleware.auth_simple import get_current_user
 
 router = APIRouter()
 
@@ -17,7 +16,7 @@ router = APIRouter()
 async def get_dashboard_data(
     time_filter: str = "monthly",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Get dashboard analytics data.
@@ -45,7 +44,7 @@ async def get_dashboard_data(
 async def get_earnings_analytics(
     time_filter: str = "monthly",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get earnings analytics"""
     analytics_service = AnalyticsService(db)
@@ -63,7 +62,7 @@ async def get_earnings_analytics(
 async def get_expenses_analytics(
     time_filter: str = "monthly",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get expenses analytics"""
     analytics_service = AnalyticsService(db)
@@ -81,7 +80,7 @@ async def get_expenses_analytics(
 async def get_profit_loss_analytics(
     time_filter: str = "monthly",
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get profit and loss analytics"""
     analytics_service = AnalyticsService(db)

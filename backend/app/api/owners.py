@@ -1,5 +1,5 @@
 """
-Cars API routes
+Owners API routes
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,153 +7,144 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from app.database import get_db
-from app.schemas.car import CarCreate, CarUpdate, CarResponse
-from app.services.car_service_simple import CarServiceSimple as CarService
+from app.schemas.owner import OwnerCreate, OwnerUpdate, OwnerResponse
+from app.services.owner_service_simple import OwnerServiceSimple as OwnerService
 from app.middleware.auth_simple import get_current_user
-from app.models.user import UserRole
 
 router = APIRouter()
 
-@router.get("/", response_model=List[CarResponse])
-async def get_cars(
+@router.get("/", response_model=List[OwnerResponse])
+async def get_owners(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Get all cars (Admin only)"""
+    """Get all owners (Admin only)"""
     if current_user["role"] != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
     
-    car_service = CarService(db)
-    cars = car_service.get_cars(skip=skip, limit=limit)
+    owner_service = OwnerService(db)
+    owners = owner_service.get_owners(skip=skip, limit=limit)
+    return owners
+
+@router.get("/{owner_id}", response_model=OwnerResponse)
+async def get_owner(
+    owner_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get owner by ID (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    owner_service = OwnerService(db)
+    owner = owner_service.get_owner_by_id(owner_id)
+    
+    if not owner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Owner not found"
+        )
+    
+    return owner
+
+@router.post("/", response_model=OwnerResponse)
+async def create_owner(
+    owner: OwnerCreate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Create new owner (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    owner_service = OwnerService(db)
+    
+    # Check if owner already exists
+    existing_owner = owner_service.get_owner_by_email(owner.email)
+    if existing_owner:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Owner with this email already exists"
+        )
+    
+    new_owner = owner_service.create_owner(owner)
+    return new_owner
+
+@router.put("/{owner_id}", response_model=OwnerResponse)
+async def update_owner(
+    owner_id: str,
+    owner_update: OwnerUpdate,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Update owner (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    owner_service = OwnerService(db)
+    owner = owner_service.get_owner_by_id(owner_id)
+    
+    if not owner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Owner not found"
+        )
+    
+    updated_owner = owner_service.update_owner(owner_id, owner_update)
+    return updated_owner
+
+@router.delete("/{owner_id}")
+async def delete_owner(
+    owner_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Delete owner (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    owner_service = OwnerService(db)
+    owner = owner_service.get_owner_by_id(owner_id)
+    
+    if not owner:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Owner not found"
+        )
+    
+    owner_service.delete_owner(owner_id)
+    return {"message": "Owner deleted successfully"}
+
+@router.get("/{owner_id}/cars", response_model=List[dict])
+async def get_owner_cars(
+    owner_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Get cars owned by specific owner (Admin only)"""
+    if current_user["role"] != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    owner_service = OwnerService(db)
+    cars = owner_service.get_owner_cars(owner_id)
     return cars
-
-@router.get("/{car_id}", response_model=CarResponse)
-async def get_car(
-    car_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Get car by ID (Admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    car_service = CarService(db)
-    car = car_service.get_car_by_id(car_id)
-    
-    if not car:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Car not found"
-        )
-    
-    return car
-
-@router.post("/", response_model=CarResponse)
-async def create_car(
-    car: CarCreate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Create new car (Admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    car_service = CarService(db)
-    
-    # Check if car already exists
-    existing_car = car_service.get_car_by_plate(car.plate_number)
-    if existing_car:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Car with this plate number already exists"
-        )
-    
-    new_car = car_service.create_car(car)
-    return new_car
-
-@router.put("/{car_id}", response_model=CarResponse)
-async def update_car(
-    car_id: str,
-    car_update: CarUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Update car (Admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    car_service = CarService(db)
-    car = car_service.get_car_by_id(car_id)
-    
-    if not car:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Car not found"
-        )
-    
-    updated_car = car_service.update_car(car_id, car_update)
-    return updated_car
-
-@router.delete("/{car_id}")
-async def delete_car(
-    car_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Delete car (Admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    car_service = CarService(db)
-    car = car_service.get_car_by_id(car_id)
-    
-    if not car:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Car not found"
-        )
-    
-    car_service.delete_car(car_id)
-    return {"message": "Car deleted successfully"}
-
-@router.post("/{car_id}/assign-driver")
-async def assign_driver(
-    car_id: str,
-    driver_id: str,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Assign driver to car (Admin only)"""
-    if current_user["role"] != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
-        )
-    
-    car_service = CarService(db)
-    result = car_service.assign_driver(car_id, driver_id)
-    
-    if not result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to assign driver"
-        )
-    
-    return {"message": "Driver assigned successfully"}

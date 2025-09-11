@@ -9,9 +9,7 @@ from typing import List
 from app.database import get_db
 from app.schemas.expenses import DriverExpenseCreate, DriverExpenseUpdate, DriverExpenseResponse
 from app.services.expenses_service import ExpensesService
-from app.middleware.auth import get_current_user
-from app.models.user import User
-
+from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
 @router.get("/", response_model=List[DriverExpenseResponse])
@@ -21,7 +19,7 @@ async def get_expenses(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get expenses records"""
     expenses_service = ExpensesService(db)
@@ -46,7 +44,7 @@ async def get_expenses(
 async def create_expense(
     expense: DriverExpenseCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Create new expense record"""
     expenses_service = ExpensesService(db)
@@ -67,7 +65,7 @@ async def update_expense(
     expense_id: str,
     expense_update: DriverExpenseUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Update expense record"""
     expenses_service = ExpensesService(db)
@@ -95,7 +93,7 @@ async def update_expense(
 async def approve_expense(
     expense_id: str,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Approve expense (Admin/Accountant only)"""
     if current_user.role not in ["admin", "accountant"]:
@@ -120,7 +118,7 @@ async def reject_expense(
     expense_id: str,
     admin_notes: str = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Reject expense (Admin/Accountant only)"""
     if current_user.role not in ["admin", "accountant"]:

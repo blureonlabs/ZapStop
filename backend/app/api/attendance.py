@@ -9,9 +9,7 @@ from typing import List
 from app.database import get_db
 from app.schemas.attendance import AttendanceCreate, AttendanceUpdate, AttendanceResponse
 from app.services.attendance_service import AttendanceService
-from app.middleware.auth import get_current_user
-from app.models.user import User
-
+from app.middleware.auth_simple import get_current_user
 router = APIRouter()
 
 @router.get("/", response_model=List[AttendanceResponse])
@@ -20,7 +18,7 @@ async def get_attendance(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get attendance records"""
     attendance_service = AttendanceService(db)
@@ -43,7 +41,7 @@ async def get_attendance(
 @router.post("/start-work")
 async def start_work(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Start work session"""
     if current_user.role != "driver":
@@ -66,7 +64,7 @@ async def start_work(
 @router.post("/end-work")
 async def end_work(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """End work session"""
     if current_user.role != "driver":
@@ -89,7 +87,7 @@ async def end_work(
 @router.get("/current-status")
 async def get_current_status(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: dict = Depends(get_current_user)
 ):
     """Get current work status"""
     if current_user.role != "driver":

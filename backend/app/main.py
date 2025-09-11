@@ -12,7 +12,7 @@ import os
 from contextlib import asynccontextmanager
 
 from app.database import engine, Base
-from app.api import auth_simple as auth, users, cars, analytics, earnings, expenses, attendance, leave_requests
+from app.api import auth_simple as auth, users, cars, owners, analytics, earnings, expenses, attendance, leave_requests
 from app.middleware.auth_simple import get_current_user
 from app.models.user import User
 from app.config import settings
@@ -99,6 +99,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(cars.router, prefix="/api/cars", tags=["cars"])
+app.include_router(owners.router, prefix="/api/owners", tags=["owners"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["analytics"])
 app.include_router(earnings.router, prefix="/api/earnings", tags=["earnings"])
 app.include_router(expenses.router, prefix="/api/expenses", tags=["expenses"])
