@@ -141,8 +141,8 @@ class LeaveRequestsServiceSimple:
             "status": row[6],
             "approved_by": str(row[7]) if row[7] else None,
             "approved_at": None,  # Column doesn't exist in database
-            "created_at": row[9].isoformat() if row[9] else None,
-            "updated_at": row[10].isoformat() if row[10] else None
+            "created_at": row[8].isoformat() if row[8] else None,
+            "updated_at": row[9].isoformat() if row[9] else None
         }
     
     def update_leave_request(self, leave_request_id: str, leave_request_update: LeaveRequestUpdate) -> Optional[dict]:
@@ -208,8 +208,8 @@ class LeaveRequestsServiceSimple:
             "status": row[6],
             "approved_by": str(row[7]) if row[7] else None,
             "approved_at": None,  # Column doesn't exist in database
-            "created_at": row[9].isoformat() if row[9] else None,
-            "updated_at": row[10].isoformat() if row[10] else None
+            "created_at": row[8].isoformat() if row[8] else None,
+            "updated_at": row[9].isoformat() if row[9] else None
         }
     
     def delete_leave_request(self, leave_request_id: str) -> bool:
