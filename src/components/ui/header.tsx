@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
 import { useRouter, usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -24,7 +24,7 @@ interface HeaderProps {
 }
 
 export default function Header({ title, showUserMenu = true }: HeaderProps) {
-  const { appUser, signOut } = useAuth()
+  const { user, signOut } = useBackendAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -113,7 +113,7 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
           </Button>
           
           {/* Admin-only pages */}
-          {appUser?.role === 'admin' && (
+          {user?.role === 'admin' && (
             <>
               <Button
                 variant="ghost"
@@ -176,15 +176,15 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleNavigation(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
+            onClick={() => handleNavigation(user?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
             className={`text-gray-700 hover:text-gray-900 ${
-              isActive(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave') 
+              isActive(user?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave') 
                 ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700' 
                 : ''
             }`}
           >
             <Calendar className="mr-2 h-4 w-4" />
-            {appUser?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}
+            {user?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}
           </Button>
         </div>
 
@@ -201,14 +201,14 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
           </Button>
 
           {/* User Menu */}
-          {showUserMenu && appUser && (
+          {showUserMenu && user && (
             <div className="hidden md:flex items-center space-x-4">
               {/* User Info */}
               <div className="flex items-center space-x-3">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">{appUser.name}</p>
-                  <Badge className={getRoleBadgeColor(appUser.role)}>
-                    {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
+                  <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                  <Badge className={getRoleBadgeColor(user.role)}>
+                    {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                   </Badge>
                 </div>
               </div>
@@ -219,7 +219,7 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                   <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-blue-100 text-blue-600">
-                        {getInitials(appUser.name)}
+                        {getInitials(user.name)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -227,9 +227,9 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                      <p className="text-sm font-medium leading-none">{user.name}</p>
                       <p className="text-xs leading-none text-muted-foreground">
-                        {appUser.email}
+                        {user.email}
                       </p>
                     </div>
                   </DropdownMenuLabel>
@@ -273,19 +273,19 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
               </div>
 
               {/* User Info */}
-              {appUser && (
+              {user && (
                 <div className="mb-8 p-4 bg-gray-50 rounded-lg">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-12 w-12">
                       <AvatarFallback className="bg-blue-100 text-blue-600 text-lg">
-                        {getInitials(appUser.name)}
+                        {getInitials(user.name)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-gray-900">{appUser.name}</p>
-                      <p className="text-sm text-gray-600">{appUser.email}</p>
-                      <Badge className={getRoleBadgeColor(appUser.role)}>
-                        {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
+                      <p className="font-medium text-gray-900">{user.name}</p>
+                      <p className="text-sm text-gray-600">{user.email}</p>
+                      <Badge className={getRoleBadgeColor(user.role)}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                       </Badge>
                     </div>
                   </div>
@@ -308,7 +308,7 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 </Button>
 
                 {/* Admin-only pages */}
-                {appUser?.role === 'admin' && (
+                {user?.role === 'admin' && (
                   <>
                     <Button
                       variant="ghost"
@@ -367,14 +367,14 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
                 <Button
                   variant="ghost"
                   className={`w-full justify-start h-12 text-left ${
-                    isActive(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave') 
+                    isActive(user?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave') 
                       ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-700' 
                       : ''
                   }`}
-                  onClick={() => handleNavigation(appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
+                  onClick={() => handleNavigation(user?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave')}
                 >
                   <Calendar className="mr-3 h-5 w-5" />
-                  <span className="text-base">{appUser?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}</span>
+                  <span className="text-base">{user?.role === 'admin' ? 'Leave Management' : 'Leave Requests'}</span>
                 </Button>
 
                 <div className="border-t pt-4 mt-4">

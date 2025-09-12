@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase, LeaveRequest } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { apiService, LeaveRequest } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 export default function LeavePage() {
-  const { appUser } = useAuth()
+  const { user } = useBackendAuth()
   const router = useRouter()
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,26 +31,18 @@ export default function LeavePage() {
   })
 
   useEffect(() => {
-    if (appUser) {
+    if (user) {
       fetchLeaveRequests()
     }
-  }, [appUser])
+  }, [user])
 
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select('*')
-        .eq('driver_id', appUser?.id)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching leave requests:', error)
-        toast.error('Failed to load leave requests')
-      } else {
-        setLeaveRequests(data || [])
-      }
+      if (!user) return
+      
+      const data = await apiService.getLeaveRequests(user.id)
+      setLeaveRequests(data || [])
     } catch (error) {
       console.error('Error fetching leave requests:', error)
       toast.error('Failed to load leave requests')
@@ -62,29 +54,20 @@ export default function LeavePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!appUser?.id) return
+    if (!user?.id) return
 
     try {
       setSubmitting(true)
 
-      const response = await fetch('/api/leave-requests', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          driver_id: appUser.id,
-          ...formData
-        }),
+      await apiService.createLeaveRequest({
+        driver_id: user.id,
+        leave_type: formData.leave_type,
+        start_date: new Date(formData.start_date).toISOString(),
+        end_date: new Date(formData.end_date).toISOString(),
+        reason: formData.reason
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to submit leave request')
-      }
-
-      toast.success(result.message || 'Leave request submitted successfully')
+      toast.success('Leave request submitted successfully')
       setShowDialog(false)
       setFormData({ leave_type: '', start_date: '', end_date: '', reason: '' })
       fetchLeaveRequests()
@@ -100,16 +83,7 @@ export default function LeavePage() {
     if (!confirm('Are you sure you want to delete this leave request?')) return
 
     try {
-      const response = await fetch(`/api/leave-requests/${id}`, {
-        method: 'DELETE',
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to delete leave request')
-      }
-
+      await apiService.deleteLeaveRequest(id)
       toast.success('Leave request deleted successfully')
       fetchLeaveRequests()
     } catch (error: any) {

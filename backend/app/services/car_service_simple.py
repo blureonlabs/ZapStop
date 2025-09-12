@@ -52,6 +52,27 @@ class CarServiceSimple:
             }
         return None
     
+    def get_car_by_driver_id(self, driver_id: str) -> Optional[dict]:
+        """Get car assigned to a specific driver using direct SQL"""
+        result = self.db.execute(
+            text("SELECT id, plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at FROM cars WHERE assigned_driver_id = :driver_id"),
+            {"driver_id": driver_id}
+        )
+        car_row = result.fetchone()
+        
+        if car_row:
+            return {
+                "id": str(car_row[0]),
+                "plate_number": car_row[1],
+                "model": car_row[2],
+                "monthly_due": float(car_row[3]) if car_row[3] else None,
+                "assigned_driver_id": str(car_row[4]) if car_row[4] else None,
+                "owner_id": str(car_row[5]) if car_row[5] else None,
+                "created_at": car_row[6],
+                "updated_at": car_row[7]
+            }
+        return None
+    
     def get_car_by_plate(self, plate_number: str) -> Optional[dict]:
         """Get car by plate number using direct SQL"""
         result = self.db.execute(
@@ -111,32 +132,38 @@ class CarServiceSimple:
         if not current_car:
             return None
         
+        # Get only the fields that were explicitly set (not default None values)
+        update_data = car_update.model_dump(exclude_unset=True)
+        
+        if not update_data:
+            return current_car
+        
         # Build update query dynamically
         update_fields = []
-        update_data = {"car_id": car_id}
+        query_data = {"car_id": car_id}
         
-        if car_update.plate_number is not None:
-            update_fields.append("plate_number = :plate_number")
-            update_data["plate_number"] = car_update.plate_number
-        
-        if car_update.model is not None:
-            update_fields.append("model = :model")
-            update_data["model"] = car_update.model
-        
-        if car_update.monthly_due is not None:
-            update_fields.append("monthly_due = :monthly_due")
-            update_data["monthly_due"] = car_update.monthly_due
-        
-        if car_update.assigned_driver_id is not None:
-            update_fields.append("assigned_driver_id = :assigned_driver_id")
-            update_data["assigned_driver_id"] = car_update.assigned_driver_id
-        
-        if car_update.owner_id is not None:
-            update_fields.append("owner_id = :owner_id")
-            update_data["owner_id"] = car_update.owner_id
-        
-        if not update_fields:
-            return current_car
+        for field, value in update_data.items():
+            if field == "plate_number":
+                update_fields.append("plate_number = :plate_number")
+                query_data["plate_number"] = value
+            elif field == "model":
+                update_fields.append("model = :model")
+                query_data["model"] = value
+            elif field == "monthly_due":
+                update_fields.append("monthly_due = :monthly_due")
+                query_data["monthly_due"] = value
+            elif field == "assigned_driver_id":
+                if value is not None:
+                    update_fields.append("assigned_driver_id = :assigned_driver_id")
+                    query_data["assigned_driver_id"] = value
+                else:
+                    update_fields.append("assigned_driver_id = NULL")
+            elif field == "owner_id":
+                if value is not None:
+                    update_fields.append("owner_id = :owner_id")
+                    query_data["owner_id"] = value
+                else:
+                    update_fields.append("owner_id = NULL")
         
         update_fields.append("updated_at = NOW()")
         
@@ -147,7 +174,7 @@ class CarServiceSimple:
             RETURNING id, plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at
         """
         
-        result = self.db.execute(text(query), update_data)
+        result = self.db.execute(text(query), query_data)
         car_row = result.fetchone()
         self.db.commit()
         

@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase, LeaveRequest } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { apiService, LeaveRequest } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -16,7 +16,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
 export default function LeaveManagementPage() {
-  const { appUser } = useAuth()
+  const { user } = useBackendAuth()
   const router = useRouter()
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -27,30 +27,18 @@ export default function LeaveManagementPage() {
   const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
-    if (appUser?.role === 'admin') {
+    if (user?.role === 'admin') {
       fetchLeaveRequests()
     } else {
       router.push('/dashboard')
     }
-  }, [appUser, router])
+  }, [user, router])
 
   const fetchLeaveRequests = async () => {
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('leave_requests')
-        .select(`
-          *,
-          users!leave_requests_driver_id_fkey(name, email)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) {
-        console.error('Error fetching leave requests:', error)
-        toast.error('Failed to load leave requests')
-      } else {
-        setLeaveRequests(data || [])
-      }
+      const data = await apiService.getLeaveRequests()
+      setLeaveRequests(data || [])
     } catch (error) {
       console.error('Error fetching leave requests:', error)
       toast.error('Failed to load leave requests')
@@ -60,30 +48,18 @@ export default function LeaveManagementPage() {
   }
 
   const handleStatusChange = async (requestId: string, status: 'approved' | 'rejected') => {
-    if (!appUser?.id) return
+    if (!user?.id) return
 
     try {
       setProcessing(true)
 
-      const response = await fetch(`/api/leave-requests/${requestId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status,
-          admin_notes: adminNotes,
-          approved_by: appUser.id
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to update leave request')
+      if (status === 'approved') {
+        await apiService.approveLeaveRequest(requestId, adminNotes)
+      } else {
+        await apiService.rejectLeaveRequest(requestId, adminNotes)
       }
 
-      toast.success(result.message || `Leave request ${status} successfully`)
+      toast.success(`Leave request ${status} successfully`)
       setShowDialog(false)
       setSelectedRequest(null)
       setAdminNotes('')

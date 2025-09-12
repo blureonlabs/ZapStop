@@ -31,11 +31,26 @@ async def get_attendance(
                 detail="Not enough permissions"
             )
     
-    attendance = attendance_service.get_attendance(
-        driver_id=driver_id or current_user["id"],
-        skip=skip,
-        limit=limit
-    )
+    # Only filter by driver_id if explicitly provided, otherwise get all records for admin/accountant
+    if driver_id:
+        attendance = attendance_service.get_attendance(
+            driver_id=driver_id,
+            skip=skip,
+            limit=limit
+        )
+    elif current_user["role"] in ["admin", "accountant"]:
+        # Admin and accountant can see all attendance records
+        attendance = attendance_service.get_attendance(
+            skip=skip,
+            limit=limit
+        )
+    else:
+        # Regular users can only see their own records
+        attendance = attendance_service.get_attendance(
+            driver_id=current_user["id"],
+            skip=skip,
+            limit=limit
+        )
     return attendance
 
 @router.post("/", response_model=AttendanceResponse)

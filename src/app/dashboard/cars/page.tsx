@@ -2,21 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase, Car } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { apiService, Car, User, Owner } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import PageHeader from '@/components/ui/page-header'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, Edit, Trash2, Car as CarIcon } from 'lucide-react'
+import { Plus, Edit, Trash2, Car as CarIcon, RefreshCw, User as UserIcon, Building2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export default function CarsPage() {
-  const { appUser, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useBackendAuth()
   const router = useRouter()
   const [cars, setCars] = useState<Car[]>([])
+  const [drivers, setDrivers] = useState<User[]>([])
+  const [owners, setOwners] = useState<Owner[]>([])
   const [loading, setLoading] = useState(true)
   const [showCarDialog, setShowCarDialog] = useState(false)
   const [editingCar, setEditingCar] = useState<Car | null>(null)
@@ -32,15 +34,15 @@ export default function CarsPage() {
 
   useEffect(() => {
     // Check if user has permission to access this page
-    if (!authLoading && appUser) {
-      if (appUser.role !== 'admin') {
+    if (!authLoading && user) {
+      if (user.role !== 'admin') {
         toast.error('Access denied. Admin privileges required.')
         router.push('/dashboard')
         return
       }
       fetchData()
     }
-  }, [appUser, authLoading, router])
+  }, [user, authLoading, router])
 
   // Show loading while checking authentication
   if (authLoading) {
@@ -55,7 +57,7 @@ export default function CarsPage() {
   }
 
   // Show access denied if not admin
-  if (appUser && appUser.role !== 'admin') {
+  if (user && user.role !== 'admin') {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
@@ -69,28 +71,22 @@ export default function CarsPage() {
 
   const fetchData = async () => {
     try {
-      // Fetch all users (drivers)
-      const { data: usersData } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Fetch all cars
-      const { data: carsData } = await supabase
-        .from('cars')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Manually join driver data with cars
-      const carsWithDrivers = carsData?.map(car => {
-        const assignedDriver = usersData?.find(user => user.id === car.assigned_driver_id)
-        return {
-          ...car,
-          assigned_driver: assignedDriver ? { name: assignedDriver.name, email: assignedDriver.email } : null
-        }
-      }) || []
-
-      setCars(carsWithDrivers)
+      setLoading(true)
+      
+      // Fetch all cars, drivers, and owners using the backend API
+      const [carsData, usersData, ownersData] = await Promise.all([
+        apiService.getCars(),
+        apiService.getUsers(),
+        apiService.getOwners()
+      ])
+      
+      console.log('Cars page - Cars data:', carsData)
+      console.log('Cars page - Users data:', usersData)
+      console.log('Cars page - Owners data:', ownersData)
+      
+      setCars(carsData || [])
+      setDrivers(usersData?.filter(u => u.role === 'driver') || [])
+      setOwners(ownersData || [])
 
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -122,17 +118,12 @@ export default function CarsPage() {
         return
       }
 
-      // Create new car
-      const { error: carError } = await supabase
-        .from('cars')
-        .insert([{
-          plate_number: carForm.plate_number,
-          model: carForm.model,
-          monthly_due: carForm.monthly_due,
-          assigned_driver_id: null
-        }])
-
-      if (carError) throw carError
+      // Create new car using the backend API
+      await apiService.createCar({
+        plate_number: carForm.plate_number,
+        model: carForm.model,
+        monthly_due: carForm.monthly_due
+      })
 
       toast.success('Car created successfully')
       setShowCarDialog(false)
@@ -168,17 +159,12 @@ export default function CarsPage() {
         return
       }
 
-      // Update existing car
-      const { error: carError } = await supabase
-        .from('cars')
-        .update({
-          plate_number: carForm.plate_number,
-          model: carForm.model,
-          monthly_due: carForm.monthly_due
-        })
-        .eq('id', editingCar.id)
-
-      if (carError) throw carError
+      // Update existing car using the backend API
+      await apiService.updateCar(editingCar.id, {
+        plate_number: carForm.plate_number,
+        model: carForm.model,
+        monthly_due: carForm.monthly_due
+      })
 
       toast.success('Car updated successfully')
       setShowCarDialog(false)
@@ -204,60 +190,31 @@ export default function CarsPage() {
   }
 
   const handleDeleteCar = async (carId: string) => {
-    if (!confirm('Are you sure you want to delete this car? This will automatically unassign any drivers from this car.')) return
+    if (!confirm('Are you sure you want to delete this car? This will automatically unassign any drivers and owners from this car.')) return
 
     try {
-      console.log('Attempting to delete car:', carId)
-      
-      // First, unassign any drivers from this car
-      const { data: driversWithCar, error: checkError } = await supabase
-        .from('users')
-        .select('id, name')
-        .eq('assigned_car_id', carId)
-
-      if (checkError) {
-        console.error('Error checking driver assignments:', checkError)
-        throw new Error('Failed to check driver assignments')
-      }
-
-      console.log('Drivers assigned to this car:', driversWithCar)
-
-      // Unassign all drivers from this car
-      if (driversWithCar && driversWithCar.length > 0) {
-        console.log('Unassigning drivers from car:', driversWithCar.map(d => d.name).join(', '))
-        
-        const { error: unassignError } = await supabase
-          .from('users')
-          .update({ assigned_car_id: null })
-          .eq('assigned_car_id', carId)
-
-        if (unassignError) {
-          console.error('Failed to unassign drivers:', unassignError)
-          throw new Error('Failed to unassign drivers from car')
-        }
-
-        console.log('Successfully unassigned all drivers from car')
-        toast.success(`Unassigned ${driversWithCar.length} driver(s) from car`)
-      }
-
-      // Now delete the car
-      console.log('Proceeding with car deletion')
-      const { error } = await supabase
-        .from('cars')
-        .delete()
-        .eq('id', carId)
-
-      if (error) {
-        console.error('Supabase error:', error)
-        throw new Error(error.message || 'Failed to delete car')
-      }
-
+      // Delete car using the backend API
+      await apiService.deleteCar(carId)
       toast.success('Car deleted successfully')
       fetchData()
     } catch (error: any) {
       console.error('Error deleting car:', error)
       toast.error(error.message || 'Failed to delete car')
     }
+  }
+
+  // Get driver name by ID
+  const getDriverName = (driverId: string | null | undefined) => {
+    if (!driverId) return 'Not assigned'
+    const driver = drivers.find(d => d.id === driverId)
+    return driver ? driver.name : 'Unknown driver'
+  }
+
+  // Get owner name by ID
+  const getOwnerName = (ownerId: string | null | undefined) => {
+    if (!ownerId) return 'No owner'
+    const owner = owners.find(o => o.id === ownerId)
+    return owner ? owner.name : 'Unknown owner'
   }
 
   if (loading) {
@@ -272,72 +229,78 @@ export default function CarsPage() {
     <div className="space-y-6">
       <PageHeader 
         title="Car Management" 
-        description="Manage your vehicle fleet and driver assignments"
+        description="Manage your vehicle fleet, driver assignments, and owner assignments"
       >
-        <Dialog open={showCarDialog} onOpenChange={(open) => {
-          setShowCarDialog(open)
-          if (!open) {
-            setEditingCar(null)
-            setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Car
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{editingCar ? 'Edit Car' : 'Add New Car'}</DialogTitle>
-              <DialogDescription>
-                {editingCar ? 'Update vehicle information' : 'Register a new vehicle in the fleet'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="plate_number">Plate Number</Label>
-                <Input
-                  id="plate_number"
-                  value={carForm.plate_number}
-                  onChange={(e) => setCarForm({...carForm, plate_number: e.target.value})}
-                  placeholder="Enter plate number"
-                />
-              </div>
-              <div>
-                <Label htmlFor="model">Model</Label>
-                <Input
-                  id="model"
-                  value={carForm.model}
-                  onChange={(e) => setCarForm({...carForm, model: e.target.value})}
-                  placeholder="Enter car model"
-                />
-              </div>
-              <div>
-                <Label htmlFor="monthly_due">Monthly Due (AED)</Label>
-                <Input
-                  id="monthly_due"
-                  type="number"
-                  value={carForm.monthly_due}
-                  onChange={(e) => setCarForm({...carForm, monthly_due: Number(e.target.value)})}
-                  placeholder="Enter monthly due amount"
-                />
-              </div>
-
-              <Button 
-                onClick={editingCar ? handleUpdateCar : handleCreateCar} 
-                className="w-full"
-                disabled={creatingCar || updatingCar}
-              >
-                {creatingCar ? 'Creating Car...' : updatingCar ? 'Updating Car...' : editingCar ? 'Update Car' : 'Create Car'}
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Dialog open={showCarDialog} onOpenChange={(open) => {
+            setShowCarDialog(open)
+            if (!open) {
+              setEditingCar(null)
+              setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Car
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>{editingCar ? 'Edit Car' : 'Add New Car'}</DialogTitle>
+                <DialogDescription>
+                  {editingCar ? 'Update vehicle information' : 'Register a new vehicle in the fleet'}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="plate_number">Plate Number *</Label>
+                  <Input
+                    id="plate_number"
+                    value={carForm.plate_number}
+                    onChange={(e) => setCarForm({...carForm, plate_number: e.target.value})}
+                    placeholder="Enter plate number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="model">Model *</Label>
+                  <Input
+                    id="model"
+                    value={carForm.model}
+                    onChange={(e) => setCarForm({...carForm, model: e.target.value})}
+                    placeholder="Enter car model"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="monthly_due">Monthly Due (AED) *</Label>
+                  <Input
+                    id="monthly_due"
+                    type="number"
+                    value={carForm.monthly_due}
+                    onChange={(e) => setCarForm({...carForm, monthly_due: Number(e.target.value)})}
+                    placeholder="Enter monthly due amount"
+                  />
+                </div>
+
+                <Button 
+                  onClick={editingCar ? handleUpdateCar : handleCreateCar} 
+                  className="w-full"
+                  disabled={creatingCar || updatingCar}
+                >
+                  {creatingCar ? 'Creating Car...' : updatingCar ? 'Updating Car...' : editingCar ? 'Update Car' : 'Create Car'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </PageHeader>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Cars</CardTitle>
@@ -353,8 +316,8 @@ export default function CarsPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Assigned Cars</CardTitle>
-            <CarIcon className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Assigned to Drivers</CardTitle>
+            <UserIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -362,6 +325,21 @@ export default function CarsPage() {
             </div>
             <p className="text-xs text-muted-foreground">
               Cars with drivers
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Assigned to Owners</CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {cars.filter(c => c.owner_id).length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Cars with owners
             </p>
           </CardContent>
         </Card>
@@ -387,7 +365,7 @@ export default function CarsPage() {
         <CardHeader>
           <CardTitle>Fleet Vehicles</CardTitle>
           <CardDescription>
-            Manage your vehicle fleet and driver assignments
+            Manage your vehicle fleet, driver assignments, and owner assignments
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
@@ -399,6 +377,7 @@ export default function CarsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Monthly Due</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned Driver</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Assigned Owner</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
@@ -406,7 +385,7 @@ export default function CarsPage() {
               <tbody className="divide-y divide-gray-200">
                 {cars.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                       No cars found. Add your first vehicle to get started.
                     </td>
                   </tr>
@@ -423,7 +402,22 @@ export default function CarsPage() {
                         AED {car.monthly_due.toLocaleString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {(car as { assigned_driver?: { name?: string } }).assigned_driver?.name || 'Not assigned'}
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          car.assigned_driver_id 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {getDriverName(car.assigned_driver_id)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          car.owner_id 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {getOwnerName(car.owner_id)}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {new Date(car.created_at).toLocaleDateString()}

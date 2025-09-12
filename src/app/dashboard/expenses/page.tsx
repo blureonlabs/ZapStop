@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { apiService, DriverExpense } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -11,22 +11,8 @@ import { Receipt, ArrowLeft, TrendingUp, Calendar, DollarSign } from 'lucide-rea
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-interface DriverExpense {
-  id: string
-  driver_id: string
-  date: string
-  amount: number
-  description: string
-  category: string
-  created_at: string
-  users?: {
-    name: string
-    email: string
-  }
-}
-
 export default function ExpensesPage() {
-  const { appUser } = useAuth()
+  const { user } = useBackendAuth()
   const router = useRouter()
   const [expenses, setExpenses] = useState<DriverExpense[]>([])
   const [loading, setLoading] = useState(true)
@@ -37,10 +23,10 @@ export default function ExpensesPage() {
   const itemsPerPage = 50
 
   useEffect(() => {
-    if (appUser) {
+    if (user) {
       fetchExpenses(1, true)
     }
-  }, [appUser])
+  }, [user])
 
   const fetchExpenses = async (page = 1, reset = false) => {
     try {
@@ -50,29 +36,17 @@ export default function ExpensesPage() {
         setExpenses([])
       }
       
-      const authUserId = appUser?.id
-      if (!authUserId) return
+      if (!user) return
 
-      let query = supabase
-        .from('driver_expenses')
-        .select(`
-          *,
-          users!inner(name, email)
-        `)
-        .order('date', { ascending: false })
-        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
+      // Use backend API to fetch expenses
+      const expensesData = await apiService.getExpenses(
+        user.role === 'admin' ? undefined : user.id,
+        undefined,
+        (page - 1) * itemsPerPage,
+        itemsPerPage
+      )
 
-      // If user is admin, show all expenses. Otherwise, show only their own
-      if (appUser?.role !== 'admin') {
-        query = query.eq('driver_id', authUserId)
-      }
-
-      const { data: expensesData, error: expensesError } = await query
-
-      if (expensesError) {
-        console.error('Error fetching expenses:', expensesError)
-        toast.error('Failed to load expenses data')
-      } else {
+      if (expensesData) {
         const newExpenses = expensesData || []
         
         if (reset) {
@@ -141,10 +115,10 @@ export default function ExpensesPage() {
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900">
-              {appUser?.role === 'admin' ? 'All Expenses' : 'Expense History'}
+              {user?.role === 'admin' ? 'All Expenses' : 'Expense History'}
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">
-              {appUser?.role === 'admin' 
+              {user?.role === 'admin' 
                 ? 'View all driver expenses across the platform' 
                 : 'Track your daily expenses over time'
               }
@@ -163,7 +137,7 @@ export default function ExpensesPage() {
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">AED {totalExpenses.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
+              {user?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
           </CardContent>
         </Card>
@@ -189,7 +163,7 @@ export default function ExpensesPage() {
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">{expenses.length}</div>
             <p className="text-xs text-muted-foreground">
-              {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
+              {user?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
           </CardContent>
         </Card>
@@ -199,10 +173,10 @@ export default function ExpensesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">
-            {appUser?.role === 'admin' ? 'All Expenses Breakdown' : 'Daily Expenses Breakdown'}
+            {user?.role === 'admin' ? 'All Expenses Breakdown' : 'Daily Expenses Breakdown'}
           </CardTitle>
           <CardDescription className="text-sm">
-            {appUser?.role === 'admin' 
+            {user?.role === 'admin' 
               ? 'Detailed view of all driver expenses by category' 
               : 'Detailed view of your daily expenses by category'
             }
@@ -233,7 +207,7 @@ export default function ExpensesPage() {
                       <div className="font-semibold text-sm">AED {expense.amount.toFixed(2)}</div>
                     </div>
                   </div>
-                  {appUser?.role === 'admin' && (
+                  {user?.role === 'admin' && (
                     <div className="mb-2">
                       <div className="text-xs text-gray-600">{expense.users?.name || 'Unknown'}</div>
                       <div className="text-xs text-gray-500">{expense.users?.email || 'No email'}</div>
@@ -261,7 +235,7 @@ export default function ExpensesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Date</TableHead>
-                    {appUser?.role === 'admin' && <TableHead className="text-xs">Driver</TableHead>}
+                    {user?.role === 'admin' && <TableHead className="text-xs">Driver</TableHead>}
                     <TableHead className="text-xs">Category</TableHead>
                     <TableHead className="text-xs">Description</TableHead>
                     <TableHead className="text-right text-xs">Amount</TableHead>
@@ -277,7 +251,7 @@ export default function ExpensesPage() {
                           day: 'numeric'
                         })}
                       </TableCell>
-                      {appUser?.role === 'admin' && (
+                      {user?.role === 'admin' && (
                         <TableCell className="text-sm">
                           <div className="space-y-1">
                             <div className="font-medium">{expense.users?.name || 'Unknown'}</div>

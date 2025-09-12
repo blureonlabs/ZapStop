@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { apiService, Attendance } from '@/lib/api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,13 +12,7 @@ import PageHeader from '@/components/ui/page-header'
 import { dataCache } from '@/lib/dataCache'
 import { PerformanceMonitor } from '@/lib/performance'
 
-interface Attendance {
-  id: string
-  driver_id: string
-  date: string
-  start_time: string
-  end_time: string | null
-  status: string
+interface AttendanceWithDriver extends Attendance {
   driver?: {
     id: string
     name: string
@@ -32,55 +26,52 @@ interface Attendance {
 }
 
 export default function ActiveDriversPage() {
-  const { appUser } = useAuth()
-  const [attendance, setAttendance] = useState<Attendance[]>([])
+  const { user } = useBackendAuth()
+  const [attendance, setAttendance] = useState<AttendanceWithDriver[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
   const fetchActiveDrivers = useCallback(async () => {
-    if (!appUser || appUser.role !== 'admin') return
+    if (!user || user.role !== 'admin') return
 
     try {
       const today = new Date().toISOString().split('T')[0]
       
       console.log('Fetching active drivers for date:', today)
       
-      // First, get attendance records
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('*')
-        .eq('date', today)
-        .eq('status', 'present')
-        .is('end_time', null)
+      // Get attendance records for today with present status and no end time
+      const attendanceData = await apiService.getAttendance()
+      const todayAttendance = attendanceData.filter(att => 
+        att.date === today && 
+        att.status === 'present' && 
+        !att.end_time
+      )
 
-      if (attendanceError) {
-        console.error('Attendance error:', attendanceError)
-        throw new Error(`Attendance error: ${attendanceError.message}`)
-      }
-
-      console.log('Attendance data:', attendanceData)
+      console.log('Today attendance data:', todayAttendance)
 
       // Get driver and car data for each attendance record
       const enrichedData = await Promise.all(
-        (attendanceData || []).map(async (att) => {
+        todayAttendance.map(async (att) => {
           // Get driver info
-          const { data: driverData } = await supabase
-            .from('users')
-            .select('id, name, email')
-            .eq('id', att.driver_id)
-            .single()
+          const users = await apiService.getUsers()
+          const driverData = users.find(u => u.id === att.driver_id)
 
           // Get car info for this driver
-          const { data: carData } = await supabase
-            .from('cars')
-            .select('id, plate_number, model')
-            .eq('assigned_driver_id', att.driver_id)
-            .single()
+          const cars = await apiService.getCars()
+          const carData = cars.find(c => c.assigned_driver_id === att.driver_id)
 
           return {
             ...att,
-            driver: driverData,
-            car: carData
+            driver: driverData ? {
+              id: driverData.id,
+              name: driverData.name,
+              email: driverData.email
+            } : undefined,
+            car: carData ? {
+              id: carData.id,
+              plate_number: carData.plate_number,
+              model: carData.model
+            } : undefined
           }
         })
       )
@@ -94,7 +85,7 @@ export default function ActiveDriversPage() {
     } finally {
       setLoading(false)
     }
-  }, [appUser])
+  }, [user])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -124,7 +115,7 @@ export default function ActiveDriversPage() {
       return {
         ...att,
         workDuration: workDuration > 0 ? workDuration : 0,
-        start_time: att.start_time.substring(0, 5) // Format as HH:MM
+        start_time: att.start_time ? att.start_time.substring(0, 5) : '00:00' // Format as HH:MM
       }
     })
   }, [attendance])
@@ -135,7 +126,6 @@ export default function ActiveDriversPage() {
         <PageHeader 
           title="Active Drivers" 
           description="Monitor drivers currently on duty"
-          icon={Users}
         />
         <div className="grid gap-6">
           {[...Array(3)].map((_, i) => (
@@ -162,7 +152,6 @@ export default function ActiveDriversPage() {
       <PageHeader 
         title="Active Drivers" 
         description="Monitor drivers currently on duty"
-        icon={Users}
       >
         <Button
           onClick={handleRefresh}

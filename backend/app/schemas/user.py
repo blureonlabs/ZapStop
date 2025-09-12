@@ -16,9 +16,12 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    assigned_car_id: Optional[str] = None
 
 class UserUpdate(BaseModel):
+    email: Optional[EmailStr] = None
     name: Optional[str] = None
+    role: Optional[Union[UserRole, str]] = None
     phone: Optional[str] = None
     assigned_car_id: Optional[str] = None
 

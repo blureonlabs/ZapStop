@@ -2,10 +2,10 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
 
 export default function HomePage() {
-  const { user, loading } = useAuth()
+  const { user, loading } = useBackendAuth()
   const router = useRouter()
 
   useEffect(() => {

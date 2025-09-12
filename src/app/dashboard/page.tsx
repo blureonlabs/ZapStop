@@ -1,21 +1,21 @@
 'use client'
 
-import { useAuth } from '@/contexts/AuthContext'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import AdminDashboard from '@/components/dashboard/AdminDashboard'
-import AccountantDashboard from '@/components/dashboard/AccountantDashboard'
-import DriverDashboard from '@/components/dashboard/DriverDashboard'
+import BackendAdminDashboard from '@/components/dashboard/BackendAdminDashboard'
+import BackendAccountantDashboard from '@/components/dashboard/BackendAccountantDashboard'
+import BackendDriverDashboard from '@/components/dashboard/BackendDriverDashboard'
 
 export default function DashboardPage() {
-  const { appUser, loading } = useAuth()
+  const { user, loading } = useBackendAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !appUser) {
+    if (!loading && !user) {
       router.push('/login')
     }
-  }, [appUser, loading, router])
+  }, [user, loading, router])
 
   if (loading) {
     return (
@@ -25,7 +25,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (!appUser) {
+  if (!user) {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">User Not Found</h2>
@@ -35,13 +35,13 @@ export default function DashboardPage() {
     )
   }
 
-  switch (appUser.role) {
+  switch (user.role) {
     case 'admin':
-      return <AdminDashboard />
-    case 'accountant':
-      return <AccountantDashboard />
+      return <BackendAdminDashboard />
+      case 'accountant':
+        return <BackendAccountantDashboard />
     case 'driver':
-      return <DriverDashboard />
+      return <BackendDriverDashboard />
     default:
       return (
         <div className="text-center py-12">

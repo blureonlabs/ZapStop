@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
 import Sidebar from '@/components/ui/sidebar'
 import { Menu, User, Settings, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user, loading, appUser, signOut } = useAuth()
+  const { user, loading, signOut } = useBackendAuth()
   const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -101,13 +101,13 @@ export default function DashboardLayout({
           </div>
           
           {/* Right: Mobile User Profile */}
-          {appUser && (
+          {user && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="h-10 w-10 p-0">
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-blue-100 text-blue-600 text-sm font-semibold">
-                      {getInitials(appUser.name)}
+                      {getInitials(user.name)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -115,15 +115,15 @@ export default function DashboardLayout({
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
                     <p className="text-xs leading-none text-muted-foreground">
-                      {appUser.email}
+                      {user.email}
                     </p>
                     <Badge 
                       variant="secondary" 
-                      className={`text-xs mt-1 w-fit ${getRoleBadgeColor(appUser.role)}`}
+                      className={`text-xs mt-1 w-fit ${getRoleBadgeColor(user.role)}`}
                     >
-                      {appUser.role}
+                      {user.role}
                     </Badge>
                   </div>
                 </DropdownMenuLabel>

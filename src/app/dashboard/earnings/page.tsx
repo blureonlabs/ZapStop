@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { apiService } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +36,7 @@ interface DriverEarning {
 }
 
 export default function EarningsPage() {
-  const { appUser } = useAuth()
+  const { user } = useBackendAuth()
   const router = useRouter()
   const [earnings, setEarnings] = useState<DriverEarning[]>([])
   const [loading, setLoading] = useState(true)
@@ -56,10 +56,10 @@ export default function EarningsPage() {
   }
 
   useEffect(() => {
-    if (appUser) {
+    if (user) {
       fetchEarnings(1, true)
     }
-  }, [appUser])
+  }, [user])
 
   const fetchEarnings = async (page = 1, reset = false) => {
     try {
@@ -69,29 +69,16 @@ export default function EarningsPage() {
         setEarnings([])
       }
       
-      const authUserId = appUser?.id
-      if (!authUserId) return
+      if (!user) return
 
-      let query = supabase
-        .from('driver_earnings')
-        .select(`
-          *,
-          users!inner(name, email)
-        `)
-        .order('date', { ascending: false })
-        .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
+      // Use backend API to fetch earnings
+      const earningsData = await apiService.getEarnings(
+        user.role === 'admin' ? undefined : user.id,
+        (page - 1) * itemsPerPage,
+        itemsPerPage
+      )
 
-      // If user is admin, show all earnings. Otherwise, show only their own
-      if (appUser?.role !== 'admin') {
-        query = query.eq('driver_id', authUserId)
-      }
-
-      const { data: earningsData, error: earningsError } = await query
-
-      if (earningsError) {
-        console.error('Error fetching earnings:', earningsError)
-        toast.error('Failed to load earnings data')
-      } else {
+      if (earningsData) {
         const newEarnings = earningsData || []
         
         if (reset) {
@@ -184,10 +171,10 @@ export default function EarningsPage() {
           </Button>
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl font-bold text-gray-900">
-              {appUser?.role === 'admin' ? 'All Earnings' : 'Earnings History'}
+              {user?.role === 'admin' ? 'All Earnings' : 'Earnings History'}
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">
-              {appUser?.role === 'admin' 
+              {user?.role === 'admin' 
                 ? 'View all driver earnings across the platform' 
                 : 'Track your daily earnings over time'
               }
@@ -267,7 +254,7 @@ export default function EarningsPage() {
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">AED {totalEarnings.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">
-              {appUser?.role === 'admin' ? 'All time' : 'Last 30 days'}
+              {user?.role === 'admin' ? 'All time' : 'Last 30 days'}
             </p>
           </CardContent>
         </Card>
@@ -303,10 +290,10 @@ export default function EarningsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-lg sm:text-xl">
-            {appUser?.role === 'admin' ? 'All Earnings Breakdown' : 'Daily Earnings Breakdown'}
+            {user?.role === 'admin' ? 'All Earnings Breakdown' : 'Daily Earnings Breakdown'}
           </CardTitle>
           <CardDescription className="text-sm">
-            {appUser?.role === 'admin' 
+            {user?.role === 'admin' 
               ? 'Detailed view of all driver earnings from different platforms'
               : 'Detailed view of your daily earnings from different platforms'
             }
@@ -345,7 +332,7 @@ export default function EarningsPage() {
                       <div className="font-semibold text-sm">AED {calculateTotal(earning).toFixed(2)}</div>
                     </div>
                   </div>
-                  {appUser?.role === 'admin' && (
+                  {user?.role === 'admin' && (
                     <div className="mb-2">
                       <div className="text-xs text-gray-600">{earning.users?.name || 'Unknown'}</div>
                       <div className="text-xs text-gray-500">{earning.users?.email || 'No email'}</div>
@@ -399,7 +386,7 @@ export default function EarningsPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-xs">Date</TableHead>
-                    {appUser?.role === 'admin' && <TableHead className="text-xs">Driver</TableHead>}
+                    {user?.role === 'admin' && <TableHead className="text-xs">Driver</TableHead>}
                     <TableHead className="text-xs">Uber Cash</TableHead>
                     <TableHead className="text-xs">Uber Account</TableHead>
                     <TableHead className="text-xs">Bolt Cash</TableHead>
@@ -422,7 +409,7 @@ export default function EarningsPage() {
                           day: 'numeric'
                         })}
                       </TableCell>
-                      {appUser?.role === 'admin' && (
+                      {user?.role === 'admin' && (
                         <TableCell className="text-sm">
                           <div className="space-y-1">
                             <div className="font-medium">{earning.users?.name || 'Unknown'}</div>

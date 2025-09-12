@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Poppins } from 'next/font/google'
 import './globals.css'
-import { AuthProvider } from '@/contexts/AuthContext'
+import { BackendAuthProvider } from '@/contexts/BackendAuthContext'
 import { Toaster } from '@/components/ui/sonner'
 import Script from 'next/script'
 
@@ -45,10 +45,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className={`${poppins.className} antialiased`}>
-        <AuthProvider>
+        <BackendAuthProvider>
           {children}
           <Toaster />
-        </AuthProvider>
+        </BackendAuthProvider>
         <Script
           id="register-sw"
           strategy="afterInteractive"

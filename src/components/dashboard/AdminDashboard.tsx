@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { supabase, User, Car, DriverEarning, DriverExpense, Attendance } from '@/lib/supabase'
-import { dataCache, AdminDashboardData } from '@/lib/dataCache'
-import { PerformanceMonitor } from '@/lib/performance'
+import { useUsers, useCars, useOwners, useEarnings, useExpenses, useAttendance, useDashboardData } from '@/hooks/useApi'
+import { User, Car, DriverEarning, DriverExpense, Attendance, AnalyticsData } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 // import { Badge } from '@/components/ui/badge'
@@ -15,14 +14,21 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 
 export default function AdminDashboard() {
-  const [drivers, setDrivers] = useState<User[]>([])
-  const [cars, setCars] = useState<Car[]>([])
-  const [owners, setOwners] = useState<any[]>([])
-  const [earnings, setEarnings] = useState<DriverEarning[]>([])
-  const [expenses, setExpenses] = useState<DriverExpense[]>([])
-  const [attendance, setAttendance] = useState<Attendance[]>([])
-  const [loading, setLoading] = useState(true)
   const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly'>('monthly')
+  
+  // Use API hooks
+  const { data: users, loading: usersLoading } = useUsers()
+  const { data: cars, loading: carsLoading } = useCars()
+  const { data: owners, loading: ownersLoading } = useOwners()
+  const { data: earnings, loading: earningsLoading } = useEarnings()
+  const { data: expenses, loading: expensesLoading } = useExpenses()
+  const { data: attendance, loading: attendanceLoading } = useAttendance()
+  const { data: analyticsData, loading: analyticsLoading } = useDashboardData(timeFilter)
+  
+  // Filter drivers from users
+  const drivers = users?.filter(user => user.role === 'driver') || []
+  
+  const loading = usersLoading || carsLoading || ownersLoading || earningsLoading || expensesLoading || attendanceLoading || analyticsLoading
 
 
   useEffect(() => {

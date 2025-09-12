@@ -16,7 +16,7 @@ class UserServiceSimple:
     def get_users(self, skip: int = 0, limit: int = 100) -> List[dict]:
         """Get all users using direct SQL"""
         result = self.db.execute(
-            text("SELECT id, email, name, role, phone, created_at, updated_at FROM users ORDER BY created_at DESC OFFSET :skip LIMIT :limit"),
+            text("SELECT id, email, name, role, phone, assigned_car_id, created_at, updated_at FROM users ORDER BY created_at DESC OFFSET :skip LIMIT :limit"),
             {"skip": skip, "limit": limit}
         )
         users = []
@@ -27,15 +27,16 @@ class UserServiceSimple:
                 "name": row[2],
                 "role": row[3],
                 "phone": row[4],
-                "created_at": row[5],
-                "updated_at": row[6]
+                "assigned_car_id": str(row[5]) if row[5] else None,
+                "created_at": row[6],
+                "updated_at": row[7]
             })
         return users
     
     def get_user_by_id(self, user_id: str) -> Optional[dict]:
         """Get user by ID using direct SQL"""
         result = self.db.execute(
-            text("SELECT id, email, name, role, phone, created_at, updated_at FROM users WHERE id = :user_id"),
+            text("SELECT id, email, name, role, phone, assigned_car_id, created_at, updated_at FROM users WHERE id = :user_id"),
             {"user_id": user_id}
         )
         user_row = result.fetchone()
@@ -47,15 +48,16 @@ class UserServiceSimple:
                 "name": user_row[2],
                 "role": user_row[3],
                 "phone": user_row[4],
-                "created_at": user_row[5],
-                "updated_at": user_row[6]
+                "assigned_car_id": str(user_row[5]) if user_row[5] else None,
+                "created_at": user_row[6],
+                "updated_at": user_row[7]
             }
         return None
     
     def get_user_by_email(self, email: str) -> Optional[dict]:
         """Get user by email using direct SQL"""
         result = self.db.execute(
-            text("SELECT id, email, name, role, phone, created_at, updated_at FROM users WHERE email = :email"),
+            text("SELECT id, email, name, role, phone, assigned_car_id, created_at, updated_at FROM users WHERE email = :email"),
             {"email": email}
         )
         user_row = result.fetchone()
@@ -67,8 +69,9 @@ class UserServiceSimple:
                 "name": user_row[2],
                 "role": user_row[3],
                 "phone": user_row[4],
-                "created_at": user_row[5],
-                "updated_at": user_row[6]
+                "assigned_car_id": str(user_row[5]) if user_row[5] else None,
+                "created_at": user_row[6],
+                "updated_at": user_row[7]
             }
         return None
     
@@ -79,16 +82,17 @@ class UserServiceSimple:
         # Insert user using raw SQL
         result = self.db.execute(
             text("""
-                INSERT INTO users (email, password_hash, name, role, phone, created_at, updated_at)
-                VALUES (:email, :password_hash, :name, :role, :phone, NOW(), NOW())
-                RETURNING id, email, name, role, phone, created_at, updated_at
+                INSERT INTO users (email, password_hash, name, role, phone, assigned_car_id, created_at, updated_at)
+                VALUES (:email, :password_hash, :name, :role, :phone, :assigned_car_id, NOW(), NOW())
+                RETURNING id, email, name, role, phone, assigned_car_id, created_at, updated_at
             """),
             {
                 "email": user.email,
                 "password_hash": hashed_password,
                 "name": user.name,
                 "role": user.role,
-                "phone": user.phone
+                "phone": user.phone,
+                "assigned_car_id": getattr(user, 'assigned_car_id', None)
             }
         )
         
@@ -101,8 +105,9 @@ class UserServiceSimple:
             "name": user_row[2],
             "role": user_row[3],
             "phone": user_row[4],
-            "created_at": user_row[5],
-            "updated_at": user_row[6]
+            "assigned_car_id": str(user_row[5]) if user_row[5] else None,
+            "created_at": user_row[6],
+            "updated_at": user_row[7]
         }
     
     def update_user(self, user_id: str, user_update: UserUpdate) -> Optional[dict]:
@@ -132,6 +137,12 @@ class UserServiceSimple:
             update_fields.append("phone = :phone")
             update_data["phone"] = user_update.phone
         
+        if hasattr(user_update, 'assigned_car_id') and user_update.assigned_car_id is not None:
+            update_fields.append("assigned_car_id = :assigned_car_id")
+            update_data["assigned_car_id"] = user_update.assigned_car_id
+        elif hasattr(user_update, 'assigned_car_id') and user_update.assigned_car_id is None:
+            update_fields.append("assigned_car_id = NULL")
+        
         if not update_fields:
             return current_user
         
@@ -141,7 +152,7 @@ class UserServiceSimple:
             UPDATE users 
             SET {', '.join(update_fields)}
             WHERE id = :user_id
-            RETURNING id, email, name, role, phone, created_at, updated_at
+            RETURNING id, email, name, role, phone, assigned_car_id, created_at, updated_at
         """
         
         result = self.db.execute(text(query), update_data)
@@ -154,8 +165,9 @@ class UserServiceSimple:
             "name": user_row[2],
             "role": user_row[3],
             "phone": user_row[4],
-            "created_at": user_row[5],
-            "updated_at": user_row[6]
+            "assigned_car_id": str(user_row[5]) if user_row[5] else None,
+            "created_at": user_row[6],
+            "updated_at": user_row[7]
         }
     
     def delete_user(self, user_id: str) -> bool:

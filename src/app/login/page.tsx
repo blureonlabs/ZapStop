@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,15 +13,15 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
-  const { signIn, user, appUser, loading: authLoading } = useAuth()
+  const { signIn, user, loading: authLoading } = useBackendAuth()
   const router = useRouter()
 
   // Redirect to dashboard when user is authenticated
   useEffect(() => {
-    if (!authLoading && user && appUser) {
+    if (!authLoading && user) {
       router.push('/dashboard')
     }
-  }, [user, appUser, authLoading, router])
+  }, [user, authLoading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

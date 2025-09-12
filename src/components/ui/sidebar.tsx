@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -40,7 +40,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
-  const { appUser, signOut } = useAuth()
+  const { user, signOut } = useBackendAuth()
   const router = useRouter()
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
@@ -145,15 +145,15 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       roles: ['admin', 'accountant', 'driver']
     },
     {
-      name: appUser?.role === 'admin' ? 'Leave Management' : 'Leave Requests',
-      path: appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave',
+      name: user?.role === 'admin' ? 'Leave Management' : 'Leave Requests',
+      path: user?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave',
       icon: Calendar,
       roles: ['admin', 'driver']
     }
   ]
 
   const filteredItems = navigationItems.filter(item => 
-    appUser?.role && item.roles.includes(appUser.role)
+    user?.role && item.roles.includes(user.role)
   )
 
   return (
@@ -238,7 +238,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
           {/* Bottom Section - User Profile with Dropdown */}
           <div className="mt-auto flex-shrink-0">
-            {appUser && (
+            {user && (
               <div className="hidden lg:block p-4 border-t border-gray-200">
                 {isCollapsed ? (
                   <div className="flex justify-center">
@@ -247,7 +247,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         <Button variant="ghost" className="h-10 w-10 p-0">
                           <Avatar className="h-10 w-10">
                             <AvatarFallback className="bg-blue-100 text-blue-600">
-                              {getInitials(appUser.name)}
+                              {getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
                         </Button>
@@ -255,15 +255,15 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                           <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                            <p className="text-sm font-medium leading-none">{user.name}</p>
                             <p className="text-xs leading-none text-muted-foreground">
-                              {appUser.email}
+                              {user.email}
                             </p>
                             <Badge 
                               variant="secondary" 
-                              className={`text-xs mt-1 w-fit ${getRoleBadgeColor(appUser.role)}`}
+                              className={`text-xs mt-1 w-fit ${getRoleBadgeColor(user.role)}`}
                             >
-                              {appUser.role}
+                              {user.role}
                             </Badge>
                           </div>
                         </DropdownMenuLabel>
@@ -292,18 +292,18 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                           <div className="flex items-center space-x-3">
                             <Avatar className="h-10 w-10">
                               <AvatarFallback className="bg-blue-100 text-blue-600">
-                                {getInitials(appUser.name)}
+                                {getInitials(user.name)}
                               </AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0 text-left">
                               <p className="text-sm font-medium text-gray-900 truncate">
-                                {appUser.name}
+                                {user.name}
                               </p>
                               <p className="text-xs text-gray-500 truncate">
-                                {appUser.email}
+                                {user.email}
                               </p>
-                              <Badge className={`text-xs ${getRoleBadgeColor(appUser.role)}`}>
-                                {appUser.role.charAt(0).toUpperCase() + appUser.role.slice(1)}
+                              <Badge className={`text-xs ${getRoleBadgeColor(user.role)}`}>
+                                {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
                               </Badge>
                             </div>
                           </div>
@@ -312,15 +312,15 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       <DropdownMenuContent className="w-56" align="end" forceMount>
                         <DropdownMenuLabel className="font-normal">
                           <div className="flex flex-col space-y-1">
-                            <p className="text-sm font-medium leading-none">{appUser.name}</p>
+                            <p className="text-sm font-medium leading-none">{user.name}</p>
                             <p className="text-xs leading-none text-muted-foreground">
-                              {appUser.email}
+                              {user.email}
                             </p>
                             <Badge 
                               variant="secondary" 
-                              className={`text-xs mt-1 w-fit ${getRoleBadgeColor(appUser.role)}`}
+                              className={`text-xs mt-1 w-fit ${getRoleBadgeColor(user.role)}`}
                             >
-                              {appUser.role}
+                              {user.role}
                             </Badge>
                           </div>
                         </DropdownMenuLabel>
