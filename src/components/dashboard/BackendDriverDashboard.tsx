@@ -112,8 +112,16 @@ export default function BackendDriverDashboard() {
       setTodayExpense(todayExpenseData || null)
 
       // Fetch today's attendance
-      const attendanceData = await apiService.getAttendance()
-      const todayAttendance = attendanceData.find(a => a.date === today)
+      const attendanceData = await apiService.getAttendance(user.id)
+      console.log('BackendDriverDashboard - Attendance data:', attendanceData)
+      console.log('BackendDriverDashboard - Looking for date:', today)
+      
+      // Find attendance for today, handling timezone differences
+      const todayAttendance = attendanceData.find(a => {
+        const attendanceDate = new Date(a.date).toISOString().split('T')[0]
+        return attendanceDate === today
+      })
+      console.log('BackendDriverDashboard - Today attendance:', todayAttendance)
       setAttendance(todayAttendance || null)
 
     } catch (error) {
@@ -137,6 +145,7 @@ export default function BackendDriverDashboard() {
         return
       }
 
+      await apiService.startWork()
       toast.success('Work started successfully!')
       setNoExpenses(false)
       fetchDriverData()
@@ -153,6 +162,7 @@ export default function BackendDriverDashboard() {
         return
       }
 
+      await apiService.endWork()
       toast.success('Work ended successfully!')
       fetchDriverData()
     } catch (error) {
@@ -175,8 +185,20 @@ export default function BackendDriverDashboard() {
         return
       }
 
-      // This would call the backend API to update earnings
-      console.log('Updating earnings:', earningsForm)
+      // Call the backend API to update earnings
+      const today = new Date().toISOString().split('T')[0]
+      const earningsData = {
+        date: today,
+        driver_id: user.id,
+        ...earningsForm
+      }
+      
+      if (todayEarnings) {
+        await apiService.updateEarning(todayEarnings.id, earningsData)
+      } else {
+        await apiService.createEarning(earningsData)
+      }
+      
       toast.success('Earnings updated successfully!')
       fetchDriverData()
     } catch (error) {
@@ -197,8 +219,22 @@ export default function BackendDriverDashboard() {
         return
       }
 
-      // This would call the backend API to update expenses
-      console.log('Updating expense:', expenseForm)
+      // Call the backend API to update expenses
+      const today = new Date().toISOString().split('T')[0]
+      const expenseData = {
+        date: today,
+        driver_id: user.id,
+        amount: expenseForm.amount,
+        expense_type: expenseForm.expense_type,
+        description: `Daily ${expenseForm.expense_type} expense`
+      }
+      
+      if (todayExpense) {
+        await apiService.updateExpense(todayExpense.id, expenseData)
+      } else {
+        await apiService.createExpense(expenseData)
+      }
+      
       toast.success('Expense updated successfully!')
       fetchDriverData()
     } catch (error) {

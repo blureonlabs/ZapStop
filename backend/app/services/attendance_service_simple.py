@@ -184,3 +184,77 @@ class AttendanceServiceSimple:
         )
         self.db.commit()
         return result.rowcount > 0
+    
+    def start_work(self, driver_id: str) -> bool:
+        """Start work session using direct SQL"""
+        from datetime import date, datetime
+        
+        today = date.today()
+        
+        # Check if already has an active work session today (started but not ended)
+        result = self.db.execute(
+            text("""
+                SELECT id, start_time, end_time FROM attendance 
+                WHERE driver_id = :driver_id AND date = :today
+            """),
+            {"driver_id": driver_id, "today": today}
+        )
+        existing = result.fetchone()
+        
+        if existing and existing[1] and not existing[2]:  # Already has active session (started but not ended)
+            return False
+        
+        if existing:
+            # Update existing record (restart work after previous session ended)
+            self.db.execute(
+                text("""
+                    UPDATE attendance 
+                    SET start_time = NOW(), end_time = NULL, status = 'present', updated_at = NOW()
+                    WHERE id = :attendance_id
+                """),
+                {"attendance_id": existing[0]}
+            )
+        else:
+            # Create new record
+            self.db.execute(
+                text("""
+                    INSERT INTO attendance (driver_id, date, start_time, status, created_at, updated_at)
+                    VALUES (:driver_id, :date, NOW(), 'present', NOW(), NOW())
+                """),
+                {"driver_id": driver_id, "date": today}
+            )
+        
+        self.db.commit()
+        return True
+    
+    def end_work(self, driver_id: str) -> bool:
+        """End work session using direct SQL"""
+        from datetime import date
+        
+        today = date.today()
+        
+        # Check if there's an active work session
+        result = self.db.execute(
+            text("""
+                SELECT id FROM attendance 
+                WHERE driver_id = :driver_id AND date = :today AND start_time IS NOT NULL AND end_time IS NULL
+            """),
+            {"driver_id": driver_id, "today": today}
+        )
+        attendance = result.fetchone()
+        
+        if not attendance:
+            return False
+        
+        # Update with end time
+        self.db.execute(
+            text("""
+                UPDATE attendance 
+                SET end_time = NOW(), updated_at = NOW()
+                WHERE id = :attendance_id
+            """),
+            {"attendance_id": attendance[0]}
+        )
+        
+        self.db.commit()
+        return True
