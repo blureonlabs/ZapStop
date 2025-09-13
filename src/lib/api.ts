@@ -16,6 +16,15 @@ export interface User {
   updated_at: string
 }
 
+export interface CreateUserData {
+  name: string
+  email: string
+  phone: string
+  password: string
+  role: 'admin' | 'driver' | 'accountant' | 'owner'
+  assigned_car_id?: string
+}
+
 export interface Car {
   id: string
   plate_number: string
@@ -65,8 +74,13 @@ export interface DriverExpense {
   proof_url?: string
   status: 'pending' | 'approved' | 'rejected'
   admin_notes?: string
+  category?: string
   created_at: string
   updated_at: string
+  users?: {
+    name: string
+    email: string
+  }
 }
 
 export interface Attendance {
@@ -92,6 +106,10 @@ export interface LeaveRequest {
   approved_by?: string
   created_at: string
   updated_at: string
+  users?: {
+    name: string
+    email: string
+  }
 }
 
 export interface AnalyticsData {
@@ -133,9 +151,9 @@ class ApiService {
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`
     
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     }
 
     // Check for token in localStorage if not set in memory
@@ -198,7 +216,7 @@ class ApiService {
     return this.request<User[]>('/api/users/')
   }
 
-  async createUser(userData: Partial<User>): Promise<User> {
+  async createUser(userData: CreateUserData): Promise<User> {
     return this.request<User>('/api/users/', {
       method: 'POST',
       body: JSON.stringify(userData),
@@ -265,6 +283,12 @@ class ApiService {
 
   async removeCarFromOwner(carId: string): Promise<{ message: string }> {
     return this.request<{ message: string }>(`/api/cars/${carId}/assign-owner`, {
+      method: 'DELETE',
+    })
+  }
+
+  async unassignCarFromOwner(carId: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>(`/api/cars/${carId}/unassign-owner`, {
       method: 'DELETE',
     })
   }

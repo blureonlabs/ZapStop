@@ -1,6 +1,6 @@
 # Zap Stop - Rental Car Management PWA
 
-A Progressive Web App for managing rental cars, drivers, and earnings built with Next.js 14, Supabase, and TailwindCSS.
+A Progressive Web App for managing rental cars, drivers, and earnings built with Next.js 14, Neon PostgreSQL, and TailwindCSS.
 
 ## Features
 
@@ -23,7 +23,9 @@ A Progressive Web App for managing rental cars, drivers, and earnings built with
 ## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router) + TailwindCSS + shadcn/ui
-- **Backend**: Supabase (Auth, DB, File Storage)
+- **Backend**: FastAPI + Python
+- **Database**: Neon PostgreSQL
+- **Deployment**: Netlify (Frontend) + Render (Backend)
 - **Charts**: Recharts
 - **Icons**: Lucide React
 - **PWA**: Service Worker + Manifest
@@ -43,34 +45,35 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://hawlxjipneluhzcxzpps.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhhd2x4amlwbmVsdWh6Y3h6cHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTM1NTIsImV4cCI6MjA3MjQ4OTU1Mn0.oAzTG8sgtx9iTvpqeegcc-kC-zq7keNLDgUNWzlzbmI
+NEXT_PUBLIC_API_URL=https://your-backend-url.onrender.com
 ```
 
 ### 3. Database Setup
 
-1. Go to your Supabase dashboard
-2. Navigate to the SQL Editor
-3. Run the SQL script from `supabase-schema.sql` to create all tables and sample data
+1. Create a Neon PostgreSQL database
+2. Set up the database schema using the provided SQL files
+3. Configure the `DATABASE_URL` in your backend environment
 
-### 4. Create User Accounts
+### 4. Backend Setup
 
-You'll need to create user accounts through Supabase Auth:
+1. Navigate to the `backend` directory
+2. Install dependencies: `pip install -r requirements.txt`
+3. Set up environment variables in `.env`
+4. Run the backend: `uvicorn app.main:app --reload`
 
-1. Go to Authentication > Users in your Supabase dashboard
-2. Create users with these emails:
-   - `admin@zapstop.com` (Admin role)
-   - `accountant@zapstop.com` (Accountant role)
-   - `driver1@zapstop.com` (Driver role)
-   - `driver2@zapstop.com` (Driver role)
-   - `driver3@zapstop.com` (Driver role)
+### 5. Create User Accounts
 
-3. Update the user records in the `users` table to match the IDs from Supabase Auth
+You can create user accounts through the backend API or admin interface.
 
-### 5. Run the Application
+### 6. Run the Application
 
 ```bash
+# Frontend
 npm run dev
+
+# Backend (in separate terminal)
+cd backend
+uvicorn app.main:app --reload
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.

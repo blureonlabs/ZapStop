@@ -68,7 +68,7 @@ export default function OwnersPage() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-        <p className="text-gray-600 mb-4">You don't have permission to access the owners management page.</p>
+        <p className="text-gray-600 mb-4">You don&apos;t have permission to access the owners management page.</p>
         <Button onClick={() => router.push('/dashboard')}>
           Return to Dashboard
         </Button>
@@ -125,9 +125,10 @@ export default function OwnersPage() {
       setIsAddDialogOpen(false);
       setFormData({ name: '', email: '', phone: '', address: '' });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating owner:', error);
-      toast.error(error.message || 'Failed to create owner');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create owner'
+      toast.error(errorMessage)
     } finally {
       setCreating(false);
     }
@@ -147,9 +148,10 @@ export default function OwnersPage() {
       setEditingOwner(null);
       setFormData({ name: '', email: '', phone: '', address: '' });
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating owner:', error);
-      toast.error(error.message || 'Failed to update owner');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update owner'
+      toast.error(errorMessage)
     } finally {
       setUpdating(false);
     }
@@ -163,9 +165,10 @@ export default function OwnersPage() {
       await apiService.deleteOwner(ownerId);
       toast.success('Owner deleted successfully!');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting owner:', error);
-      toast.error(error.message || 'Failed to delete owner');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete owner'
+      toast.error(errorMessage)
     }
   };
 
@@ -186,9 +189,10 @@ export default function OwnersPage() {
       setSelectedCars([]);
       setSelectedOwner(null);
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error assigning cars:', error);
-      toast.error(error.message || 'Failed to assign cars');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to assign cars'
+      toast.error(errorMessage)
     } finally {
       setAssigning(false);
     }
@@ -202,9 +206,10 @@ export default function OwnersPage() {
       await apiService.unassignCarFromOwner(carId);
       toast.success('Car unassigned successfully!');
       fetchData();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error unassigning car:', error);
-      toast.error(error.message || 'Failed to unassign car');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to unassign car'
+      toast.error(errorMessage)
     }
   };
 

@@ -6,16 +6,16 @@ interface CacheEntry<T> {
 }
 
 export interface AdminDashboardData {
-  drivers: any[]
-  cars: any[]
-  owners: any[]
-  earnings: any[]
-  expenses: any[]
-  attendance: any[]
+  drivers: unknown[]
+  cars: unknown[]
+  owners: unknown[]
+  earnings: unknown[]
+  expenses: unknown[]
+  attendance: unknown[]
 }
 
 class DataCache {
-  private cache = new Map<string, CacheEntry<any>>()
+  private cache = new Map<string, CacheEntry<unknown>>()
   private defaultTTL = 5 * 60 * 1000 // 5 minutes
 
   set<T>(key: string, data: T, ttl: number = this.defaultTTL): void {
@@ -36,7 +36,7 @@ class DataCache {
       return null
     }
 
-    return entry.data
+    return entry.data as T
   }
 
   has(key: string): boolean {

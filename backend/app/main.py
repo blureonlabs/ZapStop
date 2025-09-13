@@ -70,7 +70,7 @@ app = FastAPI(
             "description": "Development server"
         },
         {
-            "url": "https://api.zapstop.com",
+            "url": "https://zapstop-backend.onrender.com",
             "description": "Production server"
         }
     ],
@@ -92,7 +92,7 @@ app.add_middleware(
 # Trusted host middleware for security
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "yourdomain.com"]
+    allowed_hosts=["localhost", "127.0.0.1", "*.onrender.com", "*.netlify.app"]
 )
 
 # Include API routers
@@ -141,9 +141,11 @@ async def http_exception_handler(request, exc):
     )
 
 if __name__ == "__main__":
+    import os
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True
+        port=port,
+        reload=False
     )

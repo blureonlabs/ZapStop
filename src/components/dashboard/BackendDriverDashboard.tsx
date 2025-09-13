@@ -24,7 +24,7 @@ export default function BackendDriverDashboard() {
   const [submittingEarnings, setSubmittingEarnings] = useState(false)
   const [submittingExpense, setSubmittingExpense] = useState(false)
   const [isOnLeave, setIsOnLeave] = useState(false)
-  const [leaveInfo, setLeaveInfo] = useState<any>(null)
+  const [leaveInfo, setLeaveInfo] = useState<{ leave_type: string; start_date: string; end_date: string; admin_notes?: string } | null>(null)
 
   // Form states
   const [earningsForm, setEarningsForm] = useState({
@@ -189,7 +189,7 @@ export default function BackendDriverDashboard() {
       const today = new Date().toISOString().split('T')[0]
       const earningsData = {
         date: today,
-        driver_id: user.id,
+        driver_id: user?.id || '',
         ...earningsForm
       }
       
@@ -223,7 +223,7 @@ export default function BackendDriverDashboard() {
       const today = new Date().toISOString().split('T')[0]
       const expenseData = {
         date: today,
-        driver_id: user.id,
+        driver_id: user?.id || '',
         amount: expenseForm.amount,
         expense_type: expenseForm.expense_type,
         description: `Daily ${expenseForm.expense_type} expense`

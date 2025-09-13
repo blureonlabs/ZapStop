@@ -61,7 +61,7 @@ export default function CarsPage() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-        <p className="text-gray-600 mb-4">You don't have permission to access the cars management page.</p>
+        <p className="text-gray-600 mb-4">You don&apos;t have permission to access the cars management page.</p>
         <Button onClick={() => router.push('/dashboard')}>
           Return to Dashboard
         </Button>
@@ -129,9 +129,10 @@ export default function CarsPage() {
       setShowCarDialog(false)
       setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating car:', error)
-      toast.error(error.message || 'Failed to create car')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create car'
+      toast.error(errorMessage)
     } finally {
       setCreatingCar(false)
     }
@@ -171,9 +172,10 @@ export default function CarsPage() {
       setEditingCar(null)
       setCarForm({ plate_number: '', model: '', monthly_due: 7500 })
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating car:', error)
-      toast.error(error.message || 'Failed to update car')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update car'
+      toast.error(errorMessage)
     } finally {
       setUpdatingCar(false)
     }
@@ -197,9 +199,10 @@ export default function CarsPage() {
       await apiService.deleteCar(carId)
       toast.success('Car deleted successfully')
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting car:', error)
-      toast.error(error.message || 'Failed to delete car')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete car'
+      toast.error(errorMessage)
     }
   }
 

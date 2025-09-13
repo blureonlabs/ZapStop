@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { apiService } from '@/lib/api'
+import { apiService, User, Car, Owner, DriverEarning, DriverExpense, LeaveRequest } from '@/lib/api'
 
 // Generic hook for API calls
 export function useApi<T>(
   apiCall: () => Promise<T>,
-  dependencies: any[] = []
+  dependencies: unknown[] = []
 ) {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState(true)
@@ -64,7 +64,7 @@ export function useLeaveRequests(driverId?: string, status?: string, skip: numbe
 }
 
 // Hook for mutations (create, update, delete operations)
-export function useMutation<T, P = any>(
+export function useMutation<T, P = unknown>(
   mutationFn: (params: P) => Promise<T>
 ) {
   const [loading, setLoading] = useState(false)
@@ -94,7 +94,9 @@ export function useCreateUser() {
 }
 
 export function useUpdateUser() {
-  return useMutation(apiService.updateUser)
+  return useMutation(({ userId, userData }: { userId: string; userData: Partial<User> }) => 
+    apiService.updateUser(userId, userData)
+  )
 }
 
 export function useDeleteUser() {
@@ -106,7 +108,9 @@ export function useCreateCar() {
 }
 
 export function useUpdateCar() {
-  return useMutation(apiService.updateCar)
+  return useMutation(({ carId, carData }: { carId: string; carData: Partial<Car> }) => 
+    apiService.updateCar(carId, carData)
+  )
 }
 
 export function useDeleteCar() {
@@ -118,7 +122,9 @@ export function useCreateOwner() {
 }
 
 export function useUpdateOwner() {
-  return useMutation(apiService.updateOwner)
+  return useMutation(({ ownerId, ownerData }: { ownerId: string; ownerData: Partial<Owner> }) => 
+    apiService.updateOwner(ownerId, ownerData)
+  )
 }
 
 export function useDeleteOwner() {
@@ -130,7 +136,9 @@ export function useCreateEarning() {
 }
 
 export function useUpdateEarning() {
-  return useMutation(apiService.updateEarning)
+  return useMutation(({ earningId, earningData }: { earningId: string; earningData: Partial<DriverEarning> }) => 
+    apiService.updateEarning(earningId, earningData)
+  )
 }
 
 export function useDeleteEarning() {
@@ -142,7 +150,9 @@ export function useCreateExpense() {
 }
 
 export function useUpdateExpense() {
-  return useMutation(apiService.updateExpense)
+  return useMutation(({ expenseId, expenseData }: { expenseId: string; expenseData: Partial<DriverExpense> }) => 
+    apiService.updateExpense(expenseId, expenseData)
+  )
 }
 
 export function useApproveExpense() {
@@ -174,7 +184,9 @@ export function useCreateLeaveRequest() {
 }
 
 export function useUpdateLeaveRequest() {
-  return useMutation(apiService.updateLeaveRequest)
+  return useMutation(({ leaveRequestId, leaveRequestData }: { leaveRequestId: string; leaveRequestData: Partial<LeaveRequest> }) => 
+    apiService.updateLeaveRequest(leaveRequestId, leaveRequestData)
+  )
 }
 
 export function useApproveLeaveRequest() {

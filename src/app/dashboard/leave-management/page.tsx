@@ -64,9 +64,10 @@ export default function LeaveManagementPage() {
       setSelectedRequest(null)
       setAdminNotes('')
       fetchLeaveRequests()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating leave request:', error)
-      toast.error(error.message || 'Failed to update leave request')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update leave request'
+      toast.error(errorMessage)
     } finally {
       setProcessing(false)
     }

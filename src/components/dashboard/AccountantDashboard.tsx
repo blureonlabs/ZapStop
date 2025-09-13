@@ -1,154 +1,127 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import { supabase, DriverExpense, DriverEarning, User, Car } from '@/lib/supabase'
+import { useState, useMemo } from 'react'
+import { useExpenses, useEarnings, useUsers, useCars, useApproveExpense, useRejectExpense } from '@/hooks/useApi'
+import { DriverExpense, DriverEarning, User, Car } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Receipt, Users, TrendingUp, CheckCircle, XCircle, Clock } from 'lucide-react'
+import { Receipt, Users, TrendingUp, CheckCircle, XCircle, Clock, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
 export default function AccountantDashboard() {
-  const [expenses, setExpenses] = useState<DriverExpense[]>([])
-  const [earnings, setEarnings] = useState<DriverEarning[]>([])
-  const [drivers, setDrivers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
   const [selectedExpense, setSelectedExpense] = useState<DriverExpense | null>(null)
   const [showExpenseDialog, setShowExpenseDialog] = useState(false)
-  const [processing, setProcessing] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  // Use API hooks
+  const { data: expenses, loading: expensesLoading, refetch: refetchExpenses } = useExpenses()
+  const { data: earnings, loading: earningsLoading } = useEarnings()
+  const { data: users, loading: usersLoading } = useUsers()
+  const { data: cars, loading: carsLoading } = useCars()
+  const { mutate: approveExpense, loading: approveLoading } = useApproveExpense()
+  const { mutate: rejectExpense, loading: rejectLoading } = useRejectExpense()
 
-  const fetchData = useCallback(async () => {
-    try {
-      // Fetch all expenses
-      const { data: expensesData } = await supabase
-        .from('driver_expenses')
-        .select(`
-          *,
-          users!inner(name, email)
-        `)
-        .order('created_at', { ascending: false })
-
-      // Fetch all earnings
-      const { data: earningsData } = await supabase
-        .from('driver_earnings')
-        .select(`
-          *,
-          users!inner(name, email)
-        `)
-        .order('date', { ascending: false })
-
-      // Fetch all drivers
-      const { data: driversData } = await supabase
-        .from('users')
-        .select('*')
-        .eq('role', 'driver')
-
-      setExpenses(expensesData || [])
-      setEarnings(earningsData || [])
-      setDrivers(driversData || [])
-
-    } catch (error) {
-      console.error('Error fetching data:', error)
-      toast.error('Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const loading = expensesLoading || earningsLoading || usersLoading || carsLoading
+  const drivers = users?.filter(user => user.role === 'driver') || []
 
   const handleExpenseAction = async (expenseId: string, status: 'approved' | 'rejected') => {
-    if (processing) return
-    
     try {
-      setProcessing(true)
-      
-      const { error } = await supabase
-        .from('driver_expenses')
-        .update({ status })
-        .eq('id', expenseId)
-
-      if (error) throw error
-
-      toast.success(`Expense ${status} successfully`)
-      setShowExpenseDialog(false)
-      setSelectedExpense(null)
-      fetchData()
+      if (status === 'approved') {
+        await approveExpense(expenseId)
+        toast.success('Expense approved successfully')
+      } else {
+        await rejectExpense(expenseId)
+        toast.success('Expense rejected successfully')
+      }
+      refetchExpenses()
     } catch (error) {
       console.error('Error updating expense:', error)
       toast.error('Failed to update expense')
-    } finally {
-      setProcessing(false)
     }
   }
 
-  const expenseStats = useMemo(() => {
-    const total = expenses.length
-    const pending = expenses.filter(e => e.status === 'pending').length
-    const approved = expenses.filter(e => e.status === 'approved').length
-    const rejected = expenses.filter(e => e.status === 'rejected').length
-    const totalAmount = expenses.reduce((sum, e) => sum + e.amount, 0)
-    const approvedAmount = expenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
+  const handleViewExpense = (expense: DriverExpense) => {
+    setSelectedExpense(expense)
+    setShowExpenseDialog(true)
+  }
 
-    return { total, pending, approved, rejected, totalAmount, approvedAmount }
-  }, [expenses])
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const totalExpenses = expenses?.reduce((sum, expense) => sum + expense.amount, 0) || 0
+    const totalEarnings = earnings?.reduce((sum, earning) => 
+      sum + earning.uber_cash + earning.uber_account + earning.bolt_cash + 
+      earning.bolt_account + earning.individual_rides_cash + earning.individual_rides_account, 0) || 0
+    const pendingExpenses = expenses?.filter(expense => expense.status === 'pending').length || 0
+    const approvedExpenses = expenses?.filter(expense => expense.status === 'approved').length || 0
+    const rejectedExpenses = expenses?.filter(expense => expense.status === 'rejected').length || 0
 
-  const earningsStats = useMemo(() => {
-    const totalEarnings = earnings.reduce((sum, e) => 
-      sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
+    return {
+      totalExpenses,
+      totalEarnings,
+      pendingExpenses,
+      approvedExpenses,
+      rejectedExpenses,
+      netProfit: totalEarnings - totalExpenses
+    }
+  }, [expenses, earnings])
+
+  // Chart data
+  const expenseChartData = useMemo(() => {
+    const monthlyData: { [key: string]: { month: string; expenses: number; earnings: number } } = {}
     
-    const uberEarnings = earnings.reduce((sum, e) => sum + e.uber_cash + e.uber_account, 0)
-    const boltEarnings = earnings.reduce((sum, e) => sum + e.bolt_cash + e.bolt_account, 0)
-    const individualEarnings = earnings.reduce((sum, e) => sum + e.individual_cash, 0)
-
-    return { totalEarnings, uberEarnings, boltEarnings, individualEarnings }
-  }, [earnings])
-
-  const driverStats = useMemo(() => {
-    return drivers.map(driver => {
-      const driverEarnings = earnings.filter(e => e.driver_id === driver.id)
-      const totalEarnings = driverEarnings.reduce((sum, e) => 
-        sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
-      
-      const driverExpenses = expenses.filter(e => e.driver_id === driver.id)
-      const totalExpenses = driverExpenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
-
-      return {
-        name: driver.name,
-        earnings: totalEarnings,
-        expenses: totalExpenses,
-        net: totalEarnings - totalExpenses
+    expenses?.forEach(expense => {
+      const month = new Date(expense.date).toLocaleDateString('en-US', { month: 'short' })
+      if (!monthlyData[month]) {
+        monthlyData[month] = { month, expenses: 0, earnings: 0 }
+      }
+      if (expense.status === 'approved') {
+        monthlyData[month].expenses += expense.amount
       }
     })
-  }, [drivers, earnings, expenses])
 
-  const earningsByType = useMemo(() => {
-    return [
-      { name: 'Uber', value: earningsStats.uberEarnings, color: '#3b82f6' },
-      { name: 'Bolt', value: earningsStats.boltEarnings, color: '#10b981' },
-      { name: 'Individual', value: earningsStats.individualEarnings, color: '#f59e0b' }
-    ]
-  }, [earningsStats])
+    earnings?.forEach(earning => {
+      const month = new Date(earning.date).toLocaleDateString('en-US', { month: 'short' })
+      if (!monthlyData[month]) {
+        monthlyData[month] = { month, expenses: 0, earnings: 0 }
+      }
+      monthlyData[month].earnings += earning.uber_cash + earning.uber_account + 
+        earning.bolt_cash + earning.bolt_account + earning.individual_rides_cash + earning.individual_rides_account
+    })
+
+    return Object.values(monthlyData).sort((a, b) => 
+      new Date(a.month + ' 1, 2024').getTime() - new Date(b.month + ' 1, 2024').getTime()
+    )
+  }, [expenses, earnings])
+
+  const expenseStatusData = useMemo(() => [
+    { name: 'Approved', value: stats.approvedExpenses, color: '#10b981' },
+    { name: 'Pending', value: stats.pendingExpenses, color: '#f59e0b' },
+    { name: 'Rejected', value: stats.rejectedExpenses, color: '#ef4444' }
+  ], [stats])
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <Card key={i} className="animate-pulse">
+              <CardHeader className="space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              </CardHeader>
+            </Card>
+          ))}
+        </div>
       </div>
     )
   }
 
-  // Memoized values are already calculated above
-
   return (
     <div className="space-y-6">
-
-      {/* KPI Cards */}
+      {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -156,23 +129,7 @@ export default function AccountantDashboard() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">AED {expenseStats.totalAmount.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              {expenseStats.total} total expenses
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{expenseStats.pending}</div>
-            <p className="text-xs text-muted-foreground">
-              Awaiting your review
-            </p>
+            <div className="text-2xl font-bold">${stats.totalExpenses.toLocaleString()}</div>
           </CardContent>
         </Card>
 
@@ -182,273 +139,263 @@ export default function AccountantDashboard() {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">AED {earningsStats.totalEarnings.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              All driver earnings
-            </p>
+            <div className="text-2xl font-bold">${stats.totalEarnings.toLocaleString()}</div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{drivers.length}</div>
-            <p className="text-xs text-muted-foreground">
-              Total drivers
-            </p>
+            <div className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              ${stats.netProfit.toLocaleString()}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pending Expenses</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.pendingExpenses}</div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="expenses" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="expenses">Expense Management</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="reports">Reports</TabsTrigger>
-        </TabsList>
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Expenses vs Earnings</CardTitle>
+            <CardDescription>Comparison of monthly expenses and earnings</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={expenseChartData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="expenses" fill="#ef4444" name="Expenses" />
+                <Bar dataKey="earnings" fill="#10b981" name="Earnings" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="expenses" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Expense Approvals</CardTitle>
-              <CardDescription>
-                Review and approve driver expense submissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Driver</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {expenses.map((expense) => (
-                      <tr key={expense.id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {(expense as { users?: { name?: string } }).users?.name || 'Unknown'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(expense.date).toLocaleDateString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {expense.expense_type}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          AED {expense.amount.toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <Badge 
-                            variant={expense.status === 'approved' ? 'default' : 
-                                   expense.status === 'rejected' ? 'destructive' : 'secondary'}
-                          >
-                            {expense.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          {expense.status === 'pending' && (
-                            <div className="flex space-x-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setSelectedExpense(expense)
-                                  setShowExpenseDialog(true)
-                                }}
-                              >
-                                Review
-                              </Button>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+        <Card>
+          <CardHeader>
+            <CardTitle>Expense Status Distribution</CardTitle>
+            <CardDescription>Breakdown of expense approval status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={expenseStatusData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, value }) => `${name}: ${value}`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {expenseStatusData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="analytics" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Earnings by Platform</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={earningsByType}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {earningsByType.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value) => `AED ${Number(value).toLocaleString()}`} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+      {/* Expenses Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Expense Management</CardTitle>
+          <CardDescription>Review and approve driver expense requests</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="pending" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="pending">Pending ({stats.pendingExpenses})</TabsTrigger>
+              <TabsTrigger value="approved">Approved ({stats.approvedExpenses})</TabsTrigger>
+              <TabsTrigger value="rejected">Rejected ({stats.rejectedExpenses})</TabsTrigger>
+            </TabsList>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Driver Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={driverStats}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => `AED ${Number(value).toLocaleString()}`} />
-                    <Bar dataKey="earnings" fill="#3b82f6" name="Earnings" />
-                    <Bar dataKey="expenses" fill="#ef4444" name="Expenses" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Summary</CardTitle>
-              <CardDescription>
-                Overview of all financial activities
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-green-50 rounded-lg">
-                  <div className="text-2xl font-bold text-green-600">
-                    AED {earningsStats.totalEarnings.toLocaleString()}
+            <TabsContent value="pending" className="space-y-4">
+              <div className="space-y-2">
+                {expenses?.filter(expense => expense.status === 'pending').map((expense) => (
+                  <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="font-medium">{expense.expense_type}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {expense.users?.name} • ${expense.amount} • {new Date(expense.date).toLocaleDateString()}
+                      </div>
+                      {expense.description && (
+                        <div className="text-sm text-muted-foreground">{expense.description}</div>
+                      )}
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewExpense(expense)}
+                      >
+                        View
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleExpenseAction(expense.id, 'approved')}
+                        disabled={approveLoading}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleExpenseAction(expense.id, 'rejected')}
+                        disabled={rejectLoading}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-sm text-green-600">Total Earnings</div>
-                </div>
-                <div className="text-center p-4 bg-red-50 rounded-lg">
-                  <div className="text-2xl font-bold text-red-600">
-                    AED {expenseStats.approvedAmount.toLocaleString()}
+                ))}
+                {stats.pendingExpenses === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No pending expenses
                   </div>
-                  <div className="text-sm text-red-600">Approved Expenses</div>
-                </div>
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">
-                    AED {(earningsStats.totalEarnings - expenseStats.approvedAmount).toLocaleString()}
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="approved" className="space-y-4">
+              <div className="space-y-2">
+                {expenses?.filter(expense => expense.status === 'approved').map((expense) => (
+                  <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="font-medium">{expense.expense_type}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {expense.users?.name} • ${expense.amount} • {new Date(expense.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <Badge variant="default" className="bg-green-100 text-green-800">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      Approved
+                    </Badge>
                   </div>
-                  <div className="text-sm text-blue-600">Net Profit</div>
-                </div>
+                ))}
+                {stats.approvedExpenses === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No approved expenses
+                  </div>
+                )}
               </div>
+            </TabsContent>
 
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">Driver Performance Summary</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Driver</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Earnings</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Expenses</th>
-                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">Net</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      {driverStats.map((driver, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-2 text-sm text-gray-900">{driver.name}</td>
-                          <td className="px-4 py-2 text-sm text-green-600">AED {driver.earnings.toLocaleString()}</td>
-                          <td className="px-4 py-2 text-sm text-red-600">AED {driver.expenses.toLocaleString()}</td>
-                          <td className={`px-4 py-2 text-sm font-medium ${driver.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                            AED {driver.net.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+            <TabsContent value="rejected" className="space-y-4">
+              <div className="space-y-2">
+                {expenses?.filter(expense => expense.status === 'rejected').map((expense) => (
+                  <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="space-y-1">
+                      <div className="font-medium">{expense.expense_type}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {expense.users?.name} • ${expense.amount} • {new Date(expense.date).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <Badge variant="destructive">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Rejected
+                    </Badge>
+                  </div>
+                ))}
+                {stats.rejectedExpenses === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No rejected expenses
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
-      {/* Expense Review Dialog */}
+      {/* Expense Detail Dialog */}
       <Dialog open={showExpenseDialog} onOpenChange={setShowExpenseDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Review Expense</DialogTitle>
+            <DialogTitle>Expense Details</DialogTitle>
             <DialogDescription>
-              Review the expense details and approve or reject
+              Review the expense request details and supporting documents
             </DialogDescription>
           </DialogHeader>
           {selectedExpense && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Driver</label>
-                  <p className="text-sm">{(selectedExpense as { users?: { name?: string } }).users?.name || 'Unknown'}</p>
+                  <label className="text-sm font-medium">Driver</label>
+                  <p className="text-sm text-muted-foreground">{selectedExpense.users?.name}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Date</label>
-                  <p className="text-sm">{new Date(selectedExpense.date).toLocaleDateString()}</p>
+                  <label className="text-sm font-medium">Amount</label>
+                  <p className="text-sm text-muted-foreground">${selectedExpense.amount}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Type</label>
-                  <p className="text-sm">{selectedExpense.expense_type}</p>
+                  <label className="text-sm font-medium">Type</label>
+                  <p className="text-sm text-muted-foreground">{selectedExpense.expense_type}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Amount</label>
-                  <p className="text-sm font-semibold">AED {selectedExpense.amount.toLocaleString()}</p>
+                  <label className="text-sm font-medium">Date</label>
+                  <p className="text-sm text-muted-foreground">{new Date(selectedExpense.date).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Status</label>
+                  <Badge variant={selectedExpense.status === 'approved' ? 'default' : selectedExpense.status === 'rejected' ? 'destructive' : 'secondary'}>
+                    {selectedExpense.status}
+                  </Badge>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Category</label>
+                  <p className="text-sm text-muted-foreground">{selectedExpense.category || 'N/A'}</p>
                 </div>
               </div>
-              {selectedExpense.proof_url && (
+              {selectedExpense.description && (
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Proof</label>
-                  <p className="text-sm">
-                    <a href={selectedExpense.proof_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                      View Proof
-                    </a>
-                  </p>
+                  <label className="text-sm font-medium">Description</label>
+                  <p className="text-sm text-muted-foreground">{selectedExpense.description}</p>
                 </div>
               )}
-              <div className="flex space-x-2">
-                <Button
-                  onClick={() => handleExpenseAction(selectedExpense.id, 'approved')}
-                  className="flex-1"
-                  variant="default"
-                  disabled={processing}
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {processing ? 'Processing...' : 'Approve'}
-                </Button>
-                <Button
-                  onClick={() => handleExpenseAction(selectedExpense.id, 'rejected')}
-                  className="flex-1"
-                  variant="destructive"
-                  disabled={processing}
-                >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  {processing ? 'Processing...' : 'Reject'}
-                </Button>
-              </div>
+              {selectedExpense.proof_url && (
+                <div>
+                  <label className="text-sm font-medium">Proof Document</label>
+                  <div className="mt-2">
+                    <a 
+                      href={selectedExpense.proof_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      View Document
+                    </a>
+                  </div>
+                </div>
+              )}
+              {selectedExpense.admin_notes && (
+                <div>
+                  <label className="text-sm font-medium">Admin Notes</label>
+                  <p className="text-sm text-muted-foreground">{selectedExpense.admin_notes}</p>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

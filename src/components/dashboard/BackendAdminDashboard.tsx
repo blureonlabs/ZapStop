@@ -45,15 +45,15 @@ export default function BackendAdminDashboard() {
     }
 
     return {
-      totalDrivers: analyticsData.company_stats?.total_drivers || 0,
-      activeDrivers: analyticsData.company_stats?.active_drivers || 0,
-      totalCars: analyticsData.company_stats?.total_cars || 0,
-      availableCars: analyticsData.company_stats?.available_cars || 0,
-      totalEarnings: analyticsData.summary?.total_earnings || 0,
-      totalExpenses: analyticsData.summary?.total_expenses || 0,
-      netProfit: analyticsData.summary?.net_profit || 0,
-      pendingLeaveRequests: analyticsData.company_stats?.pending_leave_requests || 0,
-      pendingExpenseRequests: analyticsData.company_stats?.pending_expense_requests || 0
+      totalDrivers: analyticsData?.total_drivers || 0,
+      activeDrivers: analyticsData?.active_drivers || 0,
+      totalCars: analyticsData?.total_cars || 0,
+      availableCars: analyticsData?.available_cars || 0,
+      totalEarnings: analyticsData?.total_earnings || 0,
+      totalExpenses: analyticsData?.total_expenses || 0,
+      netProfit: analyticsData?.net_profit || 0,
+      pendingLeaveRequests: analyticsData?.pending_leave_requests || 0,
+      pendingExpenseRequests: analyticsData?.pending_expense_requests || 0
     }
   }, [analyticsData])
 
@@ -101,7 +101,7 @@ export default function BackendAdminDashboard() {
       acc[date].bolt += earning.bolt_cash + earning.bolt_account
       acc[date].individual += earning.individual_rides_cash + earning.individual_rides_account
       return acc
-    }, {} as Record<string, any>)
+    }, {} as Record<string, { date: string; total: number; uber: number; bolt: number; individual: number }>)
 
     return Object.values(dailyEarnings).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }, [earnings])
@@ -127,7 +127,8 @@ export default function BackendAdminDashboard() {
     if (!cars) return []
     
     const statusCounts = cars.reduce((acc, car) => {
-      acc[car.status] = (acc[car.status] || 0) + 1
+      const status = car.assigned_driver_id ? 'assigned' : 'available'
+      acc[status] = (acc[status] || 0) + 1
       return acc
     }, {} as Record<string, number>)
 
@@ -165,7 +166,7 @@ export default function BackendAdminDashboard() {
           <p className="text-gray-600">Overview of your rental car business</p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={timeFilter} onValueChange={(value: any) => setTimeFilter(value)}>
+          <Select value={timeFilter} onValueChange={(value) => setTimeFilter(value as typeof timeFilter)}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useExpenses, useEarnings, useUsers } from '@/hooks/useApi'
+import { DriverExpense } from '@/lib/api'
 import { apiService } from '@/lib/api'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 
 export default function BackendAccountantDashboard() {
-  const [selectedExpense, setSelectedExpense] = useState<any>(null)
+  const [selectedExpense, setSelectedExpense] = useState<DriverExpense | null>(null)
   const [showExpenseDialog, setShowExpenseDialog] = useState(false)
   const [processing, setProcessing] = useState(false)
 
@@ -69,11 +70,11 @@ export default function BackendAccountantDashboard() {
     if (!earnings) return { totalEarnings: 0, uberEarnings: 0, boltEarnings: 0, individualEarnings: 0 }
     
     const totalEarnings = earnings.reduce((sum, e) => 
-      sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
+      sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_rides_cash + e.individual_rides_account, 0)
     
     const uberEarnings = earnings.reduce((sum, e) => sum + e.uber_cash + e.uber_account, 0)
     const boltEarnings = earnings.reduce((sum, e) => sum + e.bolt_cash + e.bolt_account, 0)
-    const individualEarnings = earnings.reduce((sum, e) => sum + e.individual_cash, 0)
+    const individualEarnings = earnings.reduce((sum, e) => sum + e.individual_rides_cash + e.individual_rides_account, 0)
 
     return { totalEarnings, uberEarnings, boltEarnings, individualEarnings }
   }, [earnings])
@@ -84,7 +85,7 @@ export default function BackendAccountantDashboard() {
     return drivers.map(driver => {
       const driverEarnings = earnings.filter(e => e.driver_id === driver.id)
       const totalEarnings = driverEarnings.reduce((sum, e) => 
-        sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
+        sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_rides_cash + e.individual_rides_account, 0)
       
       const driverExpenses = expenses.filter(e => e.driver_id === driver.id)
       const totalExpenses = driverExpenses.filter(e => e.status === 'approved').reduce((sum, e) => sum + e.amount, 0)
@@ -199,7 +200,7 @@ export default function BackendAccountantDashboard() {
                     {expenses?.map((expense) => (
                       <tr key={expense.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {expense.driver_name || 'Unknown'}
+                          {expense.users?.name || 'Unknown'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           {new Date(expense.date).toLocaleDateString()}
@@ -363,12 +364,12 @@ export default function BackendAccountantDashboard() {
               Review the expense details and approve or reject
             </DialogDescription>
           </DialogHeader>
-          {selectedExpense && (
+          {selectedExpense ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Driver</label>
-                  <p className="text-sm">{selectedExpense.driver_name || 'Unknown'}</p>
+                  <p className="text-sm">{selectedExpense.users?.name || 'Unknown'}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Date</label>
@@ -414,7 +415,7 @@ export default function BackendAccountantDashboard() {
                 </Button>
               </div>
             </div>
-          )}
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

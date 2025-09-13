@@ -74,7 +74,7 @@ export default function DriversPage() {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
-        <p className="text-gray-600 mb-4">You don't have permission to access the drivers management page.</p>
+        <p className="text-gray-600 mb-4">You don&apos;t have permission to access the drivers management page.</p>
         <Button onClick={() => router.push('/dashboard')}>
           Return to Dashboard
         </Button>
@@ -157,9 +157,10 @@ export default function DriversPage() {
       setShowDriverDialog(false)
       setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating driver:', error)
-      toast.error(error.message || 'Failed to create driver')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create driver'
+      toast.error(errorMessage)
     } finally {
       setCreatingDriver(false)
     }
@@ -204,7 +205,7 @@ export default function DriversPage() {
         // Remove driver from old car
         if (oldCarId) {
           await apiService.updateCar(oldCarId, {
-            assigned_driver_id: null
+            assigned_driver_id: undefined
           })
         }
         
@@ -221,9 +222,10 @@ export default function DriversPage() {
       setEditingDriver(null)
       setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error updating driver:', error)
-      toast.error(error.message || 'Failed to update driver')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update driver'
+      toast.error(errorMessage)
     } finally {
       setCreatingDriver(false)
     }
@@ -263,9 +265,10 @@ export default function DriversPage() {
       await apiService.deleteUser(driverId)
       toast.success('Driver deleted successfully')
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting driver:', error)
-      toast.error(error.message || 'Failed to delete driver')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete driver'
+      toast.error(errorMessage)
     }
   }
 
@@ -281,14 +284,15 @@ export default function DriversPage() {
       
       // Also update the car to remove driver assignment
       await apiService.updateCar(driver.assigned_car_id, {
-        assigned_driver_id: null
+        assigned_driver_id: undefined
       })
       
       toast.success('Car unassigned successfully')
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error unassigning car:', error)
-      toast.error(error.message || 'Failed to unassign car')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to unassign car'
+      toast.error(errorMessage)
     }
   }
 
@@ -332,9 +336,10 @@ export default function DriversPage() {
       setShowAdminDialog(false)
       setAdminForm({ name: '', email: '', phone: '', password: '' })
       fetchData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating admin:', error)
-      toast.error(error.message || 'Failed to create admin')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create admin'
+      toast.error(errorMessage)
     } finally {
       setCreatingAdmin(false)
     }

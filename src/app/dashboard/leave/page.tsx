@@ -61,7 +61,7 @@ export default function LeavePage() {
 
       await apiService.createLeaveRequest({
         driver_id: user.id,
-        leave_type: formData.leave_type,
+        leave_type: formData.leave_type as 'sick' | 'personal' | 'vacation' | 'emergency' | 'other',
         start_date: new Date(formData.start_date).toISOString(),
         end_date: new Date(formData.end_date).toISOString(),
         reason: formData.reason
@@ -71,9 +71,10 @@ export default function LeavePage() {
       setShowDialog(false)
       setFormData({ leave_type: '', start_date: '', end_date: '', reason: '' })
       fetchLeaveRequests()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error submitting leave request:', error)
-      toast.error(error.message || 'Failed to submit leave request')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to submit leave request'
+      toast.error(errorMessage)
     } finally {
       setSubmitting(false)
     }
@@ -86,9 +87,10 @@ export default function LeavePage() {
       await apiService.deleteLeaveRequest(id)
       toast.success('Leave request deleted successfully')
       fetchLeaveRequests()
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error deleting leave request:', error)
-      toast.error(error.message || 'Failed to delete leave request')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete leave request'
+      toast.error(errorMessage)
     }
   }
 
