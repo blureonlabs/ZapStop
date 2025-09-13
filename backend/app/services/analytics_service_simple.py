@@ -93,6 +93,36 @@ class AnalyticsServiceSimple:
         total_expenses = float(expenses_data[0]) if expenses_data[0] else 0
         net_profit = total_earnings - total_expenses
         
+        # Get active drivers (drivers with active work sessions today)
+        active_drivers_result = self.db.execute(
+            text("""
+                SELECT 
+                    u.id, u.name, u.email, u.phone,
+                    a.start_time, a.date,
+                    c.plate_number, c.model
+                FROM users u
+                JOIN attendance a ON u.id = a.driver_id
+                LEFT JOIN cars c ON u.id = c.assigned_driver_id
+                WHERE u.role = 'driver' 
+                AND a.date = CURRENT_DATE 
+                AND a.start_time IS NOT NULL 
+                AND a.end_time IS NULL
+                ORDER BY a.start_time DESC
+            """)
+        )
+        active_drivers = []
+        for row in active_drivers_result:
+            active_drivers.append({
+                "id": str(row[0]),
+                "name": row[1],
+                "email": row[2],
+                "phone": row[3],
+                "start_time": row[4].isoformat() if row[4] else None,
+                "date": row[5].isoformat() if row[5] else None,
+                "car_plate": row[6],
+                "car_model": row[7]
+            })
+
         return {
             "summary": {
                 "total_earnings": total_earnings,
@@ -107,10 +137,12 @@ class AnalyticsServiceSimple:
             },
             "company_stats": {
                 "total_drivers": stats_data[0] if stats_data[0] else 0,
+                "active_drivers": len(active_drivers),
                 "total_cars": stats_data[1] if stats_data[1] else 0,
                 "total_owners": stats_data[2] if stats_data[2] else 0,
                 "total_admins": stats_data[3] if stats_data[3] else 0
             },
+            "active_drivers": active_drivers,
             "daily_trends": daily_trends,
             "records_count": {
                 "earnings_records": earnings_data[4] if earnings_data[4] else 0,
@@ -174,3 +206,39 @@ class AnalyticsServiceSimple:
                 "average_earnings": sum(driver["total_earnings"] for driver in driver_earnings) / len(driver_earnings) if driver_earnings else 0
             }
         }
+    
+    def get_active_drivers(self) -> List[Dict[str, Any]]:
+        """Get list of currently active drivers"""
+        active_drivers_result = self.db.execute(
+            text("""
+                SELECT 
+                    u.id, u.name, u.email, u.phone,
+                    a.start_time, a.date,
+                    c.plate_number, c.model,
+                    c.monthly_due
+                FROM users u
+                JOIN attendance a ON u.id = a.driver_id
+                LEFT JOIN cars c ON u.id = c.assigned_driver_id
+                WHERE u.role = 'driver' 
+                AND a.date = CURRENT_DATE 
+                AND a.start_time IS NOT NULL 
+                AND a.end_time IS NULL
+                ORDER BY a.start_time DESC
+            """)
+        )
+        
+        active_drivers = []
+        for row in active_drivers_result:
+            active_drivers.append({
+                "id": str(row[0]),
+                "name": row[1],
+                "email": row[2],
+                "phone": row[3],
+                "start_time": row[4].isoformat() if row[4] else None,
+                "date": row[5].isoformat() if row[5] else None,
+                "car_plate": row[6],
+                "car_model": row[7],
+                "monthly_due": float(row[8]) if row[8] else 0
+            })
+        
+        return active_drivers

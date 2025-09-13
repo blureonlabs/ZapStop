@@ -113,15 +113,43 @@ export interface LeaveRequest {
 }
 
 export interface AnalyticsData {
-  total_drivers: number
-  active_drivers: number
-  total_cars: number
-  available_cars: number
-  total_earnings: number
-  total_expenses: number
-  net_profit: number
-  pending_leave_requests: number
-  pending_expense_requests: number
+  summary: {
+    total_earnings: number
+    total_expenses: number
+    net_profit: number
+    time_period: string
+  }
+  platform_breakdown: {
+    uber_earnings: number
+    bolt_earnings: number
+    individual_earnings: number
+  }
+  company_stats: {
+    total_drivers: number
+    active_drivers: number
+    total_cars: number
+    total_owners: number
+    total_admins: number
+  }
+  active_drivers: Array<{
+    id: string
+    name: string
+    email: string
+    phone: string
+    start_time: string
+    date: string
+    car_plate: string
+    car_model: string
+    monthly_due: number
+  }>
+  daily_trends: Array<{
+    date: string
+    earnings: number
+  }>
+  records_count: {
+    earnings_records: number
+    expenses_records: number
+  }
 }
 
 class ApiService {
@@ -177,6 +205,18 @@ class ApiService {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
+      
+      // Handle 401 Unauthorized - token expired
+      if (response.status === 401) {
+        // Clear token and redirect to login
+        this.clearToken()
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('auth_token')
+          // Redirect to login page
+          window.location.href = '/login'
+        }
+      }
+      
       throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
     }
 

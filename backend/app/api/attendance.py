@@ -107,7 +107,7 @@ async def end_work(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """End work session"""
+    """End work session with validation"""
     if current_user["role"] != "driver":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -115,15 +115,23 @@ async def end_work(
         )
     
     attendance_service = AttendanceService(db)
-    result = attendance_service.end_work(current_user["id"])
     
-    if not result:
+    try:
+        result = attendance_service.end_work(current_user["id"])
+        
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No active work session found"
+            )
+        
+        return {"message": "Work ended successfully"}
+    
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to end work session"
+            detail=str(e)
         )
-    
-    return {"message": "Work ended successfully"}
 
 @router.get("/current-status")
 async def get_current_status(

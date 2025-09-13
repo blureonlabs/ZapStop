@@ -228,7 +228,7 @@ class AttendanceServiceSimple:
         return True
     
     def end_work(self, driver_id: str) -> bool:
-        """End work session using direct SQL"""
+        """End work session using direct SQL with validation"""
         from datetime import date
         
         today = date.today()
@@ -245,6 +245,32 @@ class AttendanceServiceSimple:
         
         if not attendance:
             return False
+        
+        # VALIDATION: Check if driver has updated earnings for today
+        earnings_result = self.db.execute(
+            text("""
+                SELECT COUNT(*) FROM driver_earnings 
+                WHERE driver_id = :driver_id AND date = :today
+            """),
+            {"driver_id": driver_id, "today": today}
+        )
+        earnings_count = earnings_result.fetchone()[0]
+        
+        if earnings_count == 0:
+            raise ValueError("Please update your earnings before ending work")
+        
+        # VALIDATION: Check if driver has updated expenses for today
+        expenses_result = self.db.execute(
+            text("""
+                SELECT COUNT(*) FROM driver_expenses 
+                WHERE driver_id = :driver_id AND date = :today
+            """),
+            {"driver_id": driver_id, "today": today}
+        )
+        expenses_count = expenses_result.fetchone()[0]
+        
+        if expenses_count == 0:
+            raise ValueError("Please update your expenses (or mark 'No Expenses') before ending work")
         
         # Update with end time
         self.db.execute(

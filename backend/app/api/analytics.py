@@ -72,6 +72,37 @@ async def get_earnings_analytics(
             detail=f"Failed to fetch earnings analytics: {str(e)}"
         )
 
+@router.get("/active-drivers", summary="Get Active Drivers", description="Get list of currently active drivers")
+async def get_active_drivers(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Get list of currently active drivers.
+    
+    Returns drivers who have started work today but haven't ended their session.
+    """
+    # Only admin and accountant can access this
+    if current_user["role"] not in ["admin", "accountant"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    
+    analytics_service = AnalyticsService(db)
+    
+    try:
+        active_drivers = analytics_service.get_active_drivers()
+        return {
+            "active_drivers": active_drivers,
+            "count": len(active_drivers)
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch active drivers: {str(e)}"
+        )
+
 @router.get("/expenses")
 async def get_expenses_analytics(
     time_filter: str = "monthly",

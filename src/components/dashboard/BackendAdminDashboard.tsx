@@ -45,15 +45,15 @@ export default function BackendAdminDashboard() {
     }
 
     return {
-      totalDrivers: analyticsData?.total_drivers || 0,
-      activeDrivers: analyticsData?.active_drivers || 0,
-      totalCars: analyticsData?.total_cars || 0,
-      availableCars: analyticsData?.available_cars || 0,
-      totalEarnings: analyticsData?.total_earnings || 0,
-      totalExpenses: analyticsData?.total_expenses || 0,
-      netProfit: analyticsData?.net_profit || 0,
-      pendingLeaveRequests: analyticsData?.pending_leave_requests || 0,
-      pendingExpenseRequests: analyticsData?.pending_expense_requests || 0
+      totalDrivers: analyticsData?.company_stats?.total_drivers || 0,
+      activeDrivers: analyticsData?.company_stats?.active_drivers || 0,
+      totalCars: analyticsData?.company_stats?.total_cars || 0,
+      availableCars: analyticsData?.company_stats?.total_cars || 0, // Using total_cars as available_cars for now
+      totalEarnings: analyticsData?.summary?.total_earnings || 0,
+      totalExpenses: analyticsData?.summary?.total_expenses || 0,
+      netProfit: analyticsData?.summary?.net_profit || 0,
+      pendingLeaveRequests: 0, // Not available in current analytics
+      pendingExpenseRequests: 0 // Not available in current analytics
     }
   }, [analyticsData])
 

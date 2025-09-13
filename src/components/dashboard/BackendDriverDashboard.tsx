@@ -87,7 +87,16 @@ export default function BackendDriverDashboard() {
       // Fetch today's earnings
       const today = new Date().toISOString().split('T')[0]
       const earnings = await apiService.getEarnings(user.id)
-      const todayEarningsData = earnings.find(e => e.date === today)
+      const todayEarningsData = earnings
+        .filter(e => {
+          const earningsDate = new Date(e.date).toISOString().split('T')[0]
+          return earningsDate === today
+        })
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      
+      console.log('BackendDriverDashboard - Today:', today)
+      console.log('BackendDriverDashboard - Earnings data:', earnings)
+      console.log('BackendDriverDashboard - Today earnings found:', todayEarningsData)
       
       if (todayEarningsData) {
         setTodayEarnings(todayEarningsData)
@@ -108,7 +117,12 @@ export default function BackendDriverDashboard() {
 
       // Fetch today's expenses
       const expenses = await apiService.getExpenses(user.id)
-      const todayExpenseData = expenses.find(e => e.date === today)
+      const todayExpenseData = expenses
+        .filter(e => {
+          const expenseDate = new Date(e.date).toISOString().split('T')[0]
+          return expenseDate === today
+        })
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
       setTodayExpense(todayExpenseData || null)
 
       // Fetch today's attendance
@@ -162,12 +176,35 @@ export default function BackendDriverDashboard() {
         return
       }
 
+      // Validate earnings - check if driver has updated earnings for today
+      const hasEarnings = todayEarnings && (
+        todayEarnings.uber_cash > 0 || 
+        todayEarnings.uber_account > 0 || 
+        todayEarnings.bolt_cash > 0 || 
+        todayEarnings.bolt_account > 0 ||
+        todayEarnings.individual_rides_cash > 0 ||
+        todayEarnings.individual_rides_account > 0
+      )
+
+      if (!hasEarnings) {
+        toast.error('Please update your earnings before ending work')
+        return
+      }
+
+      // Validate expenses - check if driver has updated expenses for today
+      const hasExpenses = todayExpense && todayExpense.amount > 0
+      if (!hasExpenses && !noExpenses) {
+        toast.error('Please update your expenses (or mark "No Expenses") before ending work')
+        return
+      }
+
       await apiService.endWork()
       toast.success('Work ended successfully!')
       fetchDriverData()
     } catch (error) {
       console.error('Error ending work:', error)
-      toast.error('Failed to end work')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to end work'
+      toast.error(errorMessage)
     }
   }
 
@@ -186,16 +223,21 @@ export default function BackendDriverDashboard() {
       }
 
       // Call the backend API to update earnings
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toISOString()
       const earningsData = {
         date: today,
         driver_id: user?.id || '',
         ...earningsForm
       }
       
+      console.log('BackendDriverDashboard - Updating earnings, todayEarnings exists:', !!todayEarnings)
+      console.log('BackendDriverDashboard - todayEarnings ID:', todayEarnings?.id)
+      
       if (todayEarnings) {
+        console.log('BackendDriverDashboard - Updating existing earnings with ID:', todayEarnings.id)
         await apiService.updateEarning(todayEarnings.id, earningsData)
       } else {
+        console.log('BackendDriverDashboard - Creating new earnings record')
         await apiService.createEarning(earningsData)
       }
       
@@ -220,7 +262,7 @@ export default function BackendDriverDashboard() {
       }
 
       // Call the backend API to update expenses
-      const today = new Date().toISOString().split('T')[0]
+      const today = new Date().toISOString()
       const expenseData = {
         date: today,
         driver_id: user?.id || '',

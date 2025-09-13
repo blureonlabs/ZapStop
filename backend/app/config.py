@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     jwt_secret: str = os.getenv("JWT_SECRET", "your-secret-key-change-in-production")
     jwt_refresh_secret: str = os.getenv("JWT_REFRESH_SECRET", "your-refresh-secret-key-change-in-production")
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 30
+    jwt_access_token_expire_minutes: int = 480  # 8 hours
     jwt_refresh_token_expire_days: int = 7
     
     # CORS

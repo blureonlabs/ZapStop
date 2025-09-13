@@ -35,49 +35,36 @@ export default function ActiveDriversPage() {
     if (!user || user.role !== 'admin') return
 
     try {
-      const today = new Date().toISOString().split('T')[0]
+      console.log('Fetching active drivers from analytics API')
       
-      console.log('Fetching active drivers for date:', today)
-      
-      // Get attendance records for today with present status and no end time
-      const attendanceData = await apiService.getAttendance()
-      const todayAttendance = attendanceData.filter(att => 
-        att.date === today && 
-        att.status === 'present' && 
-        !att.end_time
-      )
+      // Use the existing API service to get dashboard data which includes active drivers
+      const analyticsData = await apiService.getDashboardData('monthly')
+      console.log('Analytics data from API:', analyticsData)
 
-      console.log('Today attendance data:', todayAttendance)
-
-      // Get driver and car data for each attendance record
-      const enrichedData = await Promise.all(
-        todayAttendance.map(async (att) => {
-          // Get driver info
-          const users = await apiService.getUsers()
-          const driverData = users.find(u => u.id === att.driver_id)
-
-          // Get car info for this driver
-          const cars = await apiService.getCars()
-          const carData = cars.find(c => c.assigned_driver_id === att.driver_id)
-
-          return {
-            ...att,
-            driver: driverData ? {
-              id: driverData.id,
-              name: driverData.name,
-              email: driverData.email
-            } : undefined,
-            car: carData ? {
-              id: carData.id,
-              plate_number: carData.plate_number,
-              model: carData.model
-            } : undefined
-          }
-        })
-      )
+      // Transform the active drivers data to match the expected format
+      const enrichedData = analyticsData.active_drivers.map((driver: any) => ({
+        id: driver.id,
+        driver_id: driver.id,
+        date: driver.date,
+        start_time: driver.start_time,
+        end_time: undefined,
+        status: 'present' as const,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        driver: {
+          id: driver.id,
+          name: driver.name,
+          email: driver.email
+        },
+        car: {
+          id: driver.id, // Using driver ID as car ID for now
+          plate_number: driver.car_plate,
+          model: driver.car_model
+        }
+      }))
 
       setAttendance(enrichedData)
-      console.log('Enriched data:', enrichedData)
+      console.log('Transformed active drivers data:', enrichedData)
     } catch (error) {
       console.error('Error fetching active drivers:', error)
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
