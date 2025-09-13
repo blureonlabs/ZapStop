@@ -4,8 +4,9 @@ Configuration settings for ZapStop Backend
 
 import os
 from typing import Optional
+from pydantic_settings import BaseSettings
 
-class Settings:
+class Settings(BaseSettings):
     """Application settings"""
     
     # Database
@@ -51,6 +52,9 @@ class Settings:
     debug: bool = os.getenv("DEBUG", "False").lower() == "true"
     environment: str = os.getenv("ENVIRONMENT", "development")
     
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
 
 # Global settings instance
 settings = Settings()
