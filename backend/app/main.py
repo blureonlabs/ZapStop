@@ -9,8 +9,6 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 import os
-from contextlib import asynccontextmanager
-
 from app.database import engine, Base
 from app.api import auth_simple as auth, users, cars, owners, analytics, earnings, expenses, attendance, leave_requests
 from app.middleware.auth_simple import get_current_user
@@ -18,13 +16,7 @@ from app.models.user import User
 from app.config import settings
 
 # Create database tables
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    Base.metadata.create_all(bind=engine)
-    yield
-    # Shutdown
-    pass
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="ZapStop API",
@@ -74,7 +66,6 @@ app = FastAPI(
             "description": "Production server"
         }
     ],
-    lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json"
