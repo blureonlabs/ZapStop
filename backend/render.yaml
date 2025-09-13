@@ -3,7 +3,7 @@ services:
     name: zapstop-backend
     env: docker
     plan: free
-    dockerfilePath: ./backend/Dockerfile
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: DATABASE_URL
         sync: false
