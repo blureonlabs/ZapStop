@@ -1,9 +1,11 @@
 services:
   - type: web
     name: zapstop-backend
-    env: docker
+    env: python
     plan: free
-    dockerfilePath: ./Dockerfile
+    pythonVersion: "3.11.9"
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         sync: false
