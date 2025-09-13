@@ -9,4 +9,4 @@ pydantic==2.4.0
 pydantic-settings==2.0.3
 python-dotenv==1.0.0
 gunicorn==21.2.0
-redis==4.6.0
+redis==4.6.0# Force new deployment
