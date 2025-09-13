@@ -42,7 +42,7 @@ export default function ActiveDriversPage() {
       console.log('Analytics data from API:', analyticsData)
 
       // Transform the active drivers data to match the expected format
-      const enrichedData = analyticsData.active_drivers.map((driver: any) => ({
+      const enrichedData = analyticsData.active_drivers.map((driver: { id: string; name: string; email: string; phone: string; start_time: string; date: string; car_plate: string; car_model: string; monthly_due: number }) => ({
         id: driver.id,
         driver_id: driver.id,
         date: driver.date,
