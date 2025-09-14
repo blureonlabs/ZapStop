@@ -1,12 +1,12 @@
 service: zapstop-api
 
-frameworkVersion: '3'
+frameworkVersion: '4'
 
 provider:
   name: aws
   runtime: python3.11
   stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'us-east-1'}
+  region: ${opt:region, 'me-central-1'}
   memorySize: 1024
   timeout: 30
   architecture:
@@ -16,7 +16,6 @@ provider:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
     DB_SECRET_NAME: ${self:custom.dbSecretName}
-    REDIS_SECRET_NAME: ${self:custom.redisSecretName}
     JWT_SECRET: ${self:custom.jwtSecret}
     JWT_REFRESH_SECRET: ${self:custom.jwtRefreshSecret}
     DEBUG: ${self:custom.debug}
@@ -29,7 +28,6 @@ provider:
             - secretsmanager:GetSecretValue
           Resource:
             - arn:aws:secretsmanager:${self:provider.region}:${aws:accountId}:secret:${self:custom.dbSecretName}*
-            - arn:aws:secretsmanager:${self:provider.region}:${aws:accountId}:secret:${self:custom.redisSecretName}*
         - Effect: Allow
           Action:
             - rds-db:connect
@@ -70,7 +68,6 @@ plugins:
 custom:
   # Database configuration
   dbSecretName: zapstop/aurora/credentials
-  redisSecretName: zapstop/redis/credentials
   
   # JWT secrets (generate these)
   jwtSecret: ${env:JWT_SECRET, 'your-super-secret-jwt-key-change-in-production'}
@@ -80,10 +77,10 @@ custom:
   auroraClusterId: zapstop-aurora-cluster
   dbUsername: zapstop_user
   
-  # VPC configuration (update these with your VPC details)
-  lambdaSecurityGroupId: sg-xxxxxxxxx
-  lambdaSubnetId1: subnet-xxxxxxxxx
-  lambdaSubnetId2: subnet-yyyyyyyyy
+  # VPC configuration (using default VPC in UAE)
+  lambdaSecurityGroupId: sg-0067ef1f4b19805aa
+  lambdaSubnetId1: subnet-05f1dbb4127a433fa
+  lambdaSubnetId2: subnet-05c2fb6180b27ac77
   
   # Debug mode
   debug: ${self:provider.stage, 'dev'}
@@ -99,15 +96,17 @@ custom:
 
 resources:
   Resources:
-    # Aurora Serverless v2 Cluster
-    AuroraCluster:
-      Type: AWS::RDS::DBCluster
+    # RDS PostgreSQL Instance (Free Tier Compatible)
+    RDSInstance:
+      Type: AWS::RDS::DBInstance
       Properties:
-        DBClusterIdentifier: ${self:custom.auroraClusterId}
-        Engine: aurora-postgresql
-        EngineMode: provisioned
+        DBInstanceIdentifier: ${self:custom.auroraClusterId}
+        Engine: postgres
         EngineVersion: '15.4'
-        DatabaseName: zapstop
+        DBInstanceClass: db.t3.micro
+        AllocatedStorage: 20
+        StorageType: gp2
+        DBName: zapstop
         MasterUsername: ${self:custom.dbUsername}
         MasterUserPassword: !Ref DatabasePassword
         VpcSecurityGroupIds:
@@ -116,37 +115,23 @@ resources:
         BackupRetentionPeriod: 7
         PreferredBackupWindow: '03:00-04:00'
         PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
-        StorageEncrypted: true
         DeletionProtection: false
-        ServerlessV2ScalingConfiguration:
-          MinCapacity: 0.5
-          MaxCapacity: 16
-        Tags:
-          - Key: Environment
-            Value: ${self:provider.stage}
-          - Key: Service
-            Value: zapstop
-
-    # Aurora Serverless v2 Instance
-    AuroraInstance:
-      Type: AWS::RDS::DBInstance
-      Properties:
-        DBInstanceIdentifier: ${self:custom.auroraClusterId}-instance-1
-        DBClusterIdentifier: !Ref AuroraCluster
-        DBInstanceClass: db.serverless
-        Engine: aurora-postgresql
         PubliclyAccessible: false
+        MultiAZ: false
+        StorageEncrypted: true
         Tags:
+          - Key: Name
+            Value: ${self:service}-rds-instance
           - Key: Environment
             Value: ${self:provider.stage}
           - Key: Service
             Value: zapstop
 
-    # Security Group for Aurora
+    # Security Group for RDS
     AuroraSecurityGroup:
       Type: AWS::EC2::SecurityGroup
       Properties:
-        GroupDescription: Security group for Aurora cluster
+        GroupDescription: Security group for RDS PostgreSQL instance
         VpcId: !Ref VPC
         SecurityGroupIngress:
           - IpProtocol: tcp
@@ -174,7 +159,7 @@ resources:
     AuroraSubnetGroup:
       Type: AWS::RDS::DBSubnetGroup
       Properties:
-        DBSubnetGroupDescription: Subnet group for Aurora cluster
+        DBSubnetGroupDescription: Subnet group for RDS PostgreSQL instance
         SubnetIds:
           - !Ref PrivateSubnet1
           - !Ref PrivateSubnet2
@@ -192,7 +177,7 @@ resources:
           {
             "username": "${self:custom.dbUsername}",
             "password": "${DatabasePassword}",
-            "host": "${AuroraCluster.Endpoint.Address}",
+            "host": "${RDSInstance.Endpoint.Address}",
             "port": 5432,
             "dbname": "zapstop",
             "sslmode": "require"
@@ -242,29 +227,6 @@ resources:
           - Key: Service
             Value: zapstop
 
-    # Redis Security Group
-    RedisSecurityGroup:
-      Type: AWS::EC2::SecurityGroup
-      Properties:
-        GroupDescription: Security group for Redis cluster
-        VpcId: !Ref VPC
-        SecurityGroupIngress:
-          - IpProtocol: tcp
-            FromPort: 6379
-            ToPort: 6379
-            SourceSecurityGroupId: !Ref LambdaSecurityGroup
-        Tags:
-          - Key: Name
-            Value: ${self:service}-redis-sg
-
-    # Redis Subnet Group
-    RedisSubnetGroup:
-      Type: AWS::ElastiCache::SubnetGroup
-      Properties:
-        Description: Subnet group for Redis cluster
-        SubnetIds:
-          - !Ref PrivateSubnet1
-          - !Ref PrivateSubnet2
 
     # Password for database
     DatabasePassword:
@@ -281,13 +243,16 @@ resources:
   Parameters:
     VPC:
       Type: AWS::EC2::VPC::Id
+      Default: vpc-088a2728ad0e90a83
       Description: VPC ID for the resources
     PrivateSubnet1:
       Type: AWS::EC2::Subnet::Id
-      Description: First private subnet for Aurora
+      Default: subnet-05f1dbb4127a433fa
+      Description: First private subnet for RDS
     PrivateSubnet2:
       Type: AWS::EC2::Subnet::Id
-      Description: Second private subnet for Aurora
+      Default: subnet-05c2fb6180b27ac77
+      Description: Second private subnet for RDS
 
 Outputs:
   ApiGatewayRestApiId:
@@ -305,15 +270,15 @@ Outputs:
     Export:
       Name: ${self:service}-${self:provider.stage}-api-url
 
-  AuroraClusterEndpoint:
-    Value: !GetAtt AuroraCluster.Endpoint.Address
+  RDSInstanceEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
     Export:
-      Name: ${self:service}-${self:provider.stage}-aurora-endpoint
+      Name: ${self:service}-${self:provider.stage}-rds-endpoint
 
-  AuroraClusterPort:
-    Value: !GetAtt AuroraCluster.Endpoint.Port
+  RDSInstancePort:
+    Value: !GetAtt RDSInstance.Endpoint.Port
     Export:
-      Name: ${self:service}-${self:provider.stage}-aurora-port
+      Name: ${self:service}-${self:provider.stage}-rds-port
 
   DatabaseSecretArn:
     Value: !Ref DatabaseSecret

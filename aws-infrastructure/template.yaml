@@ -14,7 +14,6 @@ Globals:
         STAGE: !Ref Stage
         REGION: !Ref AWS::Region
         DB_SECRET_NAME: !Ref DatabaseSecret
-        REDIS_SECRET_NAME: !Ref RedisSecret
         JWT_SECRET: !Ref JWTSecret
         JWT_REFRESH_SECRET: !Ref JWTRefreshSecret
         DEBUG: !Ref DebugMode
@@ -62,7 +61,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub 'zapstop-api-${Stage}'
-      CodeUri: backend/
+      CodeUri: ../backend/
       Handler: lambda_handler.lambda_handler
       Description: ZapStop FastAPI Lambda function
       VpcConfig:
@@ -98,19 +97,31 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
-            Cors:
-              AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
         RootApiGateway:
           Type: HttpApi
           Properties:
             Path: /
             Method: ANY
-            Cors:
-              AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
+
+  # HTTP API Gateway
+  ServerlessHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+        AllowHeaders:
+          - Content-Type
+          - X-Amz-Date
+          - Authorization
+          - X-Api-Key
+          - X-Amz-Security-Token
+        AllowOrigins:
+          - "*"
 
   # Python Dependencies Layer
   PythonDependenciesLayer:
@@ -118,12 +129,10 @@ Resources:
     Properties:
       LayerName: !Sub 'zapstop-dependencies-${Stage}'
       Description: Python dependencies for ZapStop
-      ContentUri: backend/
+      ContentUri: ../backend/
       CompatibleRuntimes:
         - python3.11
       RetentionPolicy: Delete
-      Metadata:
-        BuildMethod: python3.11
 
   # Aurora Serverless v2 Cluster
   AuroraCluster:

@@ -1,0 +1,221 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'ZapStop API - Simple FastAPI on Lambda with RDS PostgreSQL'
+
+Globals:
+  Function:
+    Timeout: 30
+    MemorySize: 1024
+    Runtime: python3.11
+    Architectures:
+      - x86_64
+    Environment:
+      Variables:
+        STAGE: !Ref Stage
+        REGION: !Ref AWS::Region
+        DB_SECRET_NAME: !Ref DatabaseSecret
+        JWT_SECRET: !Ref JWTSecret
+        JWT_REFRESH_SECRET: !Ref JWTRefreshSecret
+        DEBUG: !Ref DebugMode
+
+Parameters:
+  Stage:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+    Description: Deployment stage
+  
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for the resources
+  
+  PrivateSubnet1Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: First private subnet for RDS
+  
+  PrivateSubnet2Id:
+    Type: AWS::EC2::Subnet::Id
+    Description: Second private subnet for RDS
+  
+  JWTSecret:
+    Type: String
+    NoEcho: true
+    Description: JWT secret key
+    Default: your-super-secret-jwt-key-change-in-production
+  
+  JWTRefreshSecret:
+    Type: String
+    NoEcho: true
+    Description: JWT refresh secret key
+    Default: your-super-secret-refresh-key-change-in-production
+  
+  DebugMode:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+    Description: Enable debug mode
+
+Resources:
+  # Lambda Function
+  ZapStopApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub 'zapstop-api-${Stage}'
+      CodeUri: ../backend/
+      Handler: lambda_handler.lambda_handler
+      Description: ZapStop FastAPI Lambda function
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref LambdaSecurityGroup
+        SubnetIds:
+          - !Ref PrivateSubnet1Id
+          - !Ref PrivateSubnet2Id
+      Policies:
+        - Version: '2012-10-17'
+          Statement:
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Ref DatabaseSecret
+            - Effect: Allow
+              Action:
+                - logs:CreateLogGroup
+                - logs:CreateLogStream
+                - logs:PutLogEvents
+              Resource: '*'
+      Events:
+        ApiGateway:
+          Type: HttpApi
+          Properties:
+            Path: /{proxy+}
+            Method: ANY
+        RootApiGateway:
+          Type: HttpApi
+          Properties:
+            Path: /
+            Method: ANY
+
+  # Security Group for Lambda
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-lambda-sg'
+
+  # Security Group for RDS
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RDS PostgreSQL instance
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-rds-sg'
+
+  # DB Subnet Group
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnet group for RDS PostgreSQL instance
+      SubnetIds:
+        - !Ref PrivateSubnet1Id
+        - !Ref PrivateSubnet2Id
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-rds-subnet-group'
+
+  # RDS PostgreSQL Instance
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub 'zapstop-rds-${Stage}'
+      Engine: postgres
+      EngineVersion: '11.22-rds.20240418'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      StorageType: gp2
+      DBName: zapstop
+      MasterUsername: zapstop_user
+      MasterUserPassword: !Ref DatabasePassword
+      VPCSecurityGroups:
+        - !Ref RDSSecurityGroup
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+      DeletionProtection: false
+      PubliclyAccessible: false
+      MultiAZ: false
+      StorageEncrypted: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-rds-instance'
+        - Key: Environment
+          Value: !Ref Stage
+        - Key: Service
+          Value: zapstop
+
+  # Password for database
+  DatabasePassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'zapstop-db-password-${Stage}'
+      Description: Database password for ZapStop
+      GenerateSecretString:
+        SecretStringTemplate: '{"username":"zapstop_user"}'
+        GenerateStringKey: 'password'
+        PasswordLength: 32
+        ExcludeCharacters: '"@/\'
+
+  # Secrets Manager for database credentials
+  DatabaseSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub 'zapstop/aurora/credentials-${Stage}'
+      Description: Database credentials for ZapStop RDS instance
+      SecretString: !Sub |
+        {
+          "username": "zapstop_user",
+          "password": "${DatabasePassword}",
+          "host": "${RDSInstance.Endpoint.Address}",
+          "port": 5432,
+          "dbname": "zapstop",
+          "sslmode": "require"
+        }
+      Tags:
+        - Key: Environment
+          Value: !Ref Stage
+        - Key: Service
+          Value: zapstop
+
+Outputs:
+  ApiGatewayUrl:
+    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+    Export:
+      Name: !Sub '${AWS::StackName}-api-url'
+
+  RDSInstanceEndpoint:
+    Value: !GetAtt RDSInstance.Endpoint.Address
+    Export:
+      Name: !Sub '${AWS::StackName}-rds-endpoint'
+
+  RDSInstancePort:
+    Value: !GetAtt RDSInstance.Endpoint.Port
+    Export:
+      Name: !Sub '${AWS::StackName}-rds-port'
+
+  DatabaseSecretArn:
+    Value: !Ref DatabaseSecret
+    Export:
+      Name: !Sub '${AWS::StackName}-db-secret-arn'

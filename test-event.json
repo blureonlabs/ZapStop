@@ -1,0 +1,9 @@
+{
+  "httpMethod": "GET",
+  "path": "/api/health",
+  "headers": {
+    "Content-Type": "application/json"
+  },
+  "body": null,
+  "isBase64Encoded": false
+}
