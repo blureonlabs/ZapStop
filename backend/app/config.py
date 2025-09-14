@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     jwt_refresh_token_expire_days: int = 7
     
     # CORS
-    allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,https://yourdomain.com")
+    allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,https://yourdomain.com")
     
     @property
     def allowed_origins_list(self) -> list:

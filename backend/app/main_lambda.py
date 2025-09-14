@@ -1,27 +1,25 @@
 """
-ZapStop Backend API
-FastAPI application for rental car management system
+ZapStop Backend API - Lambda Optimized Version
+FastAPI application optimized for AWS Lambda with Aurora Serverless v2
 """
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
-import uvicorn
 import os
-from app.database import engine, Base
+from app.database_aurora import engine, Base, init_database, check_database_connection
 from app.api import auth_simple as auth, users, cars, owners, analytics, earnings, expenses, attendance, leave_requests
 from app.middleware.auth_simple import get_current_user
 from app.models.user import User
 from app.config import settings
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
+# Initialize database tables
+init_database()
 
 app = FastAPI(
     title="ZapStop API",
     description="""
-    ## ZapStop Rental Car Management System API
+    ## ZapStop Rental Car Management System API - Lambda Version
     
     A comprehensive API for managing rental car operations including:
     
@@ -41,11 +39,8 @@ app = FastAPI(
     - **Driver**: Access to own data and work-related endpoints
     - **Owner**: Access to car and financial data
     
-    ### Rate Limiting
-    API requests are rate limited to prevent abuse. Contact support if you need higher limits.
-    
     ### Database
-    This API is connected to Neon PostgreSQL database for reliable data persistence.
+    This API is connected to Amazon Aurora Serverless v2 (PostgreSQL) for reliable data persistence.
     """,
     version="1.0.0",
     contact={
@@ -58,12 +53,8 @@ app = FastAPI(
     },
     servers=[
         {
-            "url": "http://localhost:8000",
-            "description": "Development server"
-        },
-        {
-            "url": "https://zapstop-backend.onrender.com",
-            "description": "Production server"
+            "url": "https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com",
+            "description": "AWS Lambda API Gateway"
         }
     ],
     docs_url="/docs",
@@ -71,19 +62,13 @@ app = FastAPI(
     openapi_url="/openapi.json"
 )
 
-# CORS middleware
+# CORS middleware - Lambda optimized
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=["*"],  # Configure this properly for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
-
-# Trusted host middleware for security
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=["localhost", "127.0.0.1", "*.onrender.com", "*.netlify.app"]
 )
 
 # Include API routers
@@ -101,26 +86,32 @@ app.include_router(leave_requests.router, prefix="/api/leave-requests", tags=["l
 async def root():
     """Root endpoint"""
     return {
-        "message": "ZapStop API is running",
+        "message": "ZapStop API is running on AWS Lambda",
         "version": "1.0.0",
-        "docs": "/docs"
+        "docs": "/docs",
+        "environment": os.getenv("STAGE", "dev")
     }
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
+    db_healthy = check_database_connection()
     return {
-        "status": "healthy",
-        "service": "zapstop-api"
+        "status": "healthy" if db_healthy else "unhealthy",
+        "service": "zapstop-api-lambda",
+        "database": "connected" if db_healthy else "disconnected",
+        "environment": os.getenv("STAGE", "dev")
     }
 
 @app.get("/api/health")
 async def api_health_check():
     """API health check endpoint"""
+    db_healthy = check_database_connection()
     return {
-        "status": "healthy",
+        "status": "healthy" if db_healthy else "unhealthy",
         "api_version": "1.0.0",
-        "database": "connected"
+        "database": "connected" if db_healthy else "disconnected",
+        "environment": os.getenv("STAGE", "dev")
     }
 
 # Global exception handler
@@ -131,12 +122,22 @@ async def http_exception_handler(request, exc):
         content={"error": exc.detail, "status_code": exc.status_code}
     )
 
-if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(
-        "app.main:app",
-        host="0.0.0.0",
-        port=port,
-        reload=False
-    )
+# Lambda-specific startup event
+@app.on_event("startup")
+async def startup_event():
+    """Lambda startup event"""
+    print("ZapStop API Lambda function starting up...")
+    print(f"Environment: {os.getenv('STAGE', 'dev')}")
+    print(f"Region: {os.getenv('REGION', 'us-east-1')}")
+    
+    # Test database connection
+    if check_database_connection():
+        print("Database connection successful")
+    else:
+        print("Database connection failed")
+
+# Lambda-specific shutdown event
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Lambda shutdown event"""
+    print("ZapStop API Lambda function shutting down...")

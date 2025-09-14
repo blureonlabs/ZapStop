@@ -1,0 +1,326 @@
+service: zapstop-api
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: python3.11
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  memorySize: 1024
+  timeout: 30
+  architecture:
+    - x86_64
+  
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+    DB_SECRET_NAME: ${self:custom.dbSecretName}
+    REDIS_SECRET_NAME: ${self:custom.redisSecretName}
+    JWT_SECRET: ${self:custom.jwtSecret}
+    JWT_REFRESH_SECRET: ${self:custom.jwtRefreshSecret}
+    DEBUG: ${self:custom.debug}
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource:
+            - arn:aws:secretsmanager:${self:provider.region}:${aws:accountId}:secret:${self:custom.dbSecretName}*
+            - arn:aws:secretsmanager:${self:provider.region}:${aws:accountId}:secret:${self:custom.redisSecretName}*
+        - Effect: Allow
+          Action:
+            - rds-db:connect
+          Resource:
+            - arn:aws:rds-db:${self:provider.region}:${aws:accountId}:dbuser:${self:custom.auroraClusterId}/${self:custom.dbUsername}
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+
+functions:
+  api:
+    handler: lambda_handler.lambda_handler
+    description: ZapStop FastAPI Lambda function
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+          cors: true
+      - httpApi:
+          path: /
+          method: ANY
+          cors: true
+    vpc:
+      securityGroupIds:
+        - ${self:custom.lambdaSecurityGroupId}
+      subnetIds:
+        - ${self:custom.lambdaSubnetId1}
+        - ${self:custom.lambdaSubnetId2}
+    layers:
+      - arn:aws:lambda:${self:provider.region}:336392948345:layer:AWSSDKPandas-Python311:1
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  # Database configuration
+  dbSecretName: zapstop/aurora/credentials
+  redisSecretName: zapstop/redis/credentials
+  
+  # JWT secrets (generate these)
+  jwtSecret: ${env:JWT_SECRET, 'your-super-secret-jwt-key-change-in-production'}
+  jwtRefreshSecret: ${env:JWT_REFRESH_SECRET, 'your-super-secret-refresh-key-change-in-production'}
+  
+  # Aurora configuration
+  auroraClusterId: zapstop-aurora-cluster
+  dbUsername: zapstop_user
+  
+  # VPC configuration (update these with your VPC details)
+  lambdaSecurityGroupId: sg-xxxxxxxxx
+  lambdaSubnetId1: subnet-xxxxxxxxx
+  lambdaSubnetId2: subnet-yyyyyyyyy
+  
+  # Debug mode
+  debug: ${self:provider.stage, 'dev'}
+
+  pythonRequirements:
+    dockerizePip: true
+    layer:
+      name: zapstop-dependencies
+      description: ZapStop Python dependencies
+      compatibleRuntimes:
+        - python3.11
+      retain: false
+
+resources:
+  Resources:
+    # Aurora Serverless v2 Cluster
+    AuroraCluster:
+      Type: AWS::RDS::DBCluster
+      Properties:
+        DBClusterIdentifier: ${self:custom.auroraClusterId}
+        Engine: aurora-postgresql
+        EngineMode: provisioned
+        EngineVersion: '15.4'
+        DatabaseName: zapstop
+        MasterUsername: ${self:custom.dbUsername}
+        MasterUserPassword: !Ref DatabasePassword
+        VpcSecurityGroupIds:
+          - !Ref AuroraSecurityGroup
+        DBSubnetGroupName: !Ref AuroraSubnetGroup
+        BackupRetentionPeriod: 7
+        PreferredBackupWindow: '03:00-04:00'
+        PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+        StorageEncrypted: true
+        DeletionProtection: false
+        ServerlessV2ScalingConfiguration:
+          MinCapacity: 0.5
+          MaxCapacity: 16
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: zapstop
+
+    # Aurora Serverless v2 Instance
+    AuroraInstance:
+      Type: AWS::RDS::DBInstance
+      Properties:
+        DBInstanceIdentifier: ${self:custom.auroraClusterId}-instance-1
+        DBClusterIdentifier: !Ref AuroraCluster
+        DBInstanceClass: db.serverless
+        Engine: aurora-postgresql
+        PubliclyAccessible: false
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: zapstop
+
+    # Security Group for Aurora
+    AuroraSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for Aurora cluster
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 5432
+            ToPort: 5432
+            SourceSecurityGroupId: !Ref LambdaSecurityGroup
+        Tags:
+          - Key: Name
+            Value: ${self:service}-aurora-sg
+
+    # Security Group for Lambda
+    LambdaSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for Lambda functions
+        VpcId: !Ref VPC
+        SecurityGroupEgress:
+          - IpProtocol: -1
+            CidrIp: 0.0.0.0/0
+        Tags:
+          - Key: Name
+            Value: ${self:service}-lambda-sg
+
+    # DB Subnet Group
+    AuroraSubnetGroup:
+      Type: AWS::RDS::DBSubnetGroup
+      Properties:
+        DBSubnetGroupDescription: Subnet group for Aurora cluster
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+        Tags:
+          - Key: Name
+            Value: ${self:service}-aurora-subnet-group
+
+    # Secrets Manager for database credentials
+    DatabaseSecret:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:custom.dbSecretName}
+        Description: Database credentials for ZapStop Aurora cluster
+        SecretString: !Sub |
+          {
+            "username": "${self:custom.dbUsername}",
+            "password": "${DatabasePassword}",
+            "host": "${AuroraCluster.Endpoint.Address}",
+            "port": 5432,
+            "dbname": "zapstop",
+            "sslmode": "require"
+          }
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: zapstop
+
+    # Secrets Manager for Redis credentials (if using ElastiCache)
+    RedisSecret:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:custom.redisSecretName}
+        Description: Redis credentials for ZapStop
+        SecretString: !Sub |
+          {
+            "host": "${RedisCluster.RedisEndpoint.Address}",
+            "port": 6379,
+            "password": ""
+          }
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: zapstop
+
+    # ElastiCache Redis Cluster (optional)
+    RedisCluster:
+      Type: AWS::ElastiCache::ReplicationGroup
+      Properties:
+        ReplicationGroupId: zapstop-redis
+        Description: Redis cluster for ZapStop caching
+        NodeType: cache.t3.micro
+        Port: 6379
+        NumCacheClusters: 1
+        Engine: redis
+        CacheSubnetGroupName: !Ref RedisSubnetGroup
+        SecurityGroupIds:
+          - !Ref RedisSecurityGroup
+        AtRestEncryptionEnabled: true
+        TransitEncryptionEnabled: false
+        Tags:
+          - Key: Environment
+            Value: ${self:provider.stage}
+          - Key: Service
+            Value: zapstop
+
+    # Redis Security Group
+    RedisSecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDescription: Security group for Redis cluster
+        VpcId: !Ref VPC
+        SecurityGroupIngress:
+          - IpProtocol: tcp
+            FromPort: 6379
+            ToPort: 6379
+            SourceSecurityGroupId: !Ref LambdaSecurityGroup
+        Tags:
+          - Key: Name
+            Value: ${self:service}-redis-sg
+
+    # Redis Subnet Group
+    RedisSubnetGroup:
+      Type: AWS::ElastiCache::SubnetGroup
+      Properties:
+        Description: Subnet group for Redis cluster
+        SubnetIds:
+          - !Ref PrivateSubnet1
+          - !Ref PrivateSubnet2
+
+    # Password for database
+    DatabasePassword:
+      Type: AWS::SecretsManager::Secret
+      Properties:
+        Name: ${self:service}-db-password
+        Description: Database password for ZapStop
+        GenerateSecretString:
+          SecretStringTemplate: '{"username":"${self:custom.dbUsername}"}'
+          GenerateStringKey: 'password'
+          PasswordLength: 32
+          ExcludeCharacters: '"@/\'
+
+  Parameters:
+    VPC:
+      Type: AWS::EC2::VPC::Id
+      Description: VPC ID for the resources
+    PrivateSubnet1:
+      Type: AWS::EC2::Subnet::Id
+      Description: First private subnet for Aurora
+    PrivateSubnet2:
+      Type: AWS::EC2::Subnet::Id
+      Description: Second private subnet for Aurora
+
+Outputs:
+  ApiGatewayRestApiId:
+    Value: !Ref HttpApi
+    Export:
+      Name: ${self:service}-${self:provider.stage}-api-id
+
+  ApiGatewayRestApiRootResourceId:
+    Value: !GetAtt HttpApi.RootResourceId
+    Export:
+      Name: ${self:service}-${self:provider.stage}-api-root-resource-id
+
+  ApiGatewayUrl:
+    Value: !Sub 'https://${HttpApi}.execute-api.${self:provider.region}.amazonaws.com'
+    Export:
+      Name: ${self:service}-${self:provider.stage}-api-url
+
+  AuroraClusterEndpoint:
+    Value: !GetAtt AuroraCluster.Endpoint.Address
+    Export:
+      Name: ${self:service}-${self:provider.stage}-aurora-endpoint
+
+  AuroraClusterPort:
+    Value: !GetAtt AuroraCluster.Endpoint.Port
+    Export:
+      Name: ${self:service}-${self:provider.stage}-aurora-port
+
+  DatabaseSecretArn:
+    Value: !Ref DatabaseSecret
+    Export:
+      Name: ${self:service}-${self:provider.stage}-db-secret-arn
+
+  RedisEndpoint:
+    Value: !GetAtt RedisCluster.RedisEndpoint.Address
+    Export:
+      Name: ${self:service}-${self:provider.stage}-redis-endpoint
