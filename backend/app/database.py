@@ -6,7 +6,6 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
-import redis
 from app.config import settings
 
 # Database engine with Neon-optimized settings
@@ -26,9 +25,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Base class for models
 Base = declarative_base()
 
-# Redis client
-redis_client = redis.from_url(settings.redis_url, decode_responses=True)
-
 def get_db() -> Session:
     """Dependency to get database session"""
     db = SessionLocal()
@@ -36,7 +32,3 @@ def get_db() -> Session:
         yield db
     finally:
         db.close()
-
-def get_redis():
-    """Dependency to get Redis client"""
-    return redis_client

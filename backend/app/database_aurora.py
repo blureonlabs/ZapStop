@@ -12,7 +12,6 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool, NullPool
 from sqlalchemy.engine import Engine
 from typing import Optional
-import redis
 from botocore.exceptions import ClientError
 
 # Base class for models
@@ -23,7 +22,6 @@ class AuroraDatabaseManager:
     
     def __init__(self):
         self._engine: Optional[Engine] = None
-        self._redis_client = None
         self._secrets_client = boto3.client('secretsmanager', region_name=os.getenv('AWS_REGION', 'us-east-1'))
         self._secrets_cache = {}
         
@@ -44,11 +42,6 @@ class AuroraDatabaseManager:
     def get_database_credentials(self) -> dict:
         """Get database credentials from Secrets Manager"""
         secret_name = os.getenv('DB_SECRET_NAME', 'zapstop/aurora/credentials')
-        return self.get_secret(secret_name)
-    
-    def get_redis_credentials(self) -> dict:
-        """Get Redis credentials from Secrets Manager (if using ElastiCache)"""
-        secret_name = os.getenv('REDIS_SECRET_NAME', 'zapstop/redis/credentials')
         return self.get_secret(secret_name)
     
     def create_database_engine(self) -> Engine:
@@ -102,27 +95,6 @@ class AuroraDatabaseManager:
             print(f"Error creating database engine: {e}")
             raise
     
-    def get_redis_client(self):
-        """Get Redis client (if using ElastiCache)"""
-        if self._redis_client:
-            return self._redis_client
-            
-        try:
-            redis_creds = self.get_redis_credentials()
-            self._redis_client = redis.Redis(
-                host=redis_creds['host'],
-                port=redis_creds['port'],
-                password=redis_creds.get('password'),
-                decode_responses=True,
-                socket_connect_timeout=5,
-                socket_timeout=5
-            )
-            return self._redis_client
-        except Exception as e:
-            print(f"Error creating Redis client: {e}")
-            # Return None if Redis is not available
-            return None
-    
     def get_session_factory(self):
         """Get SQLAlchemy session factory"""
         engine = self.create_database_engine()
@@ -143,9 +115,6 @@ def get_db() -> Session:
     finally:
         db.close()
 
-def get_redis():
-    """Dependency to get Redis client for FastAPI"""
-    return db_manager.get_redis_client()
 
 # Alternative async database functions for async endpoints
 async def get_async_db():
