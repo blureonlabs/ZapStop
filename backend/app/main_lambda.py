@@ -7,14 +7,14 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import os
-from app.database_aurora import engine, Base, init_database, check_database_connection
+from app.database import engine, Base
 from app.api import auth_simple as auth, users, cars, owners, analytics, earnings, expenses, attendance, leave_requests
 from app.middleware.auth_simple import get_current_user
 from app.models.user import User
 from app.config import settings
 
-# Initialize database tables
-init_database()
+# Create database tables
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="ZapStop API",
@@ -95,7 +95,14 @@ async def root():
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    db_healthy = check_database_connection()
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_healthy = True
+    except Exception:
+        db_healthy = False
+    
     return {
         "status": "healthy" if db_healthy else "unhealthy",
         "service": "zapstop-api-lambda",
@@ -106,7 +113,14 @@ async def health_check():
 @app.get("/api/health")
 async def api_health_check():
     """API health check endpoint"""
-    db_healthy = check_database_connection()
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        db_healthy = True
+    except Exception:
+        db_healthy = False
+    
     return {
         "status": "healthy" if db_healthy else "unhealthy",
         "api_version": "1.0.0",
@@ -131,10 +145,13 @@ async def startup_event():
     print(f"Region: {os.getenv('REGION', 'us-east-1')}")
     
     # Test database connection
-    if check_database_connection():
+    try:
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
         print("Database connection successful")
-    else:
-        print("Database connection failed")
+    except Exception as e:
+        print(f"Database connection failed: {e}")
 
 # Lambda-specific shutdown event
 @app.on_event("shutdown")

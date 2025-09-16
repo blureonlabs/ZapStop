@@ -17,7 +17,7 @@
         "environment": {
           "STAGE": "dev",
           "REGION": "me-central-1",
-          "DB_SECRET_NAME": "<REDACTED>",
+          "DATABASE_URL": "postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
           "JWT_SECRET": "<REDACTED>",
           "JWT_REFRESH_SECRET": "<REDACTED>",
           "DEBUG": "false"
@@ -25,13 +25,6 @@
         "iam": {
           "role": {
             "statements": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "secretsmanager:GetSecretValue"
-                ],
-                "Resource": "*"
-              },
               {
                 "Effect": "Allow",
                 "Action": [
@@ -45,90 +38,358 @@
           }
         },
         "versionFunctions": true,
-        "remoteFunctionData": {
-          "Configuration": {
-            "FunctionName": "zapstop-api-dev-api",
-            "FunctionArn": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api",
-            "Runtime": "python3.11",
-            "Role": "arn:aws:iam::617291204846:role/zapstop-api-dev-me-central-1-lambdaRole",
-            "Handler": "lambda_handler.lambda_handler",
-            "CodeSize": 1971496,
-            "Description": "ZapStop FastAPI Lambda function",
-            "Timeout": 30,
-            "MemorySize": 1024,
-            "LastModified": "2025-09-16T18:48:53.000+0000",
-            "CodeSha256": "wW5Mkra4dYUpWGAg3TE0wztFCyAdzecjRNU4Jyu+NT8=",
-            "Version": "$LATEST",
-            "VpcConfig": {
-              "SubnetIds": [
-                "subnet-05f1dbb4127a433fa",
-                "subnet-05c2fb6180b27ac77"
-              ],
-              "SecurityGroupIds": [
-                "sg-04743e3cf5ec84f43"
-              ],
-              "VpcId": "vpc-088a2728ad0e90a83",
-              "Ipv6AllowedForDualStack": false
-            },
-            "Environment": {
-              "Variables": {
-                "JWT_REFRESH_SECRET": "<REDACTED>",
-                "DB_SECRET_NAME": "<REDACTED>",
-                "JWT_SECRET": "<REDACTED>",
-                "STAGE": "dev",
-                "DEBUG": "false",
-                "REGION": "me-central-1"
+        "compiledCloudFormationTemplate": {
+          "AWSTemplateFormatVersion": "2010-09-09",
+          "Description": "The AWS CloudFormation template for this Serverless application",
+          "Resources": {
+            "ApiLogGroup": {
+              "Type": "AWS::Logs::LogGroup",
+              "Properties": {
+                "LogGroupName": "/aws/lambda/zapstop-api-dev-api"
               }
             },
-            "KMSKeyArn": null,
-            "TracingConfig": {
-              "Mode": "PassThrough"
+            "IamRoleLambdaExecution": {
+              "Type": "AWS::IAM::Role",
+              "Properties": {
+                "AssumeRolePolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Principal": {
+                        "Service": [
+                          "lambda.amazonaws.com"
+                        ]
+                      },
+                      "Action": [
+                        "sts:AssumeRole"
+                      ]
+                    }
+                  ]
+                },
+                "Policies": [
+                  {
+                    "PolicyName": {
+                      "Fn::Join": [
+                        "-",
+                        [
+                          "zapstop-api",
+                          "dev",
+                          "lambda"
+                        ]
+                      ]
+                    },
+                    "PolicyDocument": {
+                      "Version": "2012-10-17",
+                      "Statement": [
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "logs:CreateLogStream",
+                            "logs:CreateLogGroup",
+                            "logs:TagResource"
+                          ],
+                          "Resource": [
+                            {
+                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/zapstop-api-dev*:*"
+                            }
+                          ]
+                        },
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "logs:PutLogEvents"
+                          ],
+                          "Resource": [
+                            {
+                              "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/zapstop-api-dev*:*:*"
+                            }
+                          ]
+                        },
+                        {
+                          "Effect": "Allow",
+                          "Action": [
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents"
+                          ],
+                          "Resource": "*"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "Path": "/",
+                "RoleName": {
+                  "Fn::Join": [
+                    "-",
+                    [
+                      "zapstop-api",
+                      "dev",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      "lambdaRole"
+                    ]
+                  ]
+                }
+              }
             },
-            "MasterArn": null,
-            "RevisionId": "2b167acc-b57c-40c5-af13-3143d4107df4",
-            "State": "Active",
-            "StateReason": null,
-            "StateReasonCode": null,
-            "LastUpdateStatus": "Successful",
-            "LastUpdateStatusReason": null,
-            "LastUpdateStatusReasonCode": null,
-            "PackageType": "Zip",
-            "SigningProfileVersionArn": null,
-            "SigningJobArn": null,
-            "Architectures": [
-              "x86_64"
-            ],
-            "EphemeralStorage": {
-              "Size": 512
+            "PythonRequirementsLambdaLayer": {
+              "Type": "AWS::Lambda::LayerVersion",
+              "Properties": {
+                "Content": {
+                  "S3Bucket": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+                  "S3Key": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip"
+                },
+                "LayerName": "zapstop-dependencies",
+                "Description": "ZapStop Python dependencies",
+                "CompatibleRuntimes": [
+                  "python3.11"
+                ]
+              }
             },
-            "SnapStart": {
-              "ApplyOn": "None",
-              "OptimizationStatus": "Off"
+            "ApiLambdaFunction": {
+              "Type": "AWS::Lambda::Function",
+              "Properties": {
+                "Code": {
+                  "S3Bucket": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+                  "S3Key": "serverless/zapstop-api/dev/1758052028251-2025-09-16T19:47:08.251Z/zapstop-api.zip"
+                },
+                "Handler": "lambda_handler.lambda_handler",
+                "Runtime": "python3.11",
+                "FunctionName": "zapstop-api-dev-api",
+                "MemorySize": 1024,
+                "Timeout": 30,
+                "Architectures": [
+                  "x86_64"
+                ],
+                "Description": "ZapStop FastAPI Lambda function",
+                "Environment": {
+                  "Variables": {
+                    "STAGE": "dev",
+                    "REGION": "me-central-1",
+                    "DATABASE_URL": "postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+                    "JWT_SECRET": "<REDACTED>",
+                    "JWT_REFRESH_SECRET": "<REDACTED>",
+                    "DEBUG": "false"
+                  }
+                },
+                "Role": {
+                  "Fn::GetAtt": [
+                    "IamRoleLambdaExecution",
+                    "Arn"
+                  ]
+                }
+              },
+              "DependsOn": [
+                "ApiLogGroup"
+              ]
             },
-            "RuntimeVersionConfig": {
-              "RuntimeVersionArn": "arn:aws:lambda:me-central-1::runtime:0517e723fa8dfc41b11b2324c8c497c137d4a3442c2e280cd9deb3ccfd45d0bd"
+            "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0": {
+              "Type": "AWS::Lambda::Version",
+              "DeletionPolicy": "Retain",
+              "Properties": {
+                "FunctionName": {
+                  "Ref": "ApiLambdaFunction"
+                },
+                "CodeSha256": "3U4kQ0zlPJxCt6d2Ai/Bz4iep63FzEoDZu/1RGlco2E=",
+                "Description": "ZapStop FastAPI Lambda function"
+              }
             },
-            "LoggingConfig": {
-              "LogFormat": "Text",
-              "ApplicationLogLevel": null,
-              "SystemLogLevel": null,
-              "LogGroup": "/aws/lambda/zapstop-api-dev-api"
+            "HttpApi": {
+              "Type": "AWS::ApiGatewayV2::Api",
+              "Properties": {
+                "Name": "dev-zapstop-api",
+                "ProtocolType": "HTTP"
+              }
             },
-            "Layers": []
+            "HttpApiStage": {
+              "Type": "AWS::ApiGatewayV2::Stage",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "StageName": "$default",
+                "AutoDeploy": true,
+                "DefaultRouteSettings": {
+                  "DetailedMetricsEnabled": false
+                }
+              }
+            },
+            "ApiLambdaPermissionHttpApi": {
+              "Type": "AWS::Lambda::Permission",
+              "Properties": {
+                "FunctionName": {
+                  "Fn::GetAtt": [
+                    "ApiLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "Action": "lambda:InvokeFunction",
+                "Principal": "apigateway.amazonaws.com",
+                "SourceArn": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":execute-api:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":",
+                      {
+                        "Ref": "AWS::AccountId"
+                      },
+                      ":",
+                      {
+                        "Ref": "HttpApi"
+                      },
+                      "/*"
+                    ]
+                  ]
+                }
+              }
+            },
+            "HttpApiIntegrationApi": {
+              "Type": "AWS::ApiGatewayV2::Integration",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "IntegrationType": "AWS_PROXY",
+                "IntegrationUri": {
+                  "Fn::GetAtt": [
+                    "ApiLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "PayloadFormatVersion": "2.0",
+                "TimeoutInMillis": 30000
+              }
+            },
+            "HttpApiRouteAnyProxyVar": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "ANY /{proxy+}",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationApi"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationApi"
+            },
+            "HttpApiRouteAny": {
+              "Type": "AWS::ApiGatewayV2::Route",
+              "Properties": {
+                "ApiId": {
+                  "Ref": "HttpApi"
+                },
+                "RouteKey": "ANY /",
+                "Target": {
+                  "Fn::Join": [
+                    "/",
+                    [
+                      "integrations",
+                      {
+                        "Ref": "HttpApiIntegrationApi"
+                      }
+                    ]
+                  ]
+                }
+              },
+              "DependsOn": "HttpApiIntegrationApi"
+            }
           },
-          "Code": {
-            "RepositoryType": "S3",
-            "Location": "https://prod-dxb-c0-yrsce-tasks.s3.me-central-1.amazonaws.com/snapshots/617291204846/zapstop-api-dev-api-5d6e2e8e-e306-4813-8b3e-c442d9bf4393?versionId=I2jyo4A9ilJZVt7.h.WhViASfz0wcsgP&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEC4aDG1lLWNlbnRyYWwtMSJHMEUCIH2Mo8CLQ0NCoXzdv7NpARezSBSibx9CKphj4DTdeVP5AiEArDHp3adB99VFpasf24EVSR3J%2FMB7wTyQVVSBj%2Fh5YEgqkgIIjf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NzQ3MDc2MDU4NTMiDAwgSTqflKQq5KlS8CrmAX%2FHb22A%2BuoGlZBp0QIbRyQCCGY7R4LVPCPMhBZimajctQbsN1E2NjVeZ3DJ77aFwpC49QGtxdES3MoKlZdg9NhShnbshVdb1%2B0acC%2Bj1OItETt4clpgMG%2FHXjHX5p2X266fUWmM5VsW8TQvqpdyVofTkF3fWGALZfdcB%2Bzi%2B%2FADbYbhkF9xn%2FMfGMKy6Bdql5sx54ChxPO9hByquxSVan1fs7gvNAkiSVW5IBDMixn3Enr3ApoyU%2BceKUiMDCcY1YqOxwgRpUbfU%2F92%2FQhW3RcxlJRK%2BnnNlH6gfyR7HhfezSQ%2BZzRrMOmjpcYGOo8Bqo5QEAqUwwn99DqOQh68EdN6cd6fE0yBxkrgPOU8vFcescwxgcUjSX%2FfA8mvKalyHga6NFTB%2FAzD1CKKHIieflTQ9iVXnZe8MMt96rCOUiCs1GsvTqxdvDq39pU8Qzk4zPvPi%2B6fYQUJUQQv4jgYutPUffbSop7bQShgTecNrrw5zF2zFAy6hiYLbuEHF3Y%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250916T185942Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Credential=ASIA6F4IZYFO5GIWLVP2%2F20250916%2Fme-central-1%2Fs3%2Faws4_request&X-Amz-Signature=26267e795784a64a1b72701bf67801bc1659c6f9d1ec2d3df5c1d5f47489c7bb",
-            "ImageUri": null,
-            "ResolvedImageUri": null
-          },
-          "Tags": {
-            "aws:cloudformation:stack-name": "zapstop-api-dev",
-            "aws:cloudformation:stack-id": "arn:aws:cloudformation:me-central-1:617291204846:stack/zapstop-api-dev/a37b9460-932a-11f0-b24a-0a0a72f8fa51",
-            "STAGE": "dev",
-            "aws:cloudformation:logical-id": "ApiLambdaFunction"
+          "Outputs": {
+            "ServerlessDeploymentBucketName": {
+              "Value": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+              "Export": {
+                "Name": "sls-zapstop-api-dev-ServerlessDeploymentBucketName"
+              }
+            },
+            "PythonRequirementsLambdaLayerQualifiedArn": {
+              "Description": "Current Lambda layer version",
+              "Value": {
+                "Ref": "PythonRequirementsLambdaLayer"
+              },
+              "Export": {
+                "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerQualifiedArn"
+              }
+            },
+            "PythonRequirementsLambdaLayerHash": {
+              "Description": "Current Lambda layer hash",
+              "Value": "c9dc46543ce53f9136d69b1fe879de575ae6502c",
+              "Export": {
+                "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerHash"
+              }
+            },
+            "PythonRequirementsLambdaLayerS3Key": {
+              "Description": "Current Lambda layer S3Key",
+              "Value": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip",
+              "Export": {
+                "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerS3Key"
+              }
+            },
+            "ApiLambdaFunctionQualifiedArn": {
+              "Description": "Current Lambda function version",
+              "Value": {
+                "Ref": "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0"
+              },
+              "Export": {
+                "Name": "sls-zapstop-api-dev-ApiLambdaFunctionQualifiedArn"
+              }
+            },
+            "HttpApiId": {
+              "Description": "Id of the HTTP API",
+              "Value": {
+                "Ref": "HttpApi"
+              },
+              "Export": {
+                "Name": "sls-zapstop-api-dev-HttpApiId"
+              }
+            },
+            "HttpApiUrl": {
+              "Description": "URL of the HTTP API",
+              "Value": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "https://",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    ".execute-api.",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ".",
+                    {
+                      "Ref": "AWS::URLSuffix"
+                    }
+                  ]
+                ]
+              },
+              "Export": {
+                "Name": "sls-zapstop-api-dev-HttpApiUrl"
+              }
+            }
           }
-        }
+        },
+        "vpc": {}
       },
       "functions": {
         "api": {
@@ -139,19 +400,26 @@
               "httpApi": {
                 "path": "/{proxy+}",
                 "method": "ANY"
-              }
+              },
+              "resolvedMethod": "ANY",
+              "resolvedPath": "/{proxy+}"
             },
             {
               "httpApi": {
                 "path": "/",
                 "method": "ANY"
-              }
+              },
+              "resolvedMethod": "ANY",
+              "resolvedPath": "/"
             }
           ],
           "name": "zapstop-api-dev-api",
-          "package": {
-            "artifact": ".serverless\\api.zip"
-          }
+          "package": {},
+          "memory": 1024,
+          "timeout": 30,
+          "runtime": "python3.11",
+          "vpc": {},
+          "versionLogicalId": "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0"
         }
       },
       "plugins": [
@@ -182,7 +450,7 @@
       "environment": {
         "STAGE": "dev",
         "REGION": "me-central-1",
-        "DB_SECRET_NAME": "<REDACTED>",
+        "DATABASE_URL": "postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
         "JWT_SECRET": "<REDACTED>",
         "JWT_REFRESH_SECRET": "<REDACTED>",
         "DEBUG": "false"
@@ -190,13 +458,6 @@
       "iam": {
         "role": {
           "statements": [
-            {
-              "Effect": "Allow",
-              "Action": [
-                "secretsmanager:GetSecretValue"
-              ],
-              "Resource": "*"
-            },
             {
               "Effect": "Allow",
               "Action": [
@@ -210,90 +471,358 @@
         }
       },
       "versionFunctions": true,
-      "remoteFunctionData": {
-        "Configuration": {
-          "FunctionName": "zapstop-api-dev-api",
-          "FunctionArn": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api",
-          "Runtime": "python3.11",
-          "Role": "arn:aws:iam::617291204846:role/zapstop-api-dev-me-central-1-lambdaRole",
-          "Handler": "lambda_handler.lambda_handler",
-          "CodeSize": 1971496,
-          "Description": "ZapStop FastAPI Lambda function",
-          "Timeout": 30,
-          "MemorySize": 1024,
-          "LastModified": "2025-09-16T18:48:53.000+0000",
-          "CodeSha256": "wW5Mkra4dYUpWGAg3TE0wztFCyAdzecjRNU4Jyu+NT8=",
-          "Version": "$LATEST",
-          "VpcConfig": {
-            "SubnetIds": [
-              "subnet-05f1dbb4127a433fa",
-              "subnet-05c2fb6180b27ac77"
-            ],
-            "SecurityGroupIds": [
-              "sg-04743e3cf5ec84f43"
-            ],
-            "VpcId": "vpc-088a2728ad0e90a83",
-            "Ipv6AllowedForDualStack": false
-          },
-          "Environment": {
-            "Variables": {
-              "JWT_REFRESH_SECRET": "<REDACTED>",
-              "DB_SECRET_NAME": "<REDACTED>",
-              "JWT_SECRET": "<REDACTED>",
-              "STAGE": "dev",
-              "DEBUG": "false",
-              "REGION": "me-central-1"
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ApiLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/zapstop-api-dev-api"
             }
           },
-          "KMSKeyArn": null,
-          "TracingConfig": {
-            "Mode": "PassThrough"
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "zapstop-api",
+                        "dev",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/zapstop-api-dev*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/zapstop-api-dev*:*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogGroup",
+                          "logs:CreateLogStream",
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": "*"
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "zapstop-api",
+                    "dev",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
           },
-          "MasterArn": null,
-          "RevisionId": "2b167acc-b57c-40c5-af13-3143d4107df4",
-          "State": "Active",
-          "StateReason": null,
-          "StateReasonCode": null,
-          "LastUpdateStatus": "Successful",
-          "LastUpdateStatusReason": null,
-          "LastUpdateStatusReasonCode": null,
-          "PackageType": "Zip",
-          "SigningProfileVersionArn": null,
-          "SigningJobArn": null,
-          "Architectures": [
-            "x86_64"
-          ],
-          "EphemeralStorage": {
-            "Size": 512
+          "PythonRequirementsLambdaLayer": {
+            "Type": "AWS::Lambda::LayerVersion",
+            "Properties": {
+              "Content": {
+                "S3Bucket": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+                "S3Key": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip"
+              },
+              "LayerName": "zapstop-dependencies",
+              "Description": "ZapStop Python dependencies",
+              "CompatibleRuntimes": [
+                "python3.11"
+              ]
+            }
           },
-          "SnapStart": {
-            "ApplyOn": "None",
-            "OptimizationStatus": "Off"
+          "ApiLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+                "S3Key": "serverless/zapstop-api/dev/1758052028251-2025-09-16T19:47:08.251Z/zapstop-api.zip"
+              },
+              "Handler": "lambda_handler.lambda_handler",
+              "Runtime": "python3.11",
+              "FunctionName": "zapstop-api-dev-api",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Architectures": [
+                "x86_64"
+              ],
+              "Description": "ZapStop FastAPI Lambda function",
+              "Environment": {
+                "Variables": {
+                  "STAGE": "dev",
+                  "REGION": "me-central-1",
+                  "DATABASE_URL": "postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+                  "JWT_SECRET": "<REDACTED>",
+                  "JWT_REFRESH_SECRET": "<REDACTED>",
+                  "DEBUG": "false"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ApiLogGroup"
+            ]
           },
-          "RuntimeVersionConfig": {
-            "RuntimeVersionArn": "arn:aws:lambda:me-central-1::runtime:0517e723fa8dfc41b11b2324c8c497c137d4a3442c2e280cd9deb3ccfd45d0bd"
+          "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ApiLambdaFunction"
+              },
+              "CodeSha256": "3U4kQ0zlPJxCt6d2Ai/Bz4iep63FzEoDZu/1RGlco2E=",
+              "Description": "ZapStop FastAPI Lambda function"
+            }
           },
-          "LoggingConfig": {
-            "LogFormat": "Text",
-            "ApplicationLogLevel": null,
-            "SystemLogLevel": null,
-            "LogGroup": "/aws/lambda/zapstop-api-dev-api"
+          "HttpApi": {
+            "Type": "AWS::ApiGatewayV2::Api",
+            "Properties": {
+              "Name": "dev-zapstop-api",
+              "ProtocolType": "HTTP"
+            }
           },
-          "Layers": []
+          "HttpApiStage": {
+            "Type": "AWS::ApiGatewayV2::Stage",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "StageName": "$default",
+              "AutoDeploy": true,
+              "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": false
+              }
+            }
+          },
+          "ApiLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ApiLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationApi": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "Fn::GetAtt": [
+                  "ApiLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteAnyProxyVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "ANY /{proxy+}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationApi"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationApi"
+          },
+          "HttpApiRouteAny": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "ANY /",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationApi"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationApi"
+          }
         },
-        "Code": {
-          "RepositoryType": "S3",
-          "Location": "https://prod-dxb-c0-yrsce-tasks.s3.me-central-1.amazonaws.com/snapshots/617291204846/zapstop-api-dev-api-5d6e2e8e-e306-4813-8b3e-c442d9bf4393?versionId=I2jyo4A9ilJZVt7.h.WhViASfz0wcsgP&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEC4aDG1lLWNlbnRyYWwtMSJHMEUCIH2Mo8CLQ0NCoXzdv7NpARezSBSibx9CKphj4DTdeVP5AiEArDHp3adB99VFpasf24EVSR3J%2FMB7wTyQVVSBj%2Fh5YEgqkgIIjf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NzQ3MDc2MDU4NTMiDAwgSTqflKQq5KlS8CrmAX%2FHb22A%2BuoGlZBp0QIbRyQCCGY7R4LVPCPMhBZimajctQbsN1E2NjVeZ3DJ77aFwpC49QGtxdES3MoKlZdg9NhShnbshVdb1%2B0acC%2Bj1OItETt4clpgMG%2FHXjHX5p2X266fUWmM5VsW8TQvqpdyVofTkF3fWGALZfdcB%2Bzi%2B%2FADbYbhkF9xn%2FMfGMKy6Bdql5sx54ChxPO9hByquxSVan1fs7gvNAkiSVW5IBDMixn3Enr3ApoyU%2BceKUiMDCcY1YqOxwgRpUbfU%2F92%2FQhW3RcxlJRK%2BnnNlH6gfyR7HhfezSQ%2BZzRrMOmjpcYGOo8Bqo5QEAqUwwn99DqOQh68EdN6cd6fE0yBxkrgPOU8vFcescwxgcUjSX%2FfA8mvKalyHga6NFTB%2FAzD1CKKHIieflTQ9iVXnZe8MMt96rCOUiCs1GsvTqxdvDq39pU8Qzk4zPvPi%2B6fYQUJUQQv4jgYutPUffbSop7bQShgTecNrrw5zF2zFAy6hiYLbuEHF3Y%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250916T185942Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Credential=ASIA6F4IZYFO5GIWLVP2%2F20250916%2Fme-central-1%2Fs3%2Faws4_request&X-Amz-Signature=26267e795784a64a1b72701bf67801bc1659c6f9d1ec2d3df5c1d5f47489c7bb",
-          "ImageUri": null,
-          "ResolvedImageUri": null
-        },
-        "Tags": {
-          "aws:cloudformation:stack-name": "zapstop-api-dev",
-          "aws:cloudformation:stack-id": "arn:aws:cloudformation:me-central-1:617291204846:stack/zapstop-api-dev/a37b9460-932a-11f0-b24a-0a0a72f8fa51",
-          "STAGE": "dev",
-          "aws:cloudformation:logical-id": "ApiLambdaFunction"
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+            "Export": {
+              "Name": "sls-zapstop-api-dev-ServerlessDeploymentBucketName"
+            }
+          },
+          "PythonRequirementsLambdaLayerQualifiedArn": {
+            "Description": "Current Lambda layer version",
+            "Value": {
+              "Ref": "PythonRequirementsLambdaLayer"
+            },
+            "Export": {
+              "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerQualifiedArn"
+            }
+          },
+          "PythonRequirementsLambdaLayerHash": {
+            "Description": "Current Lambda layer hash",
+            "Value": "c9dc46543ce53f9136d69b1fe879de575ae6502c",
+            "Export": {
+              "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerHash"
+            }
+          },
+          "PythonRequirementsLambdaLayerS3Key": {
+            "Description": "Current Lambda layer S3Key",
+            "Value": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip",
+            "Export": {
+              "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerS3Key"
+            }
+          },
+          "ApiLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0"
+            },
+            "Export": {
+              "Name": "sls-zapstop-api-dev-ApiLambdaFunctionQualifiedArn"
+            }
+          },
+          "HttpApiId": {
+            "Description": "Id of the HTTP API",
+            "Value": {
+              "Ref": "HttpApi"
+            },
+            "Export": {
+              "Name": "sls-zapstop-api-dev-HttpApiId"
+            }
+          },
+          "HttpApiUrl": {
+            "Description": "URL of the HTTP API",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  }
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-zapstop-api-dev-HttpApiUrl"
+            }
+          }
         }
-      }
+      },
+      "vpc": {}
     },
     "dashboard": {
       "isEnabledForService": false,
@@ -304,13 +833,11 @@
       "serviceProvider": null,
       "instanceParameters": null
     },
-    "serviceRawFile": "service: zapstop-api\r\n\r\nframeworkVersion: '4'\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.11\r\n  stage: ${opt:stage, 'dev'}\r\n  region: ${opt:region, 'me-central-1'}\r\n  memorySize: 1024\r\n  timeout: 30\r\n  architecture: x86_64\r\n  \r\n  environment:\r\n    STAGE: ${self:provider.stage}\r\n    REGION: ${self:provider.region}\r\n    DB_SECRET_NAME: zapstop/aurora/credentials\r\n    JWT_SECRET: your-super-secret-jwt-key-change-in-production\r\n    JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production\r\n    DEBUG: false\r\n    \r\n  iam:\r\n    role:\r\n      statements:\r\n        - Effect: Allow\r\n          Action:\r\n            - secretsmanager:GetSecretValue\r\n          Resource: \"*\"\r\n        - Effect: Allow\r\n          Action:\r\n            - logs:CreateLogGroup\r\n            - logs:CreateLogStream\r\n            - logs:PutLogEvents\r\n          Resource: \"*\"\r\n\r\nfunctions:\r\n  api:\r\n    handler: lambda_handler.lambda_handler\r\n    description: ZapStop FastAPI Lambda function\r\n    events:\r\n      - httpApi:\r\n          path: /{proxy+}\r\n          method: ANY\r\n      - httpApi:\r\n          path: /\r\n          method: ANY\r\n\r\nplugins:\r\n  - serverless-python-requirements\r\n\r\ncustom:\r\n  pythonRequirements:\r\n    dockerizePip: false\r\n    layer:\r\n      name: zapstop-dependencies\r\n      description: ZapStop Python dependencies\r\n      compatibleRuntimes:\r\n        - python3.11\r\n      retain: false\r\n",
+    "serviceRawFile": "service: zapstop-api\r\n\r\nframeworkVersion: '4'\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.11\r\n  stage: ${opt:stage, 'dev'}\r\n  region: ${opt:region, 'me-central-1'}\r\n  memorySize: 1024\r\n  timeout: 30\r\n  architecture: x86_64\r\n  \r\n  environment:\r\n    STAGE: ${self:provider.stage}\r\n    REGION: ${self:provider.region}\r\n    DATABASE_URL: postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require\r\n    JWT_SECRET: your-super-secret-jwt-key-change-in-production\r\n    JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production\r\n    DEBUG: false\r\n    \r\n  iam:\r\n    role:\r\n      statements:\r\n        - Effect: Allow\r\n          Action:\r\n            - logs:CreateLogGroup\r\n            - logs:CreateLogStream\r\n            - logs:PutLogEvents\r\n          Resource: \"*\"\r\n\r\nfunctions:\r\n  api:\r\n    handler: lambda_handler.lambda_handler\r\n    description: ZapStop FastAPI Lambda function\r\n    events:\r\n      - httpApi:\r\n          path: /{proxy+}\r\n          method: ANY\r\n      - httpApi:\r\n          path: /\r\n          method: ANY\r\n\r\nplugins:\r\n  - serverless-python-requirements\r\n\r\ncustom:\r\n  pythonRequirements:\r\n    dockerizePip: false\r\n    layer:\r\n      name: zapstop-dependencies\r\n      description: ZapStop Python dependencies\r\n      compatibleRuntimes:\r\n        - python3.11\r\n      retain: false\r\n",
     "command": [
-      "deploy",
-      "function"
+      "deploy"
     ],
     "options": {
-      "function": "api",
       "config": "serverless-simple.yml",
       "stage": "dev",
       "region": "me-central-1"
@@ -323,24 +850,24 @@
     "serviceProviderAwsCfStackName": "zapstop-api-dev",
     "serviceProviderAwsCfStackId": "arn:aws:cloudformation:me-central-1:617291204846:stack/zapstop-api-dev/a37b9460-932a-11f0-b24a-0a0a72f8fa51",
     "serviceProviderAwsCfStackCreated": "2025-09-16T18:26:19.618Z",
-    "serviceProviderAwsCfStackUpdated": null,
-    "serviceProviderAwsCfStackStatus": "CREATE_COMPLETE",
+    "serviceProviderAwsCfStackUpdated": "2025-09-16T19:45:39.419Z",
+    "serviceProviderAwsCfStackStatus": "UPDATE_COMPLETE",
     "serviceProviderAwsCfStackOutputs": [
       {
         "OutputKey": "PythonRequirementsLambdaLayerS3Key",
-        "OutputValue": "serverless/zapstop-api/dev/1758047171551-2025-09-16T18:26:11.551Z/pythonRequirements.zip",
+        "OutputValue": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip",
         "Description": "Current Lambda layer S3Key",
         "ExportName": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerS3Key"
       },
       {
         "OutputKey": "PythonRequirementsLambdaLayerQualifiedArn",
-        "OutputValue": "arn:aws:lambda:me-central-1:617291204846:layer:zapstop-dependencies:1",
+        "OutputValue": "arn:aws:lambda:me-central-1:617291204846:layer:zapstop-dependencies:2",
         "Description": "Current Lambda layer version",
         "ExportName": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerQualifiedArn"
       },
       {
         "OutputKey": "ApiLambdaFunctionQualifiedArn",
-        "OutputValue": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api:1",
+        "OutputValue": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api:4",
         "Description": "Current Lambda function version",
         "ExportName": "sls-zapstop-api-dev-ApiLambdaFunctionQualifiedArn"
       },
@@ -352,7 +879,7 @@
       },
       {
         "OutputKey": "PythonRequirementsLambdaLayerHash",
-        "OutputValue": "24cbe666a34df902d97759568dfee86215a443d2",
+        "OutputValue": "c9dc46543ce53f9136d69b1fe879de575ae6502c",
         "Description": "Current Lambda layer hash",
         "ExportName": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerHash"
       },
@@ -367,6 +894,357 @@
         "Description": "URL of the HTTP API",
         "ExportName": "sls-zapstop-api-dev-HttpApiUrl"
       }
-    ]
+    ],
+    "compiledCloudFormationTemplate": {
+      "AWSTemplateFormatVersion": "2010-09-09",
+      "Description": "The AWS CloudFormation template for this Serverless application",
+      "Resources": {
+        "ApiLogGroup": {
+          "Type": "AWS::Logs::LogGroup",
+          "Properties": {
+            "LogGroupName": "/aws/lambda/zapstop-api-dev-api"
+          }
+        },
+        "IamRoleLambdaExecution": {
+          "Type": "AWS::IAM::Role",
+          "Properties": {
+            "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "Service": [
+                      "lambda.amazonaws.com"
+                    ]
+                  },
+                  "Action": [
+                    "sts:AssumeRole"
+                  ]
+                }
+              ]
+            },
+            "Policies": [
+              {
+                "PolicyName": {
+                  "Fn::Join": [
+                    "-",
+                    [
+                      "zapstop-api",
+                      "dev",
+                      "lambda"
+                    ]
+                  ]
+                },
+                "PolicyDocument": {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "logs:CreateLogStream",
+                        "logs:CreateLogGroup",
+                        "logs:TagResource"
+                      ],
+                      "Resource": [
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/zapstop-api-dev*:*"
+                        }
+                      ]
+                    },
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "logs:PutLogEvents"
+                      ],
+                      "Resource": [
+                        {
+                          "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/zapstop-api-dev*:*:*"
+                        }
+                      ]
+                    },
+                    {
+                      "Effect": "Allow",
+                      "Action": [
+                        "logs:CreateLogGroup",
+                        "logs:CreateLogStream",
+                        "logs:PutLogEvents"
+                      ],
+                      "Resource": "*"
+                    }
+                  ]
+                }
+              }
+            ],
+            "Path": "/",
+            "RoleName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "zapstop-api",
+                  "dev",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  "lambdaRole"
+                ]
+              ]
+            }
+          }
+        },
+        "PythonRequirementsLambdaLayer": {
+          "Type": "AWS::Lambda::LayerVersion",
+          "Properties": {
+            "Content": {
+              "S3Bucket": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+              "S3Key": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip"
+            },
+            "LayerName": "zapstop-dependencies",
+            "Description": "ZapStop Python dependencies",
+            "CompatibleRuntimes": [
+              "python3.11"
+            ]
+          }
+        },
+        "ApiLambdaFunction": {
+          "Type": "AWS::Lambda::Function",
+          "Properties": {
+            "Code": {
+              "S3Bucket": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+              "S3Key": "serverless/zapstop-api/dev/1758052028251-2025-09-16T19:47:08.251Z/zapstop-api.zip"
+            },
+            "Handler": "lambda_handler.lambda_handler",
+            "Runtime": "python3.11",
+            "FunctionName": "zapstop-api-dev-api",
+            "MemorySize": 1024,
+            "Timeout": 30,
+            "Architectures": [
+              "x86_64"
+            ],
+            "Description": "ZapStop FastAPI Lambda function",
+            "Environment": {
+              "Variables": {
+                "STAGE": "dev",
+                "REGION": "me-central-1",
+                "DATABASE_URL": "postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+                "JWT_SECRET": "<REDACTED>",
+                "JWT_REFRESH_SECRET": "<REDACTED>",
+                "DEBUG": "false"
+              }
+            },
+            "Role": {
+              "Fn::GetAtt": [
+                "IamRoleLambdaExecution",
+                "Arn"
+              ]
+            }
+          },
+          "DependsOn": [
+            "ApiLogGroup"
+          ]
+        },
+        "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0": {
+          "Type": "AWS::Lambda::Version",
+          "DeletionPolicy": "Retain",
+          "Properties": {
+            "FunctionName": {
+              "Ref": "ApiLambdaFunction"
+            },
+            "CodeSha256": "3U4kQ0zlPJxCt6d2Ai/Bz4iep63FzEoDZu/1RGlco2E=",
+            "Description": "ZapStop FastAPI Lambda function"
+          }
+        },
+        "HttpApi": {
+          "Type": "AWS::ApiGatewayV2::Api",
+          "Properties": {
+            "Name": "dev-zapstop-api",
+            "ProtocolType": "HTTP"
+          }
+        },
+        "HttpApiStage": {
+          "Type": "AWS::ApiGatewayV2::Stage",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "StageName": "$default",
+            "AutoDeploy": true,
+            "DefaultRouteSettings": {
+              "DetailedMetricsEnabled": false
+            }
+          }
+        },
+        "ApiLambdaPermissionHttpApi": {
+          "Type": "AWS::Lambda::Permission",
+          "Properties": {
+            "FunctionName": {
+              "Fn::GetAtt": [
+                "ApiLambdaFunction",
+                "Arn"
+              ]
+            },
+            "Action": "lambda:InvokeFunction",
+            "Principal": "apigateway.amazonaws.com",
+            "SourceArn": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition"
+                  },
+                  ":execute-api:",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ":",
+                  {
+                    "Ref": "AWS::AccountId"
+                  },
+                  ":",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  "/*"
+                ]
+              ]
+            }
+          }
+        },
+        "HttpApiIntegrationApi": {
+          "Type": "AWS::ApiGatewayV2::Integration",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "IntegrationType": "AWS_PROXY",
+            "IntegrationUri": {
+              "Fn::GetAtt": [
+                "ApiLambdaFunction",
+                "Arn"
+              ]
+            },
+            "PayloadFormatVersion": "2.0",
+            "TimeoutInMillis": 30000
+          }
+        },
+        "HttpApiRouteAnyProxyVar": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "ANY /{proxy+}",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationApi"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationApi"
+        },
+        "HttpApiRouteAny": {
+          "Type": "AWS::ApiGatewayV2::Route",
+          "Properties": {
+            "ApiId": {
+              "Ref": "HttpApi"
+            },
+            "RouteKey": "ANY /",
+            "Target": {
+              "Fn::Join": [
+                "/",
+                [
+                  "integrations",
+                  {
+                    "Ref": "HttpApiIntegrationApi"
+                  }
+                ]
+              ]
+            }
+          },
+          "DependsOn": "HttpApiIntegrationApi"
+        }
+      },
+      "Outputs": {
+        "ServerlessDeploymentBucketName": {
+          "Value": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+          "Export": {
+            "Name": "sls-zapstop-api-dev-ServerlessDeploymentBucketName"
+          }
+        },
+        "PythonRequirementsLambdaLayerQualifiedArn": {
+          "Description": "Current Lambda layer version",
+          "Value": {
+            "Ref": "PythonRequirementsLambdaLayer"
+          },
+          "Export": {
+            "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerQualifiedArn"
+          }
+        },
+        "PythonRequirementsLambdaLayerHash": {
+          "Description": "Current Lambda layer hash",
+          "Value": "c9dc46543ce53f9136d69b1fe879de575ae6502c",
+          "Export": {
+            "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerHash"
+          }
+        },
+        "PythonRequirementsLambdaLayerS3Key": {
+          "Description": "Current Lambda layer S3Key",
+          "Value": "serverless/zapstop-api/dev/1758050832173-2025-09-16T19:27:12.173Z/pythonRequirements.zip",
+          "Export": {
+            "Name": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerS3Key"
+          }
+        },
+        "ApiLambdaFunctionQualifiedArn": {
+          "Description": "Current Lambda function version",
+          "Value": {
+            "Ref": "ApiLambdaVersionD5XtiTTanoOyClUQMiwzYcO5dgNNL54jqs7UohZM0"
+          },
+          "Export": {
+            "Name": "sls-zapstop-api-dev-ApiLambdaFunctionQualifiedArn"
+          }
+        },
+        "HttpApiId": {
+          "Description": "Id of the HTTP API",
+          "Value": {
+            "Ref": "HttpApi"
+          },
+          "Export": {
+            "Name": "sls-zapstop-api-dev-HttpApiId"
+          }
+        },
+        "HttpApiUrl": {
+          "Description": "URL of the HTTP API",
+          "Value": {
+            "Fn::Join": [
+              "",
+              [
+                "https://",
+                {
+                  "Ref": "HttpApi"
+                },
+                ".execute-api.",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ".",
+                {
+                  "Ref": "AWS::URLSuffix"
+                }
+              ]
+            ]
+          },
+          "Export": {
+            "Name": "sls-zapstop-api-dev-HttpApiUrl"
+          }
+        }
+      }
+    }
   }
 }

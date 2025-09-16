@@ -14,7 +14,7 @@ provider:
   environment:
     STAGE: ${self:provider.stage}
     REGION: ${self:provider.region}
-    DB_SECRET_NAME: zapstop/aurora/credentials
+    DATABASE_URL: postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
     JWT_SECRET: your-super-secret-jwt-key-change-in-production
     JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production
     DEBUG: false
@@ -22,10 +22,6 @@ provider:
   iam:
     role:
       statements:
-        - Effect: Allow
-          Action:
-            - secretsmanager:GetSecretValue
-          Resource: "*"
         - Effect: Allow
           Action:
             - logs:CreateLogGroup

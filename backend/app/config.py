@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     twilio_account_sid: Optional[str] = os.getenv("TWILIO_ACCOUNT_SID")
     twilio_auth_token: Optional[str] = os.getenv("TWILIO_AUTH_TOKEN")
     
+    # Redis
+    redis_url: Optional[str] = os.getenv("REDIS_URL")
+    
     # App
     app_name: str = "ZapStop API"
     debug: bool = os.getenv("DEBUG", "False").lower() == "true"

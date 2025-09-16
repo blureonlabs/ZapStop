@@ -32,9 +32,9 @@ def test_imports():
         from app.config import settings
         print("✓ app.config imported")
         
-        print("5. Testing database_aurora...")
-        from app.database_aurora import engine, Base, init_database, check_database_connection
-        print("✓ database_aurora imported")
+        print("5. Testing database...")
+        from app.database import engine, Base
+        print("✓ database imported")
         
         print("6. Testing main_lambda...")
         from app.main_lambda import app
@@ -57,10 +57,12 @@ def test_database_connection():
     print("\nTesting database connection...")
     
     try:
-        from app.database_aurora import check_database_connection
-        result = check_database_connection()
-        print(f"Database connection: {'✓ Connected' if result else '❌ Failed'}")
-        return result
+        from app.database import engine
+        from sqlalchemy import text
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        print("✓ Database connection successful")
+        return True
     except Exception as e:
         print(f"❌ Database connection error: {e}")
         print(f"Traceback: {traceback.format_exc()}")
