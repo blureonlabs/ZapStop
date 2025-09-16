@@ -1,6 +1,6 @@
 /**
  * API Service for connecting frontend to backend
- * Backend running on http://localhost:8000 with Neon database
+ * Supports both local development and AWS Lambda deployment
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'

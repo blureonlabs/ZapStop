@@ -1,513 +1,372 @@
 {
-  "/Users/hari/Desktop/Blureon/zap-stop/aws-infrastructure/template.yaml": {
-    "versionFramework": "4.18.2",
-    "servicePath": "/Users/hari/Desktop/Blureon/zap-stop/aws-infrastructure/template.yaml",
-    "serviceConfigFileName": "template.yaml",
+  "C:\\Users\\DHANYA\\OneDrive\\Documents\\blureon\\zapstop\\ZapStop\\aws-infrastructure\\serverless-simple.yml": {
+    "versionFramework": "4.19.1",
+    "servicePath": "C:\\Users\\DHANYA\\OneDrive\\Documents\\blureon\\zapstop\\ZapStop\\aws-infrastructure\\serverless-simple.yml",
+    "serviceConfigFileName": "serverless-simple.yml",
     "service": {
-      "AWSTemplateFormatVersion": "2010-09-09",
-      "Transform": "AWS::Serverless-2016-10-31",
-      "Description": "ZapStop API - FastAPI on Lambda with Aurora Serverless v2",
-      "Globals": {
-        "Function": {
+      "service": "zapstop-api",
+      "frameworkVersion": "4",
+      "provider": {
+        "name": "aws",
+        "runtime": "python3.11",
+        "stage": "dev",
+        "region": "me-central-1",
+        "memorySize": 1024,
+        "timeout": 30,
+        "architecture": "x86_64",
+        "environment": {
+          "STAGE": "dev",
+          "REGION": "me-central-1",
+          "DB_SECRET_NAME": "<REDACTED>",
+          "JWT_SECRET": "<REDACTED>",
+          "JWT_REFRESH_SECRET": "<REDACTED>",
+          "DEBUG": "false"
+        },
+        "iam": {
+          "role": {
+            "statements": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "secretsmanager:GetSecretValue"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+        },
+        "versionFunctions": true,
+        "remoteFunctionData": {
+          "Configuration": {
+            "FunctionName": "zapstop-api-dev-api",
+            "FunctionArn": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api",
+            "Runtime": "python3.11",
+            "Role": "arn:aws:iam::617291204846:role/zapstop-api-dev-me-central-1-lambdaRole",
+            "Handler": "lambda_handler.lambda_handler",
+            "CodeSize": 1971496,
+            "Description": "ZapStop FastAPI Lambda function",
+            "Timeout": 30,
+            "MemorySize": 1024,
+            "LastModified": "2025-09-16T18:48:53.000+0000",
+            "CodeSha256": "wW5Mkra4dYUpWGAg3TE0wztFCyAdzecjRNU4Jyu+NT8=",
+            "Version": "$LATEST",
+            "VpcConfig": {
+              "SubnetIds": [
+                "subnet-05f1dbb4127a433fa",
+                "subnet-05c2fb6180b27ac77"
+              ],
+              "SecurityGroupIds": [
+                "sg-04743e3cf5ec84f43"
+              ],
+              "VpcId": "vpc-088a2728ad0e90a83",
+              "Ipv6AllowedForDualStack": false
+            },
+            "Environment": {
+              "Variables": {
+                "JWT_REFRESH_SECRET": "<REDACTED>",
+                "DB_SECRET_NAME": "<REDACTED>",
+                "JWT_SECRET": "<REDACTED>",
+                "STAGE": "dev",
+                "DEBUG": "false",
+                "REGION": "me-central-1"
+              }
+            },
+            "KMSKeyArn": null,
+            "TracingConfig": {
+              "Mode": "PassThrough"
+            },
+            "MasterArn": null,
+            "RevisionId": "2b167acc-b57c-40c5-af13-3143d4107df4",
+            "State": "Active",
+            "StateReason": null,
+            "StateReasonCode": null,
+            "LastUpdateStatus": "Successful",
+            "LastUpdateStatusReason": null,
+            "LastUpdateStatusReasonCode": null,
+            "PackageType": "Zip",
+            "SigningProfileVersionArn": null,
+            "SigningJobArn": null,
+            "Architectures": [
+              "x86_64"
+            ],
+            "EphemeralStorage": {
+              "Size": 512
+            },
+            "SnapStart": {
+              "ApplyOn": "None",
+              "OptimizationStatus": "Off"
+            },
+            "RuntimeVersionConfig": {
+              "RuntimeVersionArn": "arn:aws:lambda:me-central-1::runtime:0517e723fa8dfc41b11b2324c8c497c137d4a3442c2e280cd9deb3ccfd45d0bd"
+            },
+            "LoggingConfig": {
+              "LogFormat": "Text",
+              "ApplicationLogLevel": null,
+              "SystemLogLevel": null,
+              "LogGroup": "/aws/lambda/zapstop-api-dev-api"
+            },
+            "Layers": []
+          },
+          "Code": {
+            "RepositoryType": "S3",
+            "Location": "https://prod-dxb-c0-yrsce-tasks.s3.me-central-1.amazonaws.com/snapshots/617291204846/zapstop-api-dev-api-5d6e2e8e-e306-4813-8b3e-c442d9bf4393?versionId=I2jyo4A9ilJZVt7.h.WhViASfz0wcsgP&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEC4aDG1lLWNlbnRyYWwtMSJHMEUCIH2Mo8CLQ0NCoXzdv7NpARezSBSibx9CKphj4DTdeVP5AiEArDHp3adB99VFpasf24EVSR3J%2FMB7wTyQVVSBj%2Fh5YEgqkgIIjf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NzQ3MDc2MDU4NTMiDAwgSTqflKQq5KlS8CrmAX%2FHb22A%2BuoGlZBp0QIbRyQCCGY7R4LVPCPMhBZimajctQbsN1E2NjVeZ3DJ77aFwpC49QGtxdES3MoKlZdg9NhShnbshVdb1%2B0acC%2Bj1OItETt4clpgMG%2FHXjHX5p2X266fUWmM5VsW8TQvqpdyVofTkF3fWGALZfdcB%2Bzi%2B%2FADbYbhkF9xn%2FMfGMKy6Bdql5sx54ChxPO9hByquxSVan1fs7gvNAkiSVW5IBDMixn3Enr3ApoyU%2BceKUiMDCcY1YqOxwgRpUbfU%2F92%2FQhW3RcxlJRK%2BnnNlH6gfyR7HhfezSQ%2BZzRrMOmjpcYGOo8Bqo5QEAqUwwn99DqOQh68EdN6cd6fE0yBxkrgPOU8vFcescwxgcUjSX%2FfA8mvKalyHga6NFTB%2FAzD1CKKHIieflTQ9iVXnZe8MMt96rCOUiCs1GsvTqxdvDq39pU8Qzk4zPvPi%2B6fYQUJUQQv4jgYutPUffbSop7bQShgTecNrrw5zF2zFAy6hiYLbuEHF3Y%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250916T185942Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Credential=ASIA6F4IZYFO5GIWLVP2%2F20250916%2Fme-central-1%2Fs3%2Faws4_request&X-Amz-Signature=26267e795784a64a1b72701bf67801bc1659c6f9d1ec2d3df5c1d5f47489c7bb",
+            "ImageUri": null,
+            "ResolvedImageUri": null
+          },
+          "Tags": {
+            "aws:cloudformation:stack-name": "zapstop-api-dev",
+            "aws:cloudformation:stack-id": "arn:aws:cloudformation:me-central-1:617291204846:stack/zapstop-api-dev/a37b9460-932a-11f0-b24a-0a0a72f8fa51",
+            "STAGE": "dev",
+            "aws:cloudformation:logical-id": "ApiLambdaFunction"
+          }
+        }
+      },
+      "functions": {
+        "api": {
+          "handler": "lambda_handler.lambda_handler",
+          "description": "ZapStop FastAPI Lambda function",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/{proxy+}",
+                "method": "ANY"
+              }
+            },
+            {
+              "httpApi": {
+                "path": "/",
+                "method": "ANY"
+              }
+            }
+          ],
+          "name": "zapstop-api-dev-api",
+          "package": {
+            "artifact": ".serverless\\api.zip"
+          }
+        }
+      },
+      "plugins": [
+        "serverless-python-requirements"
+      ],
+      "custom": {
+        "pythonRequirements": {
+          "dockerizePip": false,
+          "layer": {
+            "name": "zapstop-dependencies",
+            "description": "ZapStop Python dependencies",
+            "compatibleRuntimes": [
+              "python3.11"
+            ],
+            "retain": false
+          }
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "python3.11",
+      "stage": "dev",
+      "region": "me-central-1",
+      "memorySize": 1024,
+      "timeout": 30,
+      "architecture": "x86_64",
+      "environment": {
+        "STAGE": "dev",
+        "REGION": "me-central-1",
+        "DB_SECRET_NAME": "<REDACTED>",
+        "JWT_SECRET": "<REDACTED>",
+        "JWT_REFRESH_SECRET": "<REDACTED>",
+        "DEBUG": "false"
+      },
+      "iam": {
+        "role": {
+          "statements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "secretsmanager:GetSecretValue"
+              ],
+              "Resource": "*"
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "*"
+            }
+          ]
+        }
+      },
+      "versionFunctions": true,
+      "remoteFunctionData": {
+        "Configuration": {
+          "FunctionName": "zapstop-api-dev-api",
+          "FunctionArn": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api",
+          "Runtime": "python3.11",
+          "Role": "arn:aws:iam::617291204846:role/zapstop-api-dev-me-central-1-lambdaRole",
+          "Handler": "lambda_handler.lambda_handler",
+          "CodeSize": 1971496,
+          "Description": "ZapStop FastAPI Lambda function",
           "Timeout": 30,
           "MemorySize": 1024,
-          "Runtime": "python3.11",
+          "LastModified": "2025-09-16T18:48:53.000+0000",
+          "CodeSha256": "wW5Mkra4dYUpWGAg3TE0wztFCyAdzecjRNU4Jyu+NT8=",
+          "Version": "$LATEST",
+          "VpcConfig": {
+            "SubnetIds": [
+              "subnet-05f1dbb4127a433fa",
+              "subnet-05c2fb6180b27ac77"
+            ],
+            "SecurityGroupIds": [
+              "sg-04743e3cf5ec84f43"
+            ],
+            "VpcId": "vpc-088a2728ad0e90a83",
+            "Ipv6AllowedForDualStack": false
+          },
+          "Environment": {
+            "Variables": {
+              "JWT_REFRESH_SECRET": "<REDACTED>",
+              "DB_SECRET_NAME": "<REDACTED>",
+              "JWT_SECRET": "<REDACTED>",
+              "STAGE": "dev",
+              "DEBUG": "false",
+              "REGION": "me-central-1"
+            }
+          },
+          "KMSKeyArn": null,
+          "TracingConfig": {
+            "Mode": "PassThrough"
+          },
+          "MasterArn": null,
+          "RevisionId": "2b167acc-b57c-40c5-af13-3143d4107df4",
+          "State": "Active",
+          "StateReason": null,
+          "StateReasonCode": null,
+          "LastUpdateStatus": "Successful",
+          "LastUpdateStatusReason": null,
+          "LastUpdateStatusReasonCode": null,
+          "PackageType": "Zip",
+          "SigningProfileVersionArn": null,
+          "SigningJobArn": null,
           "Architectures": [
             "x86_64"
           ],
-          "Environment": {
-            "Variables": {
-              "STAGE": {
-                "Ref": "Stage"
-              },
-              "REGION": {
-                "Ref": "AWS::Region"
-              },
-              "DB_SECRET_NAME": "<REDACTED>",
-              "REDIS_SECRET_NAME": "<REDACTED>",
-              "JWT_SECRET": "<REDACTED>",
-              "JWT_REFRESH_SECRET": "<REDACTED>",
-              "DEBUG": {
-                "Ref": "DebugMode"
-              }
-            }
-          }
-        }
-      },
-      "Parameters": {
-        "Stage": {
-          "Type": "String",
-          "Default": "dev",
-          "AllowedValues": [
-            "dev",
-            "staging",
-            "prod"
-          ],
-          "Description": "Deployment stage"
-        },
-        "VpcId": {
-          "Type": "AWS::EC2::VPC::Id",
-          "Description": "VPC ID for the resources"
-        },
-        "PrivateSubnet1Id": {
-          "Type": "AWS::EC2::Subnet::Id",
-          "Description": "First private subnet for Aurora"
-        },
-        "PrivateSubnet2Id": {
-          "Type": "AWS::EC2::Subnet::Id",
-          "Description": "Second private subnet for Aurora"
-        },
-        "JWTSecret": "<REDACTED>",
-        "JWTRefreshSecret": "<REDACTED>",
-        "DebugMode": {
-          "Type": "String",
-          "Default": "false",
-          "AllowedValues": [
-            "true",
-            "false"
-          ],
-          "Description": "Enable debug mode"
-        }
-      },
-      "Resources": {
-        "ZapStopApiFunction": {
-          "Type": "AWS::Serverless::Function",
-          "Properties": {
-            "FunctionName": {
-              "Fn::Sub": "zapstop-api-${Stage}"
-            },
-            "CodeUri": "backend/",
-            "Handler": "lambda_handler.lambda_handler",
-            "Description": "ZapStop FastAPI Lambda function",
-            "VpcConfig": {
-              "SecurityGroupIds": [
-                {
-                  "Ref": "LambdaSecurityGroup"
-                }
-              ],
-              "SubnetIds": [
-                {
-                  "Ref": "PrivateSubnet1Id"
-                },
-                {
-                  "Ref": "PrivateSubnet2Id"
-                }
-              ]
-            },
-            "Policies": [
-              {
-                "Version": "2012-10-17",
-                "Statement": [
-                  {
-                    "Effect": "Allow",
-                    "Action": [
-                      "secretsmanager:GetSecretValue"
-                    ],
-                    "Resource": [
-                      {
-                        "Ref": "DatabaseSecret"
-                      },
-                      {
-                        "Ref": "RedisSecret"
-                      }
-                    ]
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Action": [
-                      "rds-db:connect"
-                    ],
-                    "Resource": {
-                      "Fn::Sub": "arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${AuroraCluster}/${DBUsername}"
-                    }
-                  },
-                  {
-                    "Effect": "Allow",
-                    "Action": [
-                      "logs:CreateLogGroup",
-                      "logs:CreateLogStream",
-                      "logs:PutLogEvents"
-                    ],
-                    "Resource": "*"
-                  }
-                ]
-              }
-            ],
-            "Layers": [
-              {
-                "Ref": "PythonDependenciesLayer"
-              }
-            ],
-            "Events": {
-              "ApiGateway": {
-                "Type": "HttpApi",
-                "Properties": {
-                  "Path": "/{proxy+}",
-                  "Method": "ANY",
-                  "Cors": {
-                    "AllowMethods": "'GET,POST,PUT,DELETE,OPTIONS'",
-                    "AllowHeaders": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
-                    "AllowOrigin": "'*'"
-                  }
-                }
-              },
-              "RootApiGateway": {
-                "Type": "HttpApi",
-                "Properties": {
-                  "Path": "/",
-                  "Method": "ANY",
-                  "Cors": {
-                    "AllowMethods": "'GET,POST,PUT,DELETE,OPTIONS'",
-                    "AllowHeaders": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
-                    "AllowOrigin": "'*'"
-                  }
-                }
-              }
-            }
-          }
-        },
-        "PythonDependenciesLayer": {
-          "Type": "AWS::Serverless::LayerVersion",
-          "Properties": {
-            "LayerName": {
-              "Fn::Sub": "zapstop-dependencies-${Stage}"
-            },
-            "Description": "Python dependencies for ZapStop",
-            "ContentUri": "backend/",
-            "CompatibleRuntimes": [
-              "python3.11"
-            ],
-            "RetentionPolicy": "Delete",
-            "Metadata": {
-              "BuildMethod": "python3.11"
-            }
-          }
-        },
-        "AuroraCluster": {
-          "Type": "AWS::RDS::DBCluster",
-          "Properties": {
-            "DBClusterIdentifier": {
-              "Fn::Sub": "zapstop-aurora-cluster-${Stage}"
-            },
-            "Engine": "aurora-postgresql",
-            "EngineMode": "provisioned",
-            "EngineVersion": "15.4",
-            "DatabaseName": "zapstop",
-            "MasterUsername": {
-              "Ref": "DBUsername"
-            },
-            "MasterUserPassword": "<REDACTED>",
-            "VpcSecurityGroupIds": [
-              {
-                "Ref": "AuroraSecurityGroup"
-              }
-            ],
-            "DBSubnetGroupName": {
-              "Ref": "AuroraSubnetGroup"
-            },
-            "BackupRetentionPeriod": 7,
-            "PreferredBackupWindow": "03:00-04:00",
-            "PreferredMaintenanceWindow": "sun:04:00-sun:05:00",
-            "StorageEncrypted": true,
-            "DeletionProtection": false,
-            "ServerlessV2ScalingConfiguration": {
-              "MinCapacity": 0.5,
-              "MaxCapacity": 16
-            },
-            "Tags": [
-              {
-                "Key": "Environment",
-                "Value": {
-                  "Ref": "Stage"
-                }
-              },
-              {
-                "Key": "Service",
-                "Value": "zapstop"
-              }
-            ]
-          }
-        },
-        "AuroraInstance": {
-          "Type": "AWS::RDS::DBInstance",
-          "Properties": {
-            "DBInstanceIdentifier": {
-              "Fn::Sub": "zapstop-aurora-instance-${Stage}"
-            },
-            "DBClusterIdentifier": {
-              "Ref": "AuroraCluster"
-            },
-            "DBInstanceClass": "db.serverless",
-            "Engine": "aurora-postgresql",
-            "PubliclyAccessible": false,
-            "Tags": [
-              {
-                "Key": "Environment",
-                "Value": {
-                  "Ref": "Stage"
-                }
-              },
-              {
-                "Key": "Service",
-                "Value": "zapstop"
-              }
-            ]
-          }
-        },
-        "AuroraSecurityGroup": {
-          "Type": "AWS::EC2::SecurityGroup",
-          "Properties": {
-            "GroupDescription": "Security group for Aurora cluster",
-            "VpcId": {
-              "Ref": "VpcId"
-            },
-            "SecurityGroupIngress": [
-              {
-                "IpProtocol": "tcp",
-                "FromPort": 5432,
-                "ToPort": 5432,
-                "SourceSecurityGroupId": {
-                  "Ref": "LambdaSecurityGroup"
-                }
-              }
-            ],
-            "Tags": [
-              {
-                "Key": "Name",
-                "Value": {
-                  "Fn::Sub": "zapstop-aurora-sg-${Stage}"
-                }
-              }
-            ]
-          }
-        },
-        "LambdaSecurityGroup": {
-          "Type": "AWS::EC2::SecurityGroup",
-          "Properties": {
-            "GroupDescription": "Security group for Lambda functions",
-            "VpcId": {
-              "Ref": "VpcId"
-            },
-            "SecurityGroupEgress": [
-              {
-                "IpProtocol": -1,
-                "CidrIp": "0.0.0.0/0"
-              }
-            ],
-            "Tags": [
-              {
-                "Key": "Name",
-                "Value": {
-                  "Fn::Sub": "zapstop-lambda-sg-${Stage}"
-                }
-              }
-            ]
-          }
-        },
-        "AuroraSubnetGroup": {
-          "Type": "AWS::RDS::DBSubnetGroup",
-          "Properties": {
-            "DBSubnetGroupDescription": "Subnet group for Aurora cluster",
-            "SubnetIds": [
-              {
-                "Ref": "PrivateSubnet1Id"
-              },
-              {
-                "Ref": "PrivateSubnet2Id"
-              }
-            ],
-            "Tags": [
-              {
-                "Key": "Name",
-                "Value": {
-                  "Fn::Sub": "zapstop-aurora-subnet-group-${Stage}"
-                }
-              }
-            ]
-          }
-        },
-        "DatabaseSecret": "<REDACTED>",
-        "RedisSecret": "<REDACTED>",
-        "RedisCluster": {
-          "Type": "AWS::ElastiCache::ReplicationGroup",
-          "Properties": {
-            "ReplicationGroupId": {
-              "Fn::Sub": "zapstop-redis-${Stage}"
-            },
-            "Description": "Redis cluster for ZapStop caching",
-            "NodeType": "cache.t3.micro",
-            "Port": 6379,
-            "NumCacheClusters": 1,
-            "Engine": "redis",
-            "CacheSubnetGroupName": {
-              "Ref": "RedisSubnetGroup"
-            },
-            "SecurityGroupIds": [
-              {
-                "Ref": "RedisSecurityGroup"
-              }
-            ],
-            "AtRestEncryptionEnabled": true,
-            "TransitEncryptionEnabled": false,
-            "Tags": [
-              {
-                "Key": "Environment",
-                "Value": {
-                  "Ref": "Stage"
-                }
-              },
-              {
-                "Key": "Service",
-                "Value": "zapstop"
-              }
-            ]
-          }
-        },
-        "RedisSecurityGroup": {
-          "Type": "AWS::EC2::SecurityGroup",
-          "Properties": {
-            "GroupDescription": "Security group for Redis cluster",
-            "VpcId": {
-              "Ref": "VpcId"
-            },
-            "SecurityGroupIngress": [
-              {
-                "IpProtocol": "tcp",
-                "FromPort": 6379,
-                "ToPort": 6379,
-                "SourceSecurityGroupId": {
-                  "Ref": "LambdaSecurityGroup"
-                }
-              }
-            ],
-            "Tags": [
-              {
-                "Key": "Name",
-                "Value": {
-                  "Fn::Sub": "zapstop-redis-sg-${Stage}"
-                }
-              }
-            ]
-          }
-        },
-        "RedisSubnetGroup": {
-          "Type": "AWS::ElastiCache::SubnetGroup",
-          "Properties": {
-            "Description": "Subnet group for Redis cluster",
-            "SubnetIds": [
-              {
-                "Ref": "PrivateSubnet1Id"
-              },
-              {
-                "Ref": "PrivateSubnet2Id"
-              }
-            ]
-          }
-        },
-        "DatabasePassword": "<REDACTED>",
-        "DBUsername": {
-          "Type": "String",
-          "Default": "zapstop_user",
-          "Description": "Database username"
-        }
-      },
-      "Outputs": {
-        "ApiGatewayUrl": {
-          "Description": "API Gateway endpoint URL",
-          "Value": {
-            "Fn::Sub": "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+          "EphemeralStorage": {
+            "Size": 512
           },
-          "Export": {
-            "Name": {
-              "Fn::Sub": "${AWS::StackName}-api-url"
-            }
-          }
-        },
-        "AuroraClusterEndpoint": {
-          "Description": "Aurora cluster endpoint",
-          "Value": {
-            "Fn::GetAtt": [
-              "AuroraCluster",
-              "Endpoint.Address"
-            ]
+          "SnapStart": {
+            "ApplyOn": "None",
+            "OptimizationStatus": "Off"
           },
-          "Export": {
-            "Name": {
-              "Fn::Sub": "${AWS::StackName}-aurora-endpoint"
-            }
-          }
-        },
-        "AuroraClusterPort": {
-          "Description": "Aurora cluster port",
-          "Value": {
-            "Fn::GetAtt": [
-              "AuroraCluster",
-              "Endpoint.Port"
-            ]
+          "RuntimeVersionConfig": {
+            "RuntimeVersionArn": "arn:aws:lambda:me-central-1::runtime:0517e723fa8dfc41b11b2324c8c497c137d4a3442c2e280cd9deb3ccfd45d0bd"
           },
-          "Export": {
-            "Name": {
-              "Fn::Sub": "${AWS::StackName}-aurora-port"
-            }
-          }
-        },
-        "DatabaseSecretArn": "<REDACTED>",
-        "RedisEndpoint": {
-          "Description": "Redis cluster endpoint",
-          "Value": {
-            "Fn::GetAtt": [
-              "RedisCluster",
-              "RedisEndpoint.Address"
-            ]
+          "LoggingConfig": {
+            "LogFormat": "Text",
+            "ApplicationLogLevel": null,
+            "SystemLogLevel": null,
+            "LogGroup": "/aws/lambda/zapstop-api-dev-api"
           },
-          "Export": {
-            "Name": {
-              "Fn::Sub": "${AWS::StackName}-redis-endpoint"
-            }
-          }
+          "Layers": []
         },
-        "LambdaFunctionName": {
-          "Description": "Lambda function name",
-          "Value": {
-            "Ref": "ZapStopApiFunction"
-          },
-          "Export": {
-            "Name": {
-              "Fn::Sub": "${AWS::StackName}-lambda-function"
-            }
-          }
+        "Code": {
+          "RepositoryType": "S3",
+          "Location": "https://prod-dxb-c0-yrsce-tasks.s3.me-central-1.amazonaws.com/snapshots/617291204846/zapstop-api-dev-api-5d6e2e8e-e306-4813-8b3e-c442d9bf4393?versionId=I2jyo4A9ilJZVt7.h.WhViASfz0wcsgP&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEC4aDG1lLWNlbnRyYWwtMSJHMEUCIH2Mo8CLQ0NCoXzdv7NpARezSBSibx9CKphj4DTdeVP5AiEArDHp3adB99VFpasf24EVSR3J%2FMB7wTyQVVSBj%2Fh5YEgqkgIIjf%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FARABGgw5NzQ3MDc2MDU4NTMiDAwgSTqflKQq5KlS8CrmAX%2FHb22A%2BuoGlZBp0QIbRyQCCGY7R4LVPCPMhBZimajctQbsN1E2NjVeZ3DJ77aFwpC49QGtxdES3MoKlZdg9NhShnbshVdb1%2B0acC%2Bj1OItETt4clpgMG%2FHXjHX5p2X266fUWmM5VsW8TQvqpdyVofTkF3fWGALZfdcB%2Bzi%2B%2FADbYbhkF9xn%2FMfGMKy6Bdql5sx54ChxPO9hByquxSVan1fs7gvNAkiSVW5IBDMixn3Enr3ApoyU%2BceKUiMDCcY1YqOxwgRpUbfU%2F92%2FQhW3RcxlJRK%2BnnNlH6gfyR7HhfezSQ%2BZzRrMOmjpcYGOo8Bqo5QEAqUwwn99DqOQh68EdN6cd6fE0yBxkrgPOU8vFcescwxgcUjSX%2FfA8mvKalyHga6NFTB%2FAzD1CKKHIieflTQ9iVXnZe8MMt96rCOUiCs1GsvTqxdvDq39pU8Qzk4zPvPi%2B6fYQUJUQQv4jgYutPUffbSop7bQShgTecNrrw5zF2zFAy6hiYLbuEHF3Y%3D&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250916T185942Z&X-Amz-SignedHeaders=host&X-Amz-Expires=600&X-Amz-Credential=ASIA6F4IZYFO5GIWLVP2%2F20250916%2Fme-central-1%2Fs3%2Faws4_request&X-Amz-Signature=26267e795784a64a1b72701bf67801bc1659c6f9d1ec2d3df5c1d5f47489c7bb",
+          "ImageUri": null,
+          "ResolvedImageUri": null
+        },
+        "Tags": {
+          "aws:cloudformation:stack-name": "zapstop-api-dev",
+          "aws:cloudformation:stack-id": "arn:aws:cloudformation:me-central-1:617291204846:stack/zapstop-api-dev/a37b9460-932a-11f0-b24a-0a0a72f8fa51",
+          "STAGE": "dev",
+          "aws:cloudformation:logical-id": "ApiLambdaFunction"
         }
       }
     },
     "dashboard": {
       "isEnabledForService": false,
-      "requiredAuthentication": true,
+      "requiredAuthentication": false,
       "orgFeaturesInUse": null,
       "orgObservabilityIntegrations": null,
       "serviceAppId": null,
       "serviceProvider": null,
       "instanceParameters": null
     },
-    "error": {
-      "message": "Please specify a stack name using the --stack option, or persist it in the samconfig.toml file.",
-      "stack": "Error: Please specify a stack name using the --stack option, or persist it in the samconfig.toml file.\n    at getCfnConfig (file:///Users/hari/.serverless/releases/4.18.2/package/dist/sf-core.js:1126:10955)\n    at deploy_default (file:///Users/hari/.serverless/releases/4.18.2/package/dist/sf-core.js:1126:18769)\n    at CfnRunner.run (file:///Users/hari/.serverless/releases/4.18.2/package/dist/sf-core.js:1129:3209)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async route (file:///Users/hari/.serverless/releases/4.18.2/package/dist/sf-core.js:1603:2878)\n    at async Object.run (file:///Users/hari/.serverless/releases/4.18.2/package/dist/sf-core.js:1604:3661)\n    at async run2 (file:///Users/hari/.serverless/releases/4.18.2/package/dist/sf-core.js:1604:4815)",
-      "code": "MISSING_STACK_NAME"
-    },
-    "serviceRawFile": "AWSTemplateFormatVersion: '2010-09-09'\nTransform: AWS::Serverless-2016-10-31\nDescription: 'ZapStop API - FastAPI on Lambda with Aurora Serverless v2'\n\nGlobals:\n  Function:\n    Timeout: 30\n    MemorySize: 1024\n    Runtime: python3.11\n    Architectures:\n      - x86_64\n    Environment:\n      Variables:\n        STAGE: !Ref Stage\n        REGION: !Ref AWS::Region\n        DB_SECRET_NAME: !Ref DatabaseSecret\n        REDIS_SECRET_NAME: !Ref RedisSecret\n        JWT_SECRET: !Ref JWTSecret\n        JWT_REFRESH_SECRET: !Ref JWTRefreshSecret\n        DEBUG: !Ref DebugMode\n\nParameters:\n  Stage:\n    Type: String\n    Default: dev\n    AllowedValues: [dev, staging, prod]\n    Description: Deployment stage\n  \n  VpcId:\n    Type: AWS::EC2::VPC::Id\n    Description: VPC ID for the resources\n  \n  PrivateSubnet1Id:\n    Type: AWS::EC2::Subnet::Id\n    Description: First private subnet for Aurora\n  \n  PrivateSubnet2Id:\n    Type: AWS::EC2::Subnet::Id\n    Description: Second private subnet for Aurora\n  \n  JWTSecret:\n    Type: String\n    NoEcho: true\n    Description: JWT secret key\n    Default: your-super-secret-jwt-key-change-in-production\n  \n  JWTRefreshSecret:\n    Type: String\n    NoEcho: true\n    Description: JWT refresh secret key\n    Default: your-super-secret-refresh-key-change-in-production\n  \n  DebugMode:\n    Type: String\n    Default: 'false'\n    AllowedValues: ['true', 'false']\n    Description: Enable debug mode\n\nResources:\n  # Lambda Function\n  ZapStopApiFunction:\n    Type: AWS::Serverless::Function\n    Properties:\n      FunctionName: !Sub 'zapstop-api-${Stage}'\n      CodeUri: backend/\n      Handler: lambda_handler.lambda_handler\n      Description: ZapStop FastAPI Lambda function\n      VpcConfig:\n        SecurityGroupIds:\n          - !Ref LambdaSecurityGroup\n        SubnetIds:\n          - !Ref PrivateSubnet1Id\n          - !Ref PrivateSubnet2Id\n      Policies:\n        - Version: '2012-10-17'\n          Statement:\n            - Effect: Allow\n              Action:\n                - secretsmanager:GetSecretValue\n              Resource:\n                - !Ref DatabaseSecret\n                - !Ref RedisSecret\n            - Effect: Allow\n              Action:\n                - rds-db:connect\n              Resource: !Sub 'arn:aws:rds-db:${AWS::Region}:${AWS::AccountId}:dbuser:${AuroraCluster}/${DBUsername}'\n            - Effect: Allow\n              Action:\n                - logs:CreateLogGroup\n                - logs:CreateLogStream\n                - logs:PutLogEvents\n              Resource: '*'\n      Layers:\n        - !Ref PythonDependenciesLayer\n      Events:\n        ApiGateway:\n          Type: HttpApi\n          Properties:\n            Path: /{proxy+}\n            Method: ANY\n            Cors:\n              AllowMethods: \"'GET,POST,PUT,DELETE,OPTIONS'\"\n              AllowHeaders: \"'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'\"\n              AllowOrigin: \"'*'\"\n        RootApiGateway:\n          Type: HttpApi\n          Properties:\n            Path: /\n            Method: ANY\n            Cors:\n              AllowMethods: \"'GET,POST,PUT,DELETE,OPTIONS'\"\n              AllowHeaders: \"'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'\"\n              AllowOrigin: \"'*'\"\n\n  # Python Dependencies Layer\n  PythonDependenciesLayer:\n    Type: AWS::Serverless::LayerVersion\n    Properties:\n      LayerName: !Sub 'zapstop-dependencies-${Stage}'\n      Description: Python dependencies for ZapStop\n      ContentUri: backend/\n      CompatibleRuntimes:\n        - python3.11\n      RetentionPolicy: Delete\n      Metadata:\n        BuildMethod: python3.11\n\n  # Aurora Serverless v2 Cluster\n  AuroraCluster:\n    Type: AWS::RDS::DBCluster\n    Properties:\n      DBClusterIdentifier: !Sub 'zapstop-aurora-cluster-${Stage}'\n      Engine: aurora-postgresql\n      EngineMode: provisioned\n      EngineVersion: '15.4'\n      DatabaseName: zapstop\n      MasterUsername: !Ref DBUsername\n      MasterUserPassword: !Ref DatabasePassword\n      VpcSecurityGroupIds:\n        - !Ref AuroraSecurityGroup\n      DBSubnetGroupName: !Ref AuroraSubnetGroup\n      BackupRetentionPeriod: 7\n      PreferredBackupWindow: '03:00-04:00'\n      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'\n      StorageEncrypted: true\n      DeletionProtection: false\n      ServerlessV2ScalingConfiguration:\n        MinCapacity: 0.5\n        MaxCapacity: 16\n      Tags:\n        - Key: Environment\n          Value: !Ref Stage\n        - Key: Service\n          Value: zapstop\n\n  # Aurora Serverless v2 Instance\n  AuroraInstance:\n    Type: AWS::RDS::DBInstance\n    Properties:\n      DBInstanceIdentifier: !Sub 'zapstop-aurora-instance-${Stage}'\n      DBClusterIdentifier: !Ref AuroraCluster\n      DBInstanceClass: db.serverless\n      Engine: aurora-postgresql\n      PubliclyAccessible: false\n      Tags:\n        - Key: Environment\n          Value: !Ref Stage\n        - Key: Service\n          Value: zapstop\n\n  # Security Group for Aurora\n  AuroraSecurityGroup:\n    Type: AWS::EC2::SecurityGroup\n    Properties:\n      GroupDescription: Security group for Aurora cluster\n      VpcId: !Ref VpcId\n      SecurityGroupIngress:\n        - IpProtocol: tcp\n          FromPort: 5432\n          ToPort: 5432\n          SourceSecurityGroupId: !Ref LambdaSecurityGroup\n      Tags:\n        - Key: Name\n          Value: !Sub 'zapstop-aurora-sg-${Stage}'\n\n  # Security Group for Lambda\n  LambdaSecurityGroup:\n    Type: AWS::EC2::SecurityGroup\n    Properties:\n      GroupDescription: Security group for Lambda functions\n      VpcId: !Ref VpcId\n      SecurityGroupEgress:\n        - IpProtocol: -1\n          CidrIp: 0.0.0.0/0\n      Tags:\n        - Key: Name\n          Value: !Sub 'zapstop-lambda-sg-${Stage}'\n\n  # DB Subnet Group\n  AuroraSubnetGroup:\n    Type: AWS::RDS::DBSubnetGroup\n    Properties:\n      DBSubnetGroupDescription: Subnet group for Aurora cluster\n      SubnetIds:\n        - !Ref PrivateSubnet1Id\n        - !Ref PrivateSubnet2Id\n      Tags:\n        - Key: Name\n          Value: !Sub 'zapstop-aurora-subnet-group-${Stage}'\n\n  # Secrets Manager for database credentials\n  DatabaseSecret:\n    Type: AWS::SecretsManager::Secret\n    Properties:\n      Name: !Sub 'zapstop/aurora/credentials/${Stage}'\n      Description: Database credentials for ZapStop Aurora cluster\n      SecretString: !Sub |\n        {\n          \"username\": \"${DBUsername}\",\n          \"password\": \"${DatabasePassword}\",\n          \"host\": \"${AuroraCluster.Endpoint.Address}\",\n          \"port\": 5432,\n          \"dbname\": \"zapstop\",\n          \"sslmode\": \"require\"\n        }\n      Tags:\n        - Key: Environment\n          Value: !Ref Stage\n        - Key: Service\n          Value: zapstop\n\n  # Secrets Manager for Redis credentials\n  RedisSecret:\n    Type: AWS::SecretsManager::Secret\n    Properties:\n      Name: !Sub 'zapstop/redis/credentials/${Stage}'\n      Description: Redis credentials for ZapStop\n      SecretString: !Sub |\n        {\n          \"host\": \"${RedisCluster.RedisEndpoint.Address}\",\n          \"port\": 6379,\n          \"password\": \"\"\n        }\n      Tags:\n        - Key: Environment\n          Value: !Ref Stage\n        - Key: Service\n          Value: zapstop\n\n  # ElastiCache Redis Cluster\n  RedisCluster:\n    Type: AWS::ElastiCache::ReplicationGroup\n    Properties:\n      ReplicationGroupId: !Sub 'zapstop-redis-${Stage}'\n      Description: Redis cluster for ZapStop caching\n      NodeType: cache.t3.micro\n      Port: 6379\n      NumCacheClusters: 1\n      Engine: redis\n      CacheSubnetGroupName: !Ref RedisSubnetGroup\n      SecurityGroupIds:\n        - !Ref RedisSecurityGroup\n      AtRestEncryptionEnabled: true\n      TransitEncryptionEnabled: false\n      Tags:\n        - Key: Environment\n          Value: !Ref Stage\n        - Key: Service\n          Value: zapstop\n\n  # Redis Security Group\n  RedisSecurityGroup:\n    Type: AWS::EC2::SecurityGroup\n    Properties:\n      GroupDescription: Security group for Redis cluster\n      VpcId: !Ref VpcId\n      SecurityGroupIngress:\n        - IpProtocol: tcp\n          FromPort: 6379\n          ToPort: 6379\n          SourceSecurityGroupId: !Ref LambdaSecurityGroup\n      Tags:\n        - Key: Name\n          Value: !Sub 'zapstop-redis-sg-${Stage}'\n\n  # Redis Subnet Group\n  RedisSubnetGroup:\n    Type: AWS::ElastiCache::SubnetGroup\n    Properties:\n      Description: Subnet group for Redis cluster\n      SubnetIds:\n        - !Ref PrivateSubnet1Id\n        - !Ref PrivateSubnet2Id\n\n  # Database Password\n  DatabasePassword:\n    Type: AWS::SecretsManager::Secret\n    Properties:\n      Name: !Sub 'zapstop-db-password-${Stage}'\n      Description: Database password for ZapStop\n      GenerateSecretString:\n        SecretStringTemplate: !Sub '{\"username\":\"${DBUsername}\"}'\n        GenerateStringKey: 'password'\n        PasswordLength: 32\n        ExcludeCharacters: '\"@/\\'\n\n  # Database Username\n  DBUsername:\n    Type: String\n    Default: zapstop_user\n    Description: Database username\n\nOutputs:\n  ApiGatewayUrl:\n    Description: API Gateway endpoint URL\n    Value: !Sub 'https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com'\n    Export:\n      Name: !Sub '${AWS::StackName}-api-url'\n\n  AuroraClusterEndpoint:\n    Description: Aurora cluster endpoint\n    Value: !GetAtt AuroraCluster.Endpoint.Address\n    Export:\n      Name: !Sub '${AWS::StackName}-aurora-endpoint'\n\n  AuroraClusterPort:\n    Description: Aurora cluster port\n    Value: !GetAtt AuroraCluster.Endpoint.Port\n    Export:\n      Name: !Sub '${AWS::StackName}-aurora-port'\n\n  DatabaseSecretArn:\n    Description: Database secret ARN\n    Value: !Ref DatabaseSecret\n    Export:\n      Name: !Sub '${AWS::StackName}-db-secret-arn'\n\n  RedisEndpoint:\n    Description: Redis cluster endpoint\n    Value: !GetAtt RedisCluster.RedisEndpoint.Address\n    Export:\n      Name: !Sub '${AWS::StackName}-redis-endpoint'\n\n  LambdaFunctionName:\n    Description: Lambda function name\n    Value: !Ref ZapStopApiFunction\n    Export:\n      Name: !Sub '${AWS::StackName}-lambda-function'\n",
+    "serviceRawFile": "service: zapstop-api\r\n\r\nframeworkVersion: '4'\r\n\r\nprovider:\r\n  name: aws\r\n  runtime: python3.11\r\n  stage: ${opt:stage, 'dev'}\r\n  region: ${opt:region, 'me-central-1'}\r\n  memorySize: 1024\r\n  timeout: 30\r\n  architecture: x86_64\r\n  \r\n  environment:\r\n    STAGE: ${self:provider.stage}\r\n    REGION: ${self:provider.region}\r\n    DB_SECRET_NAME: zapstop/aurora/credentials\r\n    JWT_SECRET: your-super-secret-jwt-key-change-in-production\r\n    JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production\r\n    DEBUG: false\r\n    \r\n  iam:\r\n    role:\r\n      statements:\r\n        - Effect: Allow\r\n          Action:\r\n            - secretsmanager:GetSecretValue\r\n          Resource: \"*\"\r\n        - Effect: Allow\r\n          Action:\r\n            - logs:CreateLogGroup\r\n            - logs:CreateLogStream\r\n            - logs:PutLogEvents\r\n          Resource: \"*\"\r\n\r\nfunctions:\r\n  api:\r\n    handler: lambda_handler.lambda_handler\r\n    description: ZapStop FastAPI Lambda function\r\n    events:\r\n      - httpApi:\r\n          path: /{proxy+}\r\n          method: ANY\r\n      - httpApi:\r\n          path: /\r\n          method: ANY\r\n\r\nplugins:\r\n  - serverless-python-requirements\r\n\r\ncustom:\r\n  pythonRequirements:\r\n    dockerizePip: false\r\n    layer:\r\n      name: zapstop-dependencies\r\n      description: ZapStop Python dependencies\r\n      compatibleRuntimes:\r\n        - python3.11\r\n      retain: false\r\n",
     "command": [
-      "deploy"
+      "deploy",
+      "function"
     ],
     "options": {
-      "verbose": true
+      "function": "api",
+      "config": "serverless-simple.yml",
+      "stage": "dev",
+      "region": "me-central-1"
     },
     "orgId": "06983b45-d0fb-4403-b00d-ddf8484b3db2",
     "orgName": "blureonlabs",
     "userId": "RTKCNm77MMltSGzs2q",
     "userName": "blureonlabs",
-    "serviceProviderAwsCfStackId": null,
-    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsAccountId": "617291204846",
+    "serviceProviderAwsCfStackName": "zapstop-api-dev",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:me-central-1:617291204846:stack/zapstop-api-dev/a37b9460-932a-11f0-b24a-0a0a72f8fa51",
+    "serviceProviderAwsCfStackCreated": "2025-09-16T18:26:19.618Z",
     "serviceProviderAwsCfStackUpdated": null,
-    "serviceProviderAwsCfStackStatus": null,
-    "serviceProviderAwsCfStackOutputs": null
+    "serviceProviderAwsCfStackStatus": "CREATE_COMPLETE",
+    "serviceProviderAwsCfStackOutputs": [
+      {
+        "OutputKey": "PythonRequirementsLambdaLayerS3Key",
+        "OutputValue": "serverless/zapstop-api/dev/1758047171551-2025-09-16T18:26:11.551Z/pythonRequirements.zip",
+        "Description": "Current Lambda layer S3Key",
+        "ExportName": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerS3Key"
+      },
+      {
+        "OutputKey": "PythonRequirementsLambdaLayerQualifiedArn",
+        "OutputValue": "arn:aws:lambda:me-central-1:617291204846:layer:zapstop-dependencies:1",
+        "Description": "Current Lambda layer version",
+        "ExportName": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerQualifiedArn"
+      },
+      {
+        "OutputKey": "ApiLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:me-central-1:617291204846:function:zapstop-api-dev-api:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-zapstop-api-dev-ApiLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "HttpApiId",
+        "OutputValue": "4g0b372vbb",
+        "Description": "Id of the HTTP API",
+        "ExportName": "sls-zapstop-api-dev-HttpApiId"
+      },
+      {
+        "OutputKey": "PythonRequirementsLambdaLayerHash",
+        "OutputValue": "24cbe666a34df902d97759568dfee86215a443d2",
+        "Description": "Current Lambda layer hash",
+        "ExportName": "sls-zapstop-api-dev-PythonRequirementsLambdaLayerHash"
+      },
+      {
+        "OutputKey": "ServerlessDeploymentBucketName",
+        "OutputValue": "serverless-framework-deployments-me-central-1-7074b1a8-7a56",
+        "ExportName": "sls-zapstop-api-dev-ServerlessDeploymentBucketName"
+      },
+      {
+        "OutputKey": "HttpApiUrl",
+        "OutputValue": "https://4g0b372vbb.execute-api.me-central-1.amazonaws.com",
+        "Description": "URL of the HTTP API",
+        "ExportName": "sls-zapstop-api-dev-HttpApiUrl"
+      }
+    ]
   }
 }

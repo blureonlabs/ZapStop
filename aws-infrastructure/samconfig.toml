@@ -7,6 +7,6 @@ s3_prefix = "zapstop"
 region = "me-central-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "Stage=\"dev\" VpcId=\"vpc-088a2728ad0e90a83\" PrivateSubnet1Id=\"subnet-05f1dbb4127a433fa\" PrivateSubnet2Id=\"subnet-05c2fb6180b27ac77\" DebugMode=\"true\""
+parameter_overrides = "Stage=\"dev\" VpcId=\"vpc-088a2728ad0e90a83\" PrivateSubnet1Id=\"subnet-05f1dbb4127a433fa\" PrivateSubnet2Id=\"subnet-05c2fb6180b27ac77\" DebugMode=\"false\""
 image_repositories = []
 disable_rollback = true

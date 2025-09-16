@@ -18,7 +18,7 @@ provider:
     DB_SECRET_NAME: ${self:custom.dbSecretName}
     JWT_SECRET: ${self:custom.jwtSecret}
     JWT_REFRESH_SECRET: ${self:custom.jwtRefreshSecret}
-    DEBUG: ${self:custom.debug}
+    DEBUG: false
     
   iam:
     role:
@@ -83,7 +83,7 @@ custom:
   lambdaSubnetId2: subnet-05c2fb6180b27ac77
   
   # Debug mode
-  debug: ${self:provider.stage, 'dev'}
+  debug: false
 
   pythonRequirements:
     dockerizePip: true

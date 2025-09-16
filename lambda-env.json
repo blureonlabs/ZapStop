@@ -1,0 +1,16 @@
+{
+  "Variables": {
+    "STAGE": "dev",
+    "REGION": "me-central-1",
+    "DEBUG": "false",
+    "JWT_SECRET": "your-super-secret-jwt-key-change-in-production",
+    "JWT_REFRESH_SECRET": "your-super-secret-refresh-key-change-in-production",
+    "DB_SECRET_NAME": "zapstop/aurora/credentials-dev",
+    "DATABASE_URL": "postgresql://zapstop_user:RuB?37F4n4LaNw>tSX*>Yukq,rN,`r[$@zapstop-rds-dev.cxmisq4uo3xv.me-central-1.rds.amazonaws.com:5432/zapstop?sslmode=require",
+    "DB_HOST": "zapstop-rds-dev.cxmisq4uo3xv.me-central-1.rds.amazonaws.com",
+    "DB_PORT": "5432",
+    "DB_NAME": "zapstop",
+    "DB_USER": "zapstop_user",
+    "DB_PASSWORD": "RuB?37F4n4LaNw>tSX*>Yukq,rN,`r[$"
+  }
+}

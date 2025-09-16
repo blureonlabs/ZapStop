@@ -1,0 +1,59 @@
+service: zapstop-api
+
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: python3.11
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'me-central-1'}
+  memorySize: 1024
+  timeout: 30
+  architecture: x86_64
+  
+  environment:
+    STAGE: ${self:provider.stage}
+    REGION: ${self:provider.region}
+    DB_SECRET_NAME: zapstop/aurora/credentials
+    JWT_SECRET: your-super-secret-jwt-key-change-in-production
+    JWT_REFRESH_SECRET: your-super-secret-refresh-key-change-in-production
+    DEBUG: false
+    
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource: "*"
+        - Effect: Allow
+          Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+          Resource: "*"
+
+functions:
+  api:
+    handler: lambda_handler.lambda_handler
+    description: ZapStop FastAPI Lambda function
+    events:
+      - httpApi:
+          path: /{proxy+}
+          method: ANY
+      - httpApi:
+          path: /
+          method: ANY
+
+plugins:
+  - serverless-python-requirements
+
+custom:
+  pythonRequirements:
+    dockerizePip: false
+    layer:
+      name: zapstop-dependencies
+      description: ZapStop Python dependencies
+      compatibleRuntimes:
+        - python3.11
+      retain: false
