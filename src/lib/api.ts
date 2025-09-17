@@ -3,7 +3,7 @@
  * Supports both local development and AWS Lambda deployment
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://4g0b372vbb.execute-api.me-central-1.amazonaws.com'
 
 export interface User {
   id: string
