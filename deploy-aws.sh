@@ -1,22 +1,23 @@
 #!/bin/bash
 
-# ZapStop AWS Deployment Script
-# Cost-optimized for 100 users, $40/month budget
+# 🚀 ZapStop AWS Deployment Script
+# Deploys the complete AWS infrastructure for ZapStop
 
-set -e
-
-echo "🚀 Deploying ZapStop to AWS..."
+set -e  # Exit on any error
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
 STACK_NAME="zapstop-prod"
 REGION="us-east-1"
 ENVIRONMENT="prod"
+
+echo -e "${BLUE}🚀 Starting ZapStop AWS Deployment...${NC}"
 
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
@@ -30,43 +31,42 @@ if ! aws sts get-caller-identity &> /dev/null; then
     exit 1
 fi
 
-echo -e "${YELLOW}📋 Deployment Configuration:${NC}"
-echo "Stack Name: $STACK_NAME"
-echo "Region: $REGION"
-echo "Environment: $ENVIRONMENT"
-echo ""
+echo -e "${GREEN}✅ AWS CLI configured${NC}"
 
-# Step 1: Create database optimization indexes
-echo -e "${YELLOW}🔧 Step 1: Optimizing database performance...${NC}"
-echo "Run this SQL on your Neon database to improve performance:"
-echo "cat backend/database_optimization.sql | psql YOUR_DATABASE_URL"
-echo ""
+# Check if required files exist
+if [ ! -f "aws-infrastructure/lambda-serverless.yaml" ]; then
+    echo -e "${RED}❌ CloudFormation template not found${NC}"
+    exit 1
+fi
 
-# Step 2: Deploy AWS infrastructure
-echo -e "${YELLOW}🏗️ Step 2: Deploying AWS infrastructure...${NC}"
-
-# Deploy the CloudFormation stack
+# Deploy CloudFormation stack
+echo -e "${YELLOW}📦 Deploying CloudFormation stack...${NC}"
 aws cloudformation deploy \
     --template-file aws-infrastructure/lambda-serverless.yaml \
     --stack-name $STACK_NAME \
     --region $REGION \
     --parameter-overrides Environment=$ENVIRONMENT \
-    --capabilities CAPABILITY_NAMED_IAM
+    --capabilities CAPABILITY_IAM
 
 if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Infrastructure deployed successfully!${NC}"
+    echo -e "${GREEN}✅ CloudFormation stack deployed successfully${NC}"
 else
-    echo -e "${RED}❌ Infrastructure deployment failed!${NC}"
+    echo -e "${RED}❌ CloudFormation deployment failed${NC}"
     exit 1
 fi
 
-# Step 3: Get outputs
-echo -e "${YELLOW}📊 Step 3: Getting deployment outputs...${NC}"
-
+# Get stack outputs
+echo -e "${YELLOW}📋 Getting stack outputs...${NC}"
 API_URL=$(aws cloudformation describe-stacks \
     --stack-name $STACK_NAME \
     --region $REGION \
     --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl`].OutputValue' \
+    --output text)
+
+DB_ENDPOINT=$(aws cloudformation describe-stacks \
+    --stack-name $STACK_NAME \
+    --region $REGION \
+    --query 'Stacks[0].Outputs[?OutputKey==`DatabaseEndpoint`].OutputValue' \
     --output text)
 
 CLOUDFRONT_URL=$(aws cloudformation describe-stacks \
@@ -81,59 +81,19 @@ S3_BUCKET=$(aws cloudformation describe-stacks \
     --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
     --output text)
 
-echo -e "${GREEN}✅ Deployment completed successfully!${NC}"
-echo ""
-echo -e "${YELLOW}📋 Your AWS Resources:${NC}"
-echo "API URL: $API_URL"
-echo "Frontend URL: $CLOUDFRONT_URL"
-echo "S3 Bucket: $S3_BUCKET"
-echo ""
+echo -e "${GREEN}✅ Stack outputs retrieved${NC}"
 
-# Step 4: Deploy frontend to S3
-echo -e "${YELLOW}🌐 Step 4: Deploying frontend to S3...${NC}"
+# Display important information
+echo -e "${BLUE}📊 Deployment Summary:${NC}"
+echo -e "  API URL: ${GREEN}$API_URL${NC}"
+echo -e "  Database: ${GREEN}$DB_ENDPOINT${NC}"
+echo -e "  CloudFront: ${GREEN}$CLOUDFRONT_URL${NC}"
+echo -e "  S3 Bucket: ${GREEN}$S3_BUCKET${NC}"
 
-# Build the frontend
-echo "Building Next.js frontend..."
-npm run build
+# Next steps
+echo -e "${YELLOW}📝 Next Steps:${NC}"
+echo -e "  1. Deploy backend to Lambda: ${BLUE}./deploy-lambda.sh${NC}"
+echo -e "  2. Deploy frontend to S3: ${BLUE}./deploy-frontend.sh${NC}"
+echo -e "  3. Test the deployment: ${BLUE}./test-aws-deployment.sh${NC}"
 
-# Upload to S3
-echo "Uploading to S3..."
-aws s3 sync out/ s3://$S3_BUCKET --delete
-
-# Invalidate CloudFront cache
-echo "Invalidating CloudFront cache..."
-aws cloudfront create-invalidation \
-    --distribution-id $(aws cloudfront list-distributions \
-        --query "DistributionList.Items[?Origins.Items[0].DomainName=='$S3_BUCKET.s3.amazonaws.com'].Id" \
-        --output text) \
-    --paths "/*"
-
-echo -e "${GREEN}✅ Frontend deployed successfully!${NC}"
-echo ""
-
-# Step 5: Update environment variables
-echo -e "${YELLOW}⚙️ Step 5: Update your environment variables...${NC}"
-echo "Update your frontend .env.local file:"
-echo "NEXT_PUBLIC_API_URL=$API_URL"
-echo ""
-
-# Step 6: Cost estimation
-echo -e "${YELLOW}💰 Step 6: Monthly Cost Estimation${NC}"
-echo "Lambda (50 requests/day): ~$0.50"
-echo "RDS t3.micro: ~$15"
-echo "S3 + CloudFront: ~$2"
-echo "API Gateway: ~$1"
-echo "Route 53 (optional): ~$0.50"
-echo "Total: ~$19/month (well under your $40 budget!)"
-echo ""
-
-# Step 7: Next steps
-echo -e "${YELLOW}🎯 Next Steps:${NC}"
-echo "1. Run database optimization SQL on your Neon database"
-echo "2. Update frontend environment variables"
-echo "3. Test your application at: $CLOUDFRONT_URL"
-echo "4. Monitor costs in AWS Billing Dashboard"
-echo ""
-
-echo -e "${GREEN}🎉 ZapStop is now running on AWS!${NC}"
-echo -e "${GREEN}Your app should be much faster now!${NC}"
+echo -e "${GREEN}🎉 AWS infrastructure deployment completed!${NC}"
