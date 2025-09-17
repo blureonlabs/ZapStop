@@ -54,7 +54,7 @@ Delete APIs named:
 Look for:
 - Aurora Serverless clusters with "zapstop" in name
 - RDS instances with "zapstop" in name
-- Database names: "zapstop", "neondb"
+- Database names: "zapstop"
 
 **Action**: Select database → Actions → Delete → Confirm
 

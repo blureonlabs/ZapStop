@@ -5,7 +5,7 @@ Create a proper .env file with the correct DATABASE_URL
 
 def create_env_file():
     env_content = """# Database Configuration
-DATABASE_URL=postgresql://neondb_owner:npg_BKdRAP3WO0Sc@ep-ancient-forest-adlyuega-pooler.c-2.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+DATABASE_URL=postgresql://username:password@your-rds-endpoint.region.rds.amazonaws.com:5432/zapstop?sslmode=require
 
 # Redis Configuration (Optional - for caching)
 REDIS_URL=redis://localhost:6379

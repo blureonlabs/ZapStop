@@ -1,6 +1,6 @@
 # Zap Stop - Rental Car Management PWA
 
-A Progressive Web App for managing rental cars, drivers, and earnings built with Next.js 14, Neon PostgreSQL, and TailwindCSS.
+A Progressive Web App for managing rental cars, drivers, and earnings built with Next.js 14, AWS RDS PostgreSQL, and TailwindCSS.
 
 ## Features
 
@@ -24,7 +24,7 @@ A Progressive Web App for managing rental cars, drivers, and earnings built with
 
 - **Frontend**: Next.js 14 (App Router) + TailwindCSS + shadcn/ui
 - **Backend**: FastAPI + Python
-- **Database**: Neon PostgreSQL
+- **Database**: AWS RDS PostgreSQL
 - **Deployment**: Netlify (Frontend) + Render (Backend)
 - **Charts**: Recharts
 - **Icons**: Lucide React
@@ -50,7 +50,7 @@ NEXT_PUBLIC_API_URL=https://your-backend-url.onrender.com
 
 ### 3. Database Setup
 
-1. Create a Neon PostgreSQL database
+1. Create an AWS RDS PostgreSQL database
 2. Set up the database schema using the provided SQL files
 3. Configure the `DATABASE_URL` in your backend environment
 

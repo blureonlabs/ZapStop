@@ -1,7 +1,7 @@
 # 🚀 ZapStop AWS Deployment Plan
 
 ## 📋 **Overview**
-Complete migration from Neon + Render to AWS with cost optimization for 100 users, $40/month budget.
+Complete migration to AWS with cost optimization for 100 users, $40/month budget.
 
 ## 🎯 **Target Architecture**
 ```
@@ -58,7 +58,7 @@ Monitoring → CloudWatch
 - [ ] Deploy API Gateway
 
 ### 2.3 Database Migration
-- [ ] Export data from Neon PostgreSQL
+- [ ] Export data from existing database
 - [ ] Import data to RDS PostgreSQL
 - [ ] Verify data integrity
 - [ ] Update connection strings
@@ -100,7 +100,7 @@ Monitoring → CloudWatch
 - [ ] Monitor for issues
 
 ### 5.2 Cleanup
-- [ ] Remove old Neon database
+- [ ] Remove old database
 - [ ] Remove Render deployment
 - [ ] Update documentation
 - [ ] Train team on AWS console
@@ -180,7 +180,7 @@ aws s3 sync dist/ s3://zapstop-prod-frontend/
 
 ### If Issues Occur:
 1. **Immediate**: Switch DNS back to Render
-2. **Database**: Restore from Neon backup
+2. **Database**: Restore from existing database backup
 3. **Backend**: Revert to Render deployment
 4. **Frontend**: Revert to Netlify deployment
 
@@ -190,7 +190,7 @@ aws s3 sync dist/ s3://zapstop-prod-frontend/
 # Update CNAME records to point back to Render/Netlify
 
 # Restore database
-# Import from Neon backup
+# Import from existing database backup
 
 # Revert backend
 # Deploy to Render

@@ -225,16 +225,18 @@ class ApiService {
 
   // Authentication
   async login(email: string, password: string) {
-    const formData = new URLSearchParams()
-    formData.append('username', email)
-    formData.append('password', password)
-
+    console.log('API_BASE_URL:', API_BASE_URL)
+    console.log('Full URL:', `${API_BASE_URL}/api/auth/login`)
+    
     const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: formData,
+      body: JSON.stringify({
+        username: email,
+        password: password,
+      }),
     })
 
     if (!response.ok) {
@@ -253,7 +255,8 @@ class ApiService {
 
   // Users
   async getUsers(): Promise<User[]> {
-    return this.request<User[]>('/api/users/')
+    const response = await this.request<{users: User[]}>('/api/users')
+    return response.users || []
   }
 
   async createUser(userData: CreateUserData): Promise<User> {

@@ -98,7 +98,7 @@ def test_backend_performance():
     print("\n" + "=" * 50)
     print("🎉 Performance test completed!")
     print("\n💡 Next steps:")
-    print("1. Apply database optimizations to your Neon database")
+    print("1. Apply database optimizations to your AWS RDS database")
     print("2. Test the analytics endpoints with authentication")
     print("3. Compare performance with your production environment")
 

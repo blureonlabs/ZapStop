@@ -1,0 +1,8 @@
+{
+  "httpMethod": "POST",
+  "path": "/api/auth/login",
+  "body": "username=admin@gmail.com&password=admin123",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded"
+  }
+}

@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Test Lambda function for database connection'
+
+Parameters:
+  VPCId:
+    Type: String
+    Description: VPC ID for Lambda function
+    Default: vpc-0f060a249918d41b2
+
+Resources:
+  # Security Group for Lambda
+  TestLambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for test Lambda function
+      VpcId: !Ref VPCId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: 10.0.0.0/16
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  # IAM Role for Lambda
+  TestLambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: zapstop-test-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+
+  # Lambda Function
+  TestLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: zapstop-test-db
+      Runtime: python3.11
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          import json
+          import psycopg2
+          import time
+          
+          def handler(event, context):
+              DB_CONFIG = {
+                  'host': 'zapstop-db.cxmisq4uo3xv.me-central-1.rds.amazonaws.com',
+                  'port': 5432,
+                  'database': 'zapstop',
+                  'user': 'zapstop',
+                  'password': 'ZapStop2024!'
+              }
+              
+              try:
+                  start_time = time.time()
+                  conn = psycopg2.connect(**DB_CONFIG)
+                  cursor = conn.cursor()
+                  connection_time = (time.time() - start_time) * 1000
+                  
+                  cursor.execute("SELECT version();")
+                  version = cursor.fetchone()[0]
+                  
+                  cursor.execute("SELECT current_database(), current_user, now();")
+                  info = cursor.fetchone()
+                  
+                  cursor.close()
+                  conn.close()
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'Database connection successful!',
+                          'connection_time_ms': round(connection_time, 2),
+                          'database_version': version,
+                          'database_name': info[0],
+                          'current_user': info[1],
+                          'current_time': info[2].isoformat()
+                      })
+                  }
+                  
+              except Exception as e:
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({
+                          'error': 'Database connection failed',
+                          'message': str(e)
+                      })
+                  }
+      Role: !GetAtt TestLambdaExecutionRole.Arn
+      Timeout: 30
+      MemorySize: 256
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref TestLambdaSecurityGroup
+        SubnetIds:
+          - subnet-098e47ad6ba9adc93  # Public subnet 1
+          - subnet-0ee52b71357a0f3eb  # Public subnet 2
+
+Outputs:
+  TestLambdaFunctionName:
+    Description: Test Lambda function name
+    Value: !Ref TestLambdaFunction
+    Export:
+      Name: zapstop-test-lambda

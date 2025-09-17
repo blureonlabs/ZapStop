@@ -51,7 +51,7 @@ ORDER BY summary_date DESC;
 CREATE INDEX IF NOT EXISTS idx_dashboard_summary_date ON dashboard_summary(summary_date);
 
 -- 5. Optimize database settings for better performance
--- These settings should be applied to your Neon database
+-- These settings should be applied to your AWS RDS database
 -- (Note: Some settings might require superuser privileges)
 
 -- Increase work_mem for complex queries
