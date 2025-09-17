@@ -33,10 +33,8 @@ class Settings(BaseSettings):
         """Convert comma-separated string to list"""
         return [origin.strip() for origin in self.allowed_origins.split(",")]
     
-    # File Storage
-    aws_access_key_id: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY")
-    aws_s3_bucket: Optional[str] = os.getenv("AWS_S3_BUCKET")
+    # File Storage (removed AWS S3 - using local storage or other provider)
+    # file_storage_path: str = os.getenv("FILE_STORAGE_PATH", "uploads")
     
     # Email
     resend_api_key: Optional[str] = os.getenv("RESEND_API_KEY")

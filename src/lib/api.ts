@@ -1,9 +1,9 @@
 /**
  * API Service for connecting frontend to backend
- * Supports both local development and AWS Lambda deployment
+ * Supports both local development and production deployment
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://4g0b372vbb.execute-api.me-central-1.amazonaws.com'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
 export interface User {
   id: string

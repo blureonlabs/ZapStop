@@ -1,6 +1,6 @@
 {
   "httpMethod": "GET",
-  "path": "/api/health",
+  "path": "/health",
   "headers": {
     "Content-Type": "application/json"
   },
