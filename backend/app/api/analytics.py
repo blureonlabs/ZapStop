@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 
 from app.database import get_db
-from app.services.analytics_service_simple import AnalyticsServiceSimple as AnalyticsService
+from app.services.analytics_service_optimized import AnalyticsServiceOptimized as AnalyticsService
 from app.middleware.auth_simple import get_current_user
 
 router = APIRouter()

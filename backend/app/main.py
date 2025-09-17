@@ -11,6 +11,7 @@ import uvicorn
 import os
 from app.database import engine, Base
 from app.api import auth_simple as auth, users, cars, owners, analytics, earnings, expenses, attendance, leave_requests
+import time
 from app.middleware.auth_simple import get_current_user
 from app.models.user import User
 from app.config import settings
@@ -85,6 +86,29 @@ app.add_middleware(
     TrustedHostMiddleware,
     allowed_hosts=["localhost", "127.0.0.1", "*.onrender.com", "*.netlify.app"]
 )
+
+# Health check endpoint
+@app.get("/health", tags=["health"])
+async def health_check():
+    """Health check endpoint for monitoring"""
+    start_time = time.time()
+    
+    # Test database connection
+    try:
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        db_status = "healthy"
+    except Exception as e:
+        db_status = f"unhealthy: {str(e)}"
+    
+    response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+    
+    return {
+        "status": "healthy" if db_status == "healthy" else "unhealthy",
+        "database": db_status,
+        "response_time_ms": round(response_time, 2),
+        "timestamp": time.time()
+    }
 
 # Include API routers
 app.include_router(auth.router, prefix="/api/auth", tags=["authentication"])
