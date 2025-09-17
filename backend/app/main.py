@@ -9,6 +9,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 import os
+from sqlalchemy import text
 from app.database import engine, Base
 from app.api import auth_simple as auth, users, cars, owners, analytics, earnings, expenses, attendance, leave_requests
 import time
@@ -96,7 +97,7 @@ async def health_check():
     # Test database connection
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))
         db_status = "healthy"
     except Exception as e:
         db_status = f"unhealthy: {str(e)}"
