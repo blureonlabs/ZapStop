@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge Functions Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .loading { background-color: #fff3cd; border-color: #ffeaa7; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Edge Functions Test</h1>
+    <p>Testing Edge Functions integration with the Zap Stop app.</p>
+
+    <div class="test-section">
+        <h3>1. Test Dashboard Stats (Analytics Function)</h3>
+        <button onclick="testDashboardStats()">Test Dashboard Stats</button>
+        <div id="dashboard-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Test User Creation (User Management Function)</h3>
+        <button onclick="testCreateDriver()">Test Create Driver</button>
+        <div id="user-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Test Attendance (Real-time Function)</h3>
+        <button onclick="testAttendance()">Test Attendance Check</button>
+        <div id="attendance-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>4. Test Data Export (Data Processing Function)</h3>
+        <button onclick="testExport()">Test Export Data</button>
+        <div id="export-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>5. Test Email Notification (Webhook Function)</h3>
+        <button onclick="testEmail()">Test Email Notification</button>
+        <div id="email-result"></div>
+    </div>
+
+    <script>
+        // Configuration - Using hosted Supabase
+        const SUPABASE_URL = 'https://hawlxjipneluhzcxzpps.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhhd2x4amlwbmVsdWh6Y3h6cHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTM1NTIsImV4cCI6MjA3MjQ4OTU1Mn0.oAzTG8sgtx9iTvpqeegcc-kC-zq7keNLDgUNWzlzbmI';
+
+        // Helper function to make requests
+        async function makeRequest(functionName, body = {}) {
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/${functionName}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+                },
+                body: JSON.stringify(body)
+            });
+            return response.json();
+        }
+
+        // Test functions
+        async function testDashboardStats() {
+            const resultDiv = document.getElementById('dashboard-result');
+            resultDiv.innerHTML = '<div class="loading">Testing dashboard stats...</div>';
+            
+            try {
+                const result = await makeRequest('calculate-dashboard-stats', { timeFilter: 'monthly' });
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Dashboard Stats Test Passed</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Dashboard Stats Test Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testCreateDriver() {
+            const resultDiv = document.getElementById('user-result');
+            resultDiv.innerHTML = '<div class="loading">Testing user creation...</div>';
+            
+            try {
+                const result = await makeRequest('create-driver', {
+                    name: 'Test Driver',
+                    email: 'test@example.com',
+                    password: 'test123456',
+                    role: 'driver'
+                });
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ User Creation Test Passed</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ User Creation Test Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testAttendance() {
+            const resultDiv = document.getElementById('attendance-result');
+            resultDiv.innerHTML = '<div class="loading">Testing attendance...</div>';
+            
+            try {
+                // Use a real driver ID from our database
+                const result = await makeRequest('process-attendance', {
+                    action: 'check_status',
+                    driver_id: '1f7abf41-e137-443b-aba7-570bc8c5d3f9', // Real driver ID
+                    date: new Date().toISOString().split('T')[0]
+                });
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Attendance Test Passed</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Attendance Test Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testExport() {
+            const resultDiv = document.getElementById('export-result');
+            resultDiv.innerHTML = '<div class="loading">Testing data export...</div>';
+            
+            try {
+                const dateFrom = new Date();
+                dateFrom.setMonth(dateFrom.getMonth() - 1);
+                const dateTo = new Date();
+                
+                const result = await makeRequest('export-financial-data', {
+                    type: 'earnings',
+                    format: 'json',
+                    dateFrom: dateFrom.toISOString().split('T')[0],
+                    dateTo: dateTo.toISOString().split('T')[0]
+                });
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Data Export Test Passed</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Data Export Test Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function testEmail() {
+            const resultDiv = document.getElementById('email-result');
+            resultDiv.innerHTML = '<div class="loading">Testing email notification...</div>';
+            
+            try {
+                const result = await makeRequest('email-notifications', {
+                    to: 'test@example.com',
+                    subject: 'Test Notification',
+                    template: 'custom',
+                    data: { test: true },
+                    html: '<p>This is a test email notification.</p>'
+                });
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Email Notification Test Passed</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Email Notification Test Failed</h4>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-run tests on page load
+        window.onload = function() {
+            console.log('Edge Functions Test Page Loaded');
+            console.log('Make sure Supabase is running locally: supabase start');
+        };
+    </script>
+</body>
+</html>

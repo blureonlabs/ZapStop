@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase, User, Car } from '@/lib/supabase'
+import { userAPI } from '@/lib/edge-functions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -161,39 +162,18 @@ export default function DriversPage() {
         return
       }
 
-      // Use the server-side API to create the user (doesn't auto-login)
-      const response = await fetch('/api/admin/create-user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: driverForm.name,
-          email: driverForm.email,
-          password: driverForm.password,
-          phone: driverForm.phone,
-          role: driverForm.role,
-          assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
-        }),
+      // Use Edge Function to create the user
+      const result = await userAPI.createDriver({
+        name: driverForm.name,
+        email: driverForm.email,
+        password: driverForm.password,
+        phone: driverForm.phone,
+        role: driverForm.role,
+        assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
       })
 
-      const result = await response.json()
-
-      if (!response.ok) {
-        console.error('API error:', result)
-        if (result.error.includes('already exists')) {
-          toast.error('A user with this email already exists')
-        } else if (result.error.includes('Password should be at least 6 characters')) {
-          toast.error('Password must be at least 6 characters long')
-        } else {
-          toast.error(result.error || 'Failed to create user account')
-        }
-        setCreatingDriver(false)
-        return
-      }
-
-      console.log('User created successfully:', result.user)
-      toast.success(result.message || 'Driver created successfully')
+      console.log('User created successfully:', result)
+      toast.success('Driver created successfully! User can login immediately.')
       setShowDriverDialog(false)
       setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
       fetchData()

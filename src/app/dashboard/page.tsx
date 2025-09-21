@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import AdminDashboard from '@/components/dashboard/AdminDashboard'
+import AdminDashboardOptimized from '@/components/dashboard/AdminDashboardOptimized'
 import AccountantDashboard from '@/components/dashboard/AccountantDashboard'
 import DriverDashboard from '@/components/dashboard/DriverDashboard'
 
@@ -37,7 +37,7 @@ export default function DashboardPage() {
 
   switch (appUser.role) {
     case 'admin':
-      return <AdminDashboard />
+      return <AdminDashboardOptimized />
     case 'accountant':
       return <AccountantDashboard />
     case 'driver':
