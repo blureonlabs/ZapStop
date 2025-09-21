@@ -169,7 +169,7 @@ export const edgeFunctions = new EdgeFunctionsAPI()
 export const dashboardAPI = {
   async getStats(timeFilter: string = 'monthly') {
     const result = await edgeFunctions.calculateDashboardStats(timeFilter)
-    return result.data
+    return result
   }
 }
 

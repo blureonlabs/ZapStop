@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -59,7 +59,7 @@ export default function AdminDashboardOptimized() {
   const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly'>('monthly')
   const [refreshing, setRefreshing] = useState(false)
 
-  const fetchDashboardData = async (showRefresh = false) => {
+  const fetchDashboardData = useCallback(async (showRefresh = false) => {
     try {
       if (showRefresh) {
         setRefreshing(true)
@@ -87,11 +87,11 @@ export default function AdminDashboardOptimized() {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [timeFilter])
 
   useEffect(() => {
     fetchDashboardData()
-  }, [timeFilter])
+  }, [timeFilter, fetchDashboardData])
 
   const handleExport = async (type: 'earnings' | 'expenses' | 'attendance' | 'all', format: 'csv' | 'json' = 'json') => {
     try {
