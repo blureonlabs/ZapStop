@@ -85,7 +85,7 @@ export class EdgeFunctionsAPI {
     to: string | string[]
     subject: string
     template: 'expense_approval' | 'expense_rejection' | 'leave_approval' | 'leave_rejection' | 'daily_summary' | 'custom'
-    data?: Record<string, any>
+    data?: Record<string, unknown>
     html?: string
     text?: string
   }) {
@@ -101,7 +101,7 @@ export class EdgeFunctionsAPI {
   }
 
   // CRUD Operations
-  async manageOwners(action: string, ownerData?: any, ownerId?: string, carAssignments?: any[], filters?: any) {
+  async manageOwners(action: string, ownerData?: Record<string, unknown>, ownerId?: string, carAssignments?: Record<string, unknown>[], filters?: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke('manage-owners', {
       body: { action, ownerData, ownerId, carAssignments, filters }
     })
@@ -113,7 +113,7 @@ export class EdgeFunctionsAPI {
     return data
   }
 
-  async manageCars(action: string, carData?: any, carId?: string, driverId?: string, ownerId?: string, filters?: any) {
+  async manageCars(action: string, carData?: Record<string, unknown>, carId?: string, driverId?: string, ownerId?: string, filters?: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke('manage-cars', {
       body: { action, carData, carId, driverId, ownerId, filters }
     })
@@ -125,7 +125,7 @@ export class EdgeFunctionsAPI {
     return data
   }
 
-  async manageLeaveRequests(action: string, leaveData?: any, leaveId?: string, approverId?: string, rejectionReason?: string, filters?: any) {
+  async manageLeaveRequests(action: string, leaveData?: Record<string, unknown>, leaveId?: string, approverId?: string, rejectionReason?: string, filters?: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke('manage-leave-requests', {
       body: { action, leaveData, leaveId, approverId, rejectionReason, filters }
     })
@@ -137,7 +137,7 @@ export class EdgeFunctionsAPI {
     return data
   }
 
-  async manageEarnings(action: string, earningData?: any, earningId?: string, earningsData?: any[], filters?: any) {
+  async manageEarnings(action: string, earningData?: Record<string, unknown>, earningId?: string, earningsData?: Record<string, unknown>[], filters?: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke('manage-earnings', {
       body: { action, earningData, earningId, earningsData, filters }
     })
@@ -149,7 +149,7 @@ export class EdgeFunctionsAPI {
     return data
   }
 
-  async manageExpenses(action: string, expenseData?: any, expenseId?: string, expensesData?: any[], approverId?: string, rejectionReason?: string, filters?: any) {
+  async manageExpenses(action: string, expenseData?: Record<string, unknown>, expenseId?: string, expensesData?: Record<string, unknown>[], approverId?: string, rejectionReason?: string, filters?: Record<string, unknown>) {
     const { data, error } = await supabase.functions.invoke('manage-expenses', {
       body: { action, expenseData, expenseId, expensesData, approverId, rejectionReason, filters }
     })
@@ -173,12 +173,19 @@ export const dashboardAPI = {
   }
 }
 
+export const exportAPI = {
+  async exportFinancialData(payload: { type: 'earnings' | 'expenses'; startDate: string; endDate: string }) {
+    const result = await edgeFunctions.exportFinancialData(payload)
+    return result
+  }
+}
+
 // CRUD Operations API
 export const ownersAPI = {
-  async create(ownerData: any) {
+  async create(ownerData: Record<string, unknown>) {
     return await edgeFunctions.manageOwners('create', ownerData)
   },
-  async update(ownerId: string, ownerData: any) {
+  async update(ownerId: string, ownerData: Record<string, unknown>) {
     return await edgeFunctions.manageOwners('update', ownerData, ownerId)
   },
   async delete(ownerId: string) {
@@ -187,16 +194,16 @@ export const ownersAPI = {
   async get(ownerId: string) {
     return await edgeFunctions.manageOwners('get', undefined, ownerId)
   },
-  async list(filters?: any) {
+  async list(filters?: Record<string, unknown>) {
     return await edgeFunctions.manageOwners('list', undefined, undefined, undefined, filters)
   }
 }
 
 export const carsAPI = {
-  async create(carData: any) {
+  async create(carData: Record<string, unknown>) {
     return await edgeFunctions.manageCars('create', carData)
   },
-  async update(carId: string, carData: any) {
+  async update(carId: string, carData: Record<string, unknown>) {
     return await edgeFunctions.manageCars('update', carData, carId)
   },
   async delete(carId: string) {
@@ -205,7 +212,7 @@ export const carsAPI = {
   async get(carId: string) {
     return await edgeFunctions.manageCars('get', undefined, carId)
   },
-  async list(filters?: any) {
+  async list(filters?: Record<string, unknown>) {
     return await edgeFunctions.manageCars('list', undefined, undefined, undefined, undefined, filters)
   },
   async assignDriver(carId: string, driverId: string) {
@@ -217,10 +224,10 @@ export const carsAPI = {
 }
 
 export const leaveRequestsAPI = {
-  async create(leaveData: any) {
+  async create(leaveData: Record<string, unknown>) {
     return await edgeFunctions.manageLeaveRequests('create', leaveData)
   },
-  async update(leaveId: string, leaveData: any) {
+  async update(leaveId: string, leaveData: Record<string, unknown>) {
     return await edgeFunctions.manageLeaveRequests('update', leaveData, leaveId)
   },
   async delete(leaveId: string) {
@@ -229,7 +236,7 @@ export const leaveRequestsAPI = {
   async get(leaveId: string) {
     return await edgeFunctions.manageLeaveRequests('get', undefined, leaveId)
   },
-  async list(filters?: any) {
+  async list(filters?: Record<string, unknown>) {
     return await edgeFunctions.manageLeaveRequests('list', undefined, undefined, undefined, undefined, filters)
   },
   async approve(leaveId: string, approverId: string) {
@@ -241,13 +248,13 @@ export const leaveRequestsAPI = {
 }
 
 export const earningsAPI = {
-  async create(earningData: any) {
+  async create(earningData: Record<string, unknown>) {
     return await edgeFunctions.manageEarnings('create', earningData)
   },
-  async bulkCreate(earningsData: any[]) {
+  async bulkCreate(earningsData: Record<string, unknown>[]) {
     return await edgeFunctions.manageEarnings('bulk_create', undefined, undefined, earningsData)
   },
-  async update(earningId: string, earningData: any) {
+  async update(earningId: string, earningData: Record<string, unknown>) {
     return await edgeFunctions.manageEarnings('update', earningData, earningId)
   },
   async delete(earningId: string) {
@@ -256,19 +263,19 @@ export const earningsAPI = {
   async get(earningId: string) {
     return await edgeFunctions.manageEarnings('get', undefined, earningId)
   },
-  async list(filters?: any) {
+  async list(filters?: Record<string, unknown>) {
     return await edgeFunctions.manageEarnings('list', undefined, undefined, undefined, filters)
   }
 }
 
 export const expensesAPI = {
-  async create(expenseData: any) {
+  async create(expenseData: Record<string, unknown>) {
     return await edgeFunctions.manageExpenses('create', expenseData)
   },
-  async bulkCreate(expensesData: any[]) {
+  async bulkCreate(expensesData: Record<string, unknown>[]) {
     return await edgeFunctions.manageExpenses('bulk_create', undefined, undefined, expensesData)
   },
-  async update(expenseId: string, expenseData: any) {
+  async update(expenseId: string, expenseData: Record<string, unknown>) {
     return await edgeFunctions.manageExpenses('update', expenseData, expenseId)
   },
   async delete(expenseId: string) {
@@ -277,7 +284,7 @@ export const expensesAPI = {
   async get(expenseId: string) {
     return await edgeFunctions.manageExpenses('get', undefined, expenseId)
   },
-  async list(filters?: any) {
+  async list(filters?: Record<string, unknown>) {
     return await edgeFunctions.manageExpenses('list', undefined, undefined, undefined, undefined, filters)
   },
   async approve(expenseId: string, approverId: string) {
