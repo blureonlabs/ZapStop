@@ -319,50 +319,6 @@ export const attendanceAPI = {
   }
 }
 
-export const exportAPI = {
-  async exportEarnings(dateFrom: string, dateTo: string, driverId?: string, format: 'csv' | 'json' = 'json') {
-    const result = await edgeFunctions.exportFinancialData({
-      type: 'earnings',
-      format,
-      dateFrom,
-      dateTo,
-      driverId
-    })
-    return result
-  },
-
-  async exportExpenses(dateFrom: string, dateTo: string, driverId?: string, format: 'csv' | 'json' = 'json') {
-    const result = await edgeFunctions.exportFinancialData({
-      type: 'expenses',
-      format,
-      dateFrom,
-      dateTo,
-      driverId
-    })
-    return result
-  },
-
-  async exportAttendance(dateFrom: string, dateTo: string, driverId?: string, format: 'csv' | 'json' = 'json') {
-    const result = await edgeFunctions.exportFinancialData({
-      type: 'attendance',
-      format,
-      dateFrom,
-      dateTo,
-      driverId
-    })
-    return result
-  },
-
-  async exportAll(dateFrom: string, dateTo: string, format: 'csv' | 'json' = 'json') {
-    const result = await edgeFunctions.exportFinancialData({
-      type: 'all',
-      format,
-      dateFrom,
-      dateTo
-    })
-    return result
-  }
-}
 
 export const notificationAPI = {
   async sendExpenseApproval(to: string, data: any) {
