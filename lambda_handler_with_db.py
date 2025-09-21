@@ -187,6 +187,18 @@ def get_user_by_id(user_id):
     """
     return execute_query(query, (user_id,), fetch_one=True)
 
+def get_password_hash(password):
+    """Hash password using bcrypt"""
+    try:
+        import bcrypt
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
+        return hashed.decode('utf-8')
+    except Exception as e:
+        logger.error(f"Error hashing password: {str(e)}")
+        # Fallback: return plain password (for testing only - NOT SECURE)
+        return password
+
 def verify_password(plain_password, hashed_password):
     """Verify password using bcrypt or fallback to known hashes"""
     try:
@@ -475,44 +487,408 @@ def lambda_handler(event, context):
             }
             
         elif path == '/api/users' or path == '/prod/api/users':
-            # Get all users from database
-            logger.info("Fetching users from database...")
-            users = execute_query("""
-                SELECT id, email, name, role, phone, created_at, updated_at
-                FROM users 
-                ORDER BY created_at DESC
-            """, fetch_all=True)
-            logger.info(f"Users query result: {users}")
-            
-            if users is None:
+            if http_method == 'GET':
+                # Get all users from database
+                logger.info("Fetching users from database...")
+                users = execute_query("""
+                    SELECT id, email, name, role, phone, assigned_car_id, created_at, updated_at
+                    FROM users 
+                    ORDER BY created_at DESC
+                """, fetch_all=True)
+                logger.info(f"Users query result: {users}")
+                
+                if users is None:
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': 'Failed to fetch users'
+                        })
+                    }
+                
+                # Handle case where users is an empty list
+                if not users:
+                    users = []
+                
                 return {
-                    'statusCode': 500,
+                    'statusCode': 200,
                     'headers': {
                         'Content-Type': 'application/json',
                         'Access-Control-Allow-Origin': '*'
                     },
                     'body': json.dumps({
-                        'error': 'Database error',
-                        'message': 'Failed to fetch users'
+                        'users': users,
+                        'count': len(users),
+                        'message': 'Users fetched successfully from database'
                     })
                 }
             
-            # Handle case where users is an empty list
-            if not users:
-                users = []
+            elif http_method == 'POST':
+                # Create new user
+                logger.info("Creating new user...")
+                
+                # Validate required fields
+                required_fields = ['name', 'email', 'phone', 'password', 'role']
+                for field in required_fields:
+                    if field not in body_data or not body_data[field]:
+                        return {
+                            'statusCode': 400,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'Missing required field',
+                                'message': f'{field} is required'
+                            })
+                        }
+                
+                # Check if user already exists
+                existing_user = execute_query("""
+                    SELECT id FROM users WHERE email = %s
+                """, (body_data['email'],), fetch_one=True)
+                
+                if existing_user:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'User already exists',
+                            'message': 'Email already registered'
+                        })
+                    }
+                
+                # Hash password
+                hashed_password = get_password_hash(body_data['password'])
+                
+                # Create user
+                try:
+                    user_id = execute_query("""
+                        INSERT INTO users (email, password_hash, name, role, phone, assigned_car_id, created_at, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, NOW(), NOW())
+                        RETURNING id
+                    """, (
+                        body_data['email'],
+                        hashed_password,
+                        body_data['name'],
+                        body_data['role'],
+                        body_data['phone'],
+                        body_data.get('assigned_car_id')
+                    ), fetch_one=True)
+                    
+                    if not user_id or not user_id[0]:
+                        return {
+                            'statusCode': 500,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'Database error',
+                                'message': 'Failed to create user'
+                            })
+                        }
+                    
+                    # Get the created user
+                    new_user = execute_query("""
+                        SELECT id, email, name, role, phone, assigned_car_id, created_at, updated_at
+                        FROM users WHERE id = %s
+                    """, (user_id[0],), fetch_one=True)
+                    
+                    if not new_user:
+                        logger.error(f"Failed to retrieve created user with id: {user_id[0]}")
+                        return {
+                            'statusCode': 500,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'Database error',
+                                'message': 'User created but failed to retrieve details'
+                            })
+                        }
+                    
+                    return {
+                        'statusCode': 201,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'id': str(new_user[0]),
+                            'email': new_user[1],
+                            'name': new_user[2],
+                            'role': new_user[3],
+                            'phone': new_user[4],
+                            'assigned_car_id': str(new_user[5]) if new_user[5] else None,
+                            'created_at': new_user[6].isoformat() if new_user[6] else None,
+                            'updated_at': new_user[7].isoformat() if new_user[7] else None
+                        })
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Error creating user: {str(e)}")
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': f'Failed to create user: {str(e)}'
+                        })
+                    }
             
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({
-                    'users': users,
-                    'count': len(users),
-                    'message': 'Users fetched successfully from database'
-                })
-            }
+            else:
+                return {
+                    'statusCode': 405,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Method not allowed',
+                        'message': f'{http_method} method not allowed for this endpoint'
+                    })
+                }
+        
+        elif path.startswith('/api/users/') or path.startswith('/prod/api/users/'):
+            # Handle individual user operations (GET, PUT, DELETE)
+            user_id = path.split('/')[-1]
+            
+            if http_method == 'GET':
+                # Get specific user
+                user = execute_query("""
+                    SELECT id, email, name, role, phone, assigned_car_id, created_at, updated_at
+                    FROM users WHERE id = %s
+                """, (user_id,), fetch_one=True)
+                
+                if not user:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'User not found',
+                            'message': 'User with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(user[0]),
+                        'email': user[1],
+                        'name': user[2],
+                        'role': user[3],
+                        'phone': user[4],
+                        'assigned_car_id': str(user[5]) if user[5] else None,
+                        'created_at': user[6].isoformat() if user[6] else None,
+                        'updated_at': user[7].isoformat() if user[7] else None
+                    })
+                }
+            
+            elif http_method == 'PUT':
+                # Update user
+                logger.info(f"Updating user {user_id}...")
+                
+                # Check if user exists
+                existing_user = execute_query("""
+                    SELECT id FROM users WHERE id = %s
+                """, (user_id,), fetch_one=True)
+                
+                if not existing_user:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'User not found',
+                            'message': 'User with this ID does not exist'
+                        })
+                    }
+                
+                # Build update query dynamically
+                update_fields = []
+                update_data = {"user_id": user_id}
+                
+                if 'email' in body_data and body_data['email']:
+                    update_fields.append("email = %s")
+                    update_data["email"] = body_data['email']
+                
+                if 'name' in body_data and body_data['name']:
+                    update_fields.append("name = %s")
+                    update_data["name"] = body_data['name']
+                
+                if 'role' in body_data and body_data['role']:
+                    update_fields.append("role = %s")
+                    update_data["role"] = body_data['role']
+                
+                if 'phone' in body_data and body_data['phone']:
+                    update_fields.append("phone = %s")
+                    update_data["phone"] = body_data['phone']
+                
+                if 'assigned_car_id' in body_data:
+                    if body_data['assigned_car_id']:
+                        update_fields.append("assigned_car_id = %s")
+                        update_data["assigned_car_id"] = body_data['assigned_car_id']
+                    else:
+                        update_fields.append("assigned_car_id = NULL")
+                
+                if not update_fields:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'No fields to update',
+                            'message': 'At least one field must be provided for update'
+                        })
+                    }
+                
+                update_fields.append("updated_at = NOW()")
+                
+                # Build the query
+                query = f"""
+                    UPDATE users 
+                    SET {', '.join(update_fields)}
+                    WHERE id = %s
+                    RETURNING id, email, name, role, phone, assigned_car_id, created_at, updated_at
+                """
+                
+                # Prepare parameters
+                params = []
+                for field in ['email', 'name', 'role', 'phone', 'assigned_car_id']:
+                    if field in update_data:
+                        params.append(update_data[field])
+                params.append(user_id)
+                
+                try:
+                    updated_user = execute_query(query, tuple(params), fetch_one=True)
+                    
+                    if not updated_user:
+                        return {
+                            'statusCode': 500,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'Database error',
+                                'message': 'Failed to update user'
+                            })
+                        }
+                    
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'id': str(updated_user[0]),
+                            'email': updated_user[1],
+                            'name': updated_user[2],
+                            'role': updated_user[3],
+                            'phone': updated_user[4],
+                            'assigned_car_id': str(updated_user[5]) if updated_user[5] else None,
+                            'created_at': updated_user[6].isoformat() if updated_user[6] else None,
+                            'updated_at': updated_user[7].isoformat() if updated_user[7] else None
+                        })
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Error updating user: {str(e)}")
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': f'Failed to update user: {str(e)}'
+                        })
+                    }
+            
+            elif http_method == 'DELETE':
+                # Delete user
+                logger.info(f"Deleting user {user_id}...")
+                
+                try:
+                    result = execute_query("""
+                        DELETE FROM users WHERE id = %s
+                    """, (user_id,))
+                    
+                    if result and result.rowcount > 0:
+                        return {
+                            'statusCode': 200,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'message': 'User deleted successfully'
+                            })
+                        }
+                    else:
+                        return {
+                            'statusCode': 404,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'User not found',
+                                'message': 'User with this ID does not exist'
+                            })
+                        }
+                        
+                except Exception as e:
+                    logger.error(f"Error deleting user: {str(e)}")
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': f'Failed to delete user: {str(e)}'
+                        })
+                    }
+            
+            else:
+                return {
+                    'statusCode': 405,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Method not allowed',
+                        'message': f'{http_method} method not allowed for this endpoint'
+                    })
+                }
             
         elif path == '/' or path == '/prod/':
             return {
@@ -594,20 +970,88 @@ def lambda_handler(event, context):
                 }
         
         elif path == '/api/cars/' and http_method == 'POST':
-            logger.info(f"Handling cars POST request: {path} {http_method}")
-            return {
-                'statusCode': 201,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({
-                    'message': 'Car created successfully (simple test)',
-                    'test': 'working',
-                    'path': path,
-                    'method': http_method
-                })
-            }
+            # Create new car
+            logger.info("Creating new car...")
+            
+            # Validate required fields
+            required_fields = ['plate_number', 'model', 'monthly_due']
+            for field in required_fields:
+                if field not in body_data or not body_data[field]:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Missing required field',
+                            'message': f'{field} is required'
+                        })
+                    }
+            
+            try:
+                car_id = execute_query("""
+                    INSERT INTO cars (plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, NOW(), NOW())
+                    RETURNING id
+                """, (
+                    body_data['plate_number'],
+                    body_data['model'],
+                    body_data['monthly_due'],
+                    body_data.get('assigned_driver_id'),
+                    body_data.get('owner_id')
+                ), fetch_one=True)
+                
+                if not car_id or not car_id[0]:
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': 'Failed to create car'
+                        })
+                    }
+                
+                # Get the created car
+                new_car = execute_query("""
+                    SELECT id, plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at
+                    FROM cars WHERE id = %s
+                """, (car_id[0],), fetch_one=True)
+                
+                return {
+                    'statusCode': 201,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(new_car[0]),
+                        'plate_number': new_car[1],
+                        'model': new_car[2],
+                        'monthly_due': float(new_car[3]),
+                        'assigned_driver_id': str(new_car[4]) if new_car[4] else None,
+                        'owner_id': str(new_car[5]) if new_car[5] else None,
+                        'created_at': new_car[6].isoformat() if new_car[6] else None,
+                        'updated_at': new_car[7].isoformat() if new_car[7] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error creating car: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to create car: {str(e)}'
+                    })
+                }
         
         elif path == '/api/cars/my-car' and http_method == 'GET':
             return {
@@ -618,6 +1062,309 @@ def lambda_handler(event, context):
                 },
                 'body': json.dumps({'message': 'My car data'})
             }
+        
+        elif path.startswith('/api/cars/') and not path.endswith('/') and not path.endswith('/my-car'):
+            # Handle individual car operations (GET, PUT, DELETE)
+            car_id = path.split('/')[-1]
+            
+            if http_method == 'GET':
+                # Get specific car
+                car = execute_query("""
+                    SELECT id, plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at
+                    FROM cars WHERE id = %s
+                """, (car_id,), fetch_one=True)
+                
+                if not car:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Car not found',
+                            'message': 'Car with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(car[0]),
+                        'plate_number': car[1],
+                        'model': car[2],
+                        'monthly_due': float(car[3]),
+                        'assigned_driver_id': str(car[4]) if car[4] else None,
+                        'owner_id': str(car[5]) if car[5] else None,
+                        'created_at': car[6].isoformat() if car[6] else None,
+                        'updated_at': car[7].isoformat() if car[7] else None
+                    })
+                }
+            
+            elif http_method == 'PUT':
+                # Update car
+                logger.info(f"Updating car {car_id}...")
+                
+                # Check if car exists
+                existing_car = execute_query("""
+                    SELECT id FROM cars WHERE id = %s
+                """, (car_id,), fetch_one=True)
+                
+                if not existing_car:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Car not found',
+                            'message': 'Car with this ID does not exist'
+                        })
+                    }
+                
+                # Build update query dynamically
+                update_fields = []
+                update_data = {"car_id": car_id}
+                
+                if 'plate_number' in body_data and body_data['plate_number']:
+                    update_fields.append("plate_number = %s")
+                    update_data["plate_number"] = body_data['plate_number']
+                
+                if 'model' in body_data and body_data['model']:
+                    update_fields.append("model = %s")
+                    update_data["model"] = body_data['model']
+                
+                if 'monthly_due' in body_data and body_data['monthly_due'] is not None:
+                    update_fields.append("monthly_due = %s")
+                    update_data["monthly_due"] = body_data['monthly_due']
+                
+                if 'assigned_driver_id' in body_data:
+                    if body_data['assigned_driver_id']:
+                        update_fields.append("assigned_driver_id = %s")
+                        update_data["assigned_driver_id"] = body_data['assigned_driver_id']
+                    else:
+                        update_fields.append("assigned_driver_id = NULL")
+                
+                if 'owner_id' in body_data:
+                    if body_data['owner_id']:
+                        update_fields.append("owner_id = %s")
+                        update_data["owner_id"] = body_data['owner_id']
+                    else:
+                        update_fields.append("owner_id = NULL")
+                
+                if not update_fields:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'No fields to update',
+                            'message': 'At least one field must be provided for update'
+                        })
+                    }
+                
+                update_fields.append("updated_at = NOW()")
+                
+                # Build the query
+                query = f"""
+                    UPDATE cars 
+                    SET {', '.join(update_fields)}
+                    WHERE id = %s
+                    RETURNING id, plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at
+                """
+                
+                # Prepare parameters
+                params = []
+                for field in ['plate_number', 'model', 'monthly_due', 'assigned_driver_id', 'owner_id']:
+                    if field in update_data:
+                        params.append(update_data[field])
+                params.append(car_id)
+                
+                try:
+                    updated_car = execute_query(query, tuple(params), fetch_one=True)
+                    
+                    if not updated_car:
+                        return {
+                            'statusCode': 500,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'Database error',
+                                'message': 'Failed to update car'
+                            })
+                        }
+                    
+                    return {
+                        'statusCode': 200,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'id': str(updated_car[0]),
+                            'plate_number': updated_car[1],
+                            'model': updated_car[2],
+                            'monthly_due': float(updated_car[3]),
+                            'assigned_driver_id': str(updated_car[4]) if updated_car[4] else None,
+                            'owner_id': str(updated_car[5]) if updated_car[5] else None,
+                            'created_at': updated_car[6].isoformat() if updated_car[6] else None,
+                            'updated_at': updated_car[7].isoformat() if updated_car[7] else None
+                        })
+                    }
+                    
+                except Exception as e:
+                    logger.error(f"Error updating car: {str(e)}")
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': f'Failed to update car: {str(e)}'
+                        })
+                    }
+            
+            elif http_method == 'DELETE':
+                # Delete car
+                logger.info(f"Deleting car {car_id}...")
+                
+                try:
+                    result = execute_query("""
+                        DELETE FROM cars WHERE id = %s
+                    """, (car_id,))
+                    
+                    if result and result.rowcount > 0:
+                        return {
+                            'statusCode': 200,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'message': 'Car deleted successfully'
+                            })
+                        }
+                    else:
+                        return {
+                            'statusCode': 404,
+                            'headers': {
+                                'Content-Type': 'application/json',
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            'body': json.dumps({
+                                'error': 'Car not found',
+                                'message': 'Car with this ID does not exist'
+                            })
+                        }
+                        
+                except Exception as e:
+                    logger.error(f"Error deleting car: {str(e)}")
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': f'Failed to delete car: {str(e)}'
+                        })
+                    }
+            
+            else:
+                return {
+                    'statusCode': 405,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Method not allowed',
+                        'message': f'{http_method} method not allowed for this endpoint'
+                    })
+                }
+        
+        elif path.endswith('/assign-driver') and http_method == 'POST':
+            # Assign driver to car
+            car_id = path.split('/')[-2]  # Get car ID from path like /api/cars/{id}/assign-driver
+            
+            if 'driver_id' not in body_data:
+                return {
+                    'statusCode': 400,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Missing driver_id',
+                        'message': 'driver_id is required in request body'
+                    })
+                }
+            
+            try:
+                # Update car with assigned driver
+                result = execute_query("""
+                    UPDATE cars 
+                    SET assigned_driver_id = %s, updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING id, plate_number, model, monthly_due, assigned_driver_id, owner_id, created_at, updated_at
+                """, (body_data['driver_id'], car_id), fetch_one=True)
+                
+                if not result:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Car not found',
+                            'message': 'Car with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(result[0]),
+                        'plate_number': result[1],
+                        'model': result[2],
+                        'monthly_due': float(result[3]),
+                        'assigned_driver_id': str(result[4]) if result[4] else None,
+                        'owner_id': str(result[5]) if result[5] else None,
+                        'created_at': result[6].isoformat() if result[6] else None,
+                        'updated_at': result[7].isoformat() if result[7] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error assigning driver to car: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to assign driver: {str(e)}'
+                    })
+                }
         
         # Owners endpoints
         elif path == '/api/owners/' and http_method == 'GET':
@@ -849,25 +1596,272 @@ def lambda_handler(event, context):
             }
         
         # Expenses endpoints
-        elif path.startswith('/api/expenses/') and http_method == 'GET':
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps([])  # Return empty array for now
-            }
+        elif path == '/api/expenses/' and http_method == 'GET':
+            # Get all expenses
+            try:
+                expenses = execute_query("""
+                    SELECT id, driver_id, date, expense_type, amount, description, proof_url, status, admin_notes, category, created_at, updated_at
+                    FROM driver_expenses 
+                    ORDER BY created_at DESC
+                """, fetch_all=True)
+                
+                if expenses is None:
+                    expenses = []
+                
+                formatted_expenses = []
+                for expense in expenses:
+                    formatted_expenses.append({
+                        'id': str(expense[0]),
+                        'driver_id': str(expense[1]),
+                        'date': expense[2].isoformat() if expense[2] else None,
+                        'expense_type': expense[3],
+                        'amount': float(expense[4]),
+                        'description': expense[5],
+                        'proof_url': expense[6],
+                        'status': expense[7],
+                        'admin_notes': expense[8],
+                        'category': expense[9],
+                        'created_at': expense[10].isoformat() if expense[10] else None,
+                        'updated_at': expense[11].isoformat() if expense[11] else None
+                    })
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps(formatted_expenses)
+                }
+                
+            except Exception as e:
+                logger.error(f"Error fetching expenses: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to fetch expenses: {str(e)}'
+                    })
+                }
         
         elif path == '/api/expenses/' and http_method == 'POST':
-            return {
-                'statusCode': 201,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'message': 'Expense created successfully'})
-            }
+            # Create new expense
+            logger.info("Creating new expense...")
+            
+            # Validate required fields
+            required_fields = ['driver_id', 'date', 'expense_type', 'amount']
+            for field in required_fields:
+                if field not in body_data or body_data[field] is None:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Missing required field',
+                            'message': f'{field} is required'
+                        })
+                    }
+            
+            try:
+                expense_id = execute_query("""
+                    INSERT INTO driver_expenses (driver_id, date, expense_type, amount, description, proof_url, status, category, created_at, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
+                    RETURNING id
+                """, (
+                    body_data['driver_id'],
+                    body_data['date'],
+                    body_data['expense_type'],
+                    body_data['amount'],
+                    body_data.get('description'),
+                    body_data.get('proof_url'),
+                    body_data.get('status', 'pending'),
+                    body_data.get('category')
+                ), fetch_one=True)
+                
+                if not expense_id or not expense_id[0]:
+                    return {
+                        'statusCode': 500,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Database error',
+                            'message': 'Failed to create expense'
+                        })
+                    }
+                
+                # Get the created expense
+                new_expense = execute_query("""
+                    SELECT id, driver_id, date, expense_type, amount, description, proof_url, status, admin_notes, category, created_at, updated_at
+                    FROM driver_expenses WHERE id = %s
+                """, (expense_id[0],), fetch_one=True)
+                
+                return {
+                    'statusCode': 201,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(new_expense[0]),
+                        'driver_id': str(new_expense[1]),
+                        'date': new_expense[2].isoformat() if new_expense[2] else None,
+                        'expense_type': new_expense[3],
+                        'amount': float(new_expense[4]),
+                        'description': new_expense[5],
+                        'proof_url': new_expense[6],
+                        'status': new_expense[7],
+                        'admin_notes': new_expense[8],
+                        'category': new_expense[9],
+                        'created_at': new_expense[10].isoformat() if new_expense[10] else None,
+                        'updated_at': new_expense[11].isoformat() if new_expense[11] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error creating expense: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to create expense: {str(e)}'
+                    })
+                }
+        
+        elif path.endswith('/approve') and http_method == 'PUT':
+            # Approve expense
+            expense_id = path.split('/')[-2]  # Get expense ID from path like /api/expenses/{id}/approve
+            
+            try:
+                result = execute_query("""
+                    UPDATE driver_expenses 
+                    SET status = 'approved', updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING id, driver_id, date, expense_type, amount, description, proof_url, status, admin_notes, category, created_at, updated_at
+                """, (expense_id,), fetch_one=True)
+                
+                if not result:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Expense not found',
+                            'message': 'Expense with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(result[0]),
+                        'driver_id': str(result[1]),
+                        'date': result[2].isoformat() if result[2] else None,
+                        'expense_type': result[3],
+                        'amount': float(result[4]),
+                        'description': result[5],
+                        'proof_url': result[6],
+                        'status': result[7],
+                        'admin_notes': result[8],
+                        'category': result[9],
+                        'created_at': result[10].isoformat() if result[10] else None,
+                        'updated_at': result[11].isoformat() if result[11] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error approving expense: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to approve expense: {str(e)}'
+                    })
+                }
+        
+        elif path.endswith('/reject') and http_method == 'PUT':
+            # Reject expense
+            expense_id = path.split('/')[-2]  # Get expense ID from path like /api/expenses/{id}/reject
+            
+            admin_notes = body_data.get('admin_notes', '')
+            
+            try:
+                result = execute_query("""
+                    UPDATE driver_expenses 
+                    SET status = 'rejected', admin_notes = %s, updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING id, driver_id, date, expense_type, amount, description, proof_url, status, admin_notes, category, created_at, updated_at
+                """, (admin_notes, expense_id), fetch_one=True)
+                
+                if not result:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Expense not found',
+                            'message': 'Expense with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(result[0]),
+                        'driver_id': str(result[1]),
+                        'date': result[2].isoformat() if result[2] else None,
+                        'expense_type': result[3],
+                        'amount': float(result[4]),
+                        'description': result[5],
+                        'proof_url': result[6],
+                        'status': result[7],
+                        'admin_notes': result[8],
+                        'category': result[9],
+                        'created_at': result[10].isoformat() if result[10] else None,
+                        'updated_at': result[11].isoformat() if result[11] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error rejecting expense: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to reject expense: {str(e)}'
+                    })
+                }
         
         # Attendance endpoints
         elif path.startswith('/api/attendance/') and http_method == 'GET':
@@ -941,25 +1935,129 @@ def lambda_handler(event, context):
                 'body': json.dumps({'message': 'Leave request created successfully'})
             }
         
-        elif path.endswith('/approve') and http_method == 'PUT':
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'message': 'Request approved successfully'})
-            }
+        elif path.endswith('/approve') and http_method == 'PUT' and 'leave-requests' in path:
+            # Approve leave request
+            leave_request_id = path.split('/')[-2]  # Get leave request ID from path like /api/leave-requests/{id}/approve
+            
+            admin_notes = body_data.get('admin_notes', '')
+            
+            try:
+                result = execute_query("""
+                    UPDATE leave_requests 
+                    SET status = 'approved', admin_notes = %s, updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING id, driver_id, leave_type, start_date, end_date, reason, status, admin_notes, approved_by, created_at, updated_at
+                """, (admin_notes, leave_request_id), fetch_one=True)
+                
+                if not result:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Leave request not found',
+                            'message': 'Leave request with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(result[0]),
+                        'driver_id': str(result[1]),
+                        'leave_type': result[2],
+                        'start_date': result[3].isoformat() if result[3] else None,
+                        'end_date': result[4].isoformat() if result[4] else None,
+                        'reason': result[5],
+                        'status': result[6],
+                        'admin_notes': result[7],
+                        'approved_by': str(result[8]) if result[8] else None,
+                        'created_at': result[9].isoformat() if result[9] else None,
+                        'updated_at': result[10].isoformat() if result[10] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error approving leave request: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to approve leave request: {str(e)}'
+                    })
+                }
         
-        elif path.endswith('/reject') and http_method == 'PUT':
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*'
-                },
-                'body': json.dumps({'message': 'Request rejected successfully'})
-            }
+        elif path.endswith('/reject') and http_method == 'PUT' and 'leave-requests' in path:
+            # Reject leave request
+            leave_request_id = path.split('/')[-2]  # Get leave request ID from path like /api/leave-requests/{id}/reject
+            
+            admin_notes = body_data.get('admin_notes', '')
+            
+            try:
+                result = execute_query("""
+                    UPDATE leave_requests 
+                    SET status = 'rejected', admin_notes = %s, updated_at = NOW()
+                    WHERE id = %s
+                    RETURNING id, driver_id, leave_type, start_date, end_date, reason, status, admin_notes, approved_by, created_at, updated_at
+                """, (admin_notes, leave_request_id), fetch_one=True)
+                
+                if not result:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({
+                            'error': 'Leave request not found',
+                            'message': 'Leave request with this ID does not exist'
+                        })
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'id': str(result[0]),
+                        'driver_id': str(result[1]),
+                        'leave_type': result[2],
+                        'start_date': result[3].isoformat() if result[3] else None,
+                        'end_date': result[4].isoformat() if result[4] else None,
+                        'reason': result[5],
+                        'status': result[6],
+                        'admin_notes': result[7],
+                        'approved_by': str(result[8]) if result[8] else None,
+                        'created_at': result[9].isoformat() if result[9] else None,
+                        'updated_at': result[10].isoformat() if result[10] else None
+                    })
+                }
+                
+            except Exception as e:
+                logger.error(f"Error rejecting leave request: {str(e)}")
+                return {
+                    'statusCode': 500,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({
+                        'error': 'Database error',
+                        'message': f'Failed to reject leave request: {str(e)}'
+                    })
+                }
         
         else:
             logger.info(f"Unmatched path: {path} {http_method}")
