@@ -136,7 +136,6 @@ export default function ActiveDriversPage() {
         <PageHeader 
           title="Active Drivers" 
           description="Monitor drivers currently on duty"
-          icon={Users}
         />
         <div className="grid gap-6">
           {[...Array(3)].map((_, i) => (
@@ -163,7 +162,6 @@ export default function ActiveDriversPage() {
       <PageHeader 
         title="Active Drivers" 
         description="Monitor drivers currently on duty"
-        icon={Users}
       >
         <Button
           onClick={handleRefresh}

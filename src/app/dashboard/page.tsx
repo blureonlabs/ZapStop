@@ -6,6 +6,7 @@ import { useEffect } from 'react'
 import AdminDashboardOptimized from '@/components/dashboard/AdminDashboardOptimized'
 import AccountantDashboard from '@/components/dashboard/AccountantDashboard'
 import DriverDashboard from '@/components/dashboard/DriverDashboard'
+import OwnerDashboard from '@/components/dashboard/OwnerDashboard'
 
 export default function DashboardPage() {
   const { appUser, loading } = useAuth()
@@ -42,6 +43,8 @@ export default function DashboardPage() {
       return <AccountantDashboard />
     case 'driver':
       return <DriverDashboard />
+    case 'owner':
+      return <OwnerDashboard />
     default:
       return (
         <div className="text-center py-12">

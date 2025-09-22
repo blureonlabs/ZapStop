@@ -59,6 +59,7 @@ export default function OwnersPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     phone: '',
     address: '',
     document_expiry_date: ''
@@ -150,7 +151,7 @@ export default function OwnersPage() {
       setIsAddDialogOpen(false);
       setIsEditDialogOpen(false);
       setEditingOwner(null);
-      setFormData({ name: '', email: '', phone: '', address: '', document_expiry_date: '' });
+      setFormData({ name: '', email: '', password: '', phone: '', address: '', document_expiry_date: '' });
       fetchOwners();
     } catch (error) {
       console.error('Error saving owner:', error);
@@ -239,6 +240,7 @@ export default function OwnersPage() {
     setFormData({
       name: owner.name,
       email: owner.email,
+      password: '', // Don't populate password for editing
       phone: owner.phone || '',
       address: owner.address || '',
       document_expiry_date: owner.document_expiry_date || ''
@@ -306,6 +308,18 @@ export default function OwnersPage() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required
+                />
+              </div>
+              <div>
+                <Label htmlFor="password">Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                  minLength={6}
+                  placeholder="Enter password for owner login"
                 />
               </div>
               <div>
@@ -488,6 +502,17 @@ export default function OwnersPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-password">Password (leave blank to keep current)</Label>
+              <Input
+                id="edit-password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                minLength={6}
+                placeholder="Enter new password (optional)"
               />
             </div>
             <div>

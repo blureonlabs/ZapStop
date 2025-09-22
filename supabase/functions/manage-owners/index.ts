@@ -9,6 +9,7 @@ const corsHeaders = {
 interface OwnerData {
   name: string
   email: string
+  password: string
   phone?: string
   address?: string
   emergency_contact?: string
@@ -70,9 +71,9 @@ serve(async (req) => {
         }
 
         // Validate required fields
-        if (!ownerData.name || !ownerData.email) {
+        if (!ownerData.name || !ownerData.email || !ownerData.password) {
           return new Response(
-            JSON.stringify({ success: false, error: 'Name and email are required' }),
+            JSON.stringify({ success: false, error: 'Name, email, and password are required' }),
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               status: 400,
@@ -80,37 +81,101 @@ serve(async (req) => {
           )
         }
 
-        // Check if owner with same email already exists
-        const { data: existingOwner } = await supabaseClient
-          .from('owners')
-          .select('id')
-          .eq('email', ownerData.email)
+        // Check if owner with same email already exists in both owners and users tables
+        const [ownersCheck, usersCheck] = await Promise.all([
+          supabaseClient.from('owners').select('id').eq('email', ownerData.email).single(),
+          supabaseClient.from('users').select('id').eq('email', ownerData.email).single()
+        ])
+
+        if (ownersCheck.data || usersCheck.data) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'User with this email already exists' }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            }
+          )
+        }
+
+        // Create user in Supabase Auth using Admin API
+        const { data: authData, error: authError } = await supabaseClient.auth.admin.createUser({
+          email: ownerData.email.trim().toLowerCase(),
+          password: ownerData.password,
+          email_confirm: true, // Auto-confirm email
+          user_metadata: {
+            name: ownerData.name.trim(),
+            role: 'owner'
+          },
+          app_metadata: {
+            role: 'owner'
+          }
+        })
+
+        if (authError) {
+          console.error('Auth error:', authError)
+          return new Response(
+            JSON.stringify({ success: false, error: authError.message }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+            }
+          )
+        }
+
+        if (!authData.user) {
+          return new Response(
+            JSON.stringify({ success: false, error: 'Failed to create user in Supabase Auth' }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 500,
+            }
+          )
+        }
+
+        // Create user record in users table
+        const { data: userData, error: userError } = await supabaseClient
+          .from('users')
+          .insert([{
+            id: authData.user.id,
+            name: ownerData.name.trim(),
+            email: ownerData.email.trim().toLowerCase(),
+            phone: ownerData.phone?.trim() || null,
+            role: 'owner'
+          }])
+          .select()
           .single()
 
-        if (existingOwner) {
+        if (userError) {
+          console.error('User creation error:', userError)
+          // If user record creation fails, clean up the auth user
+          await supabaseClient.auth.admin.deleteUser(authData.user.id)
           return new Response(
-            JSON.stringify({ success: false, error: 'Owner with this email already exists' }),
+            JSON.stringify({ success: false, error: userError.message }),
             {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              status: 400,
+              status: 500,
             }
           )
         }
 
-        // Create owner
+        // Create owner record in owners table
         const { data: newOwner, error: ownerError } = await supabaseClient
           .from('owners')
           .insert([{
-            name: ownerData.name,
-            email: ownerData.email,
-            phone: ownerData.phone || null,
-            address: ownerData.address || null,
+            id: authData.user.id, // Use same ID as user
+            name: ownerData.name.trim(),
+            email: ownerData.email.trim().toLowerCase(),
+            phone: ownerData.phone?.trim() || null,
+            address: ownerData.address?.trim() || null,
           }])
           .select()
           .single()
 
         if (ownerError) {
           console.error('Error creating owner:', ownerError)
+          // If owner record creation fails, clean up both auth user and user record
+          await supabaseClient.auth.admin.deleteUser(authData.user.id)
+          await supabaseClient.from('users').delete().eq('id', authData.user.id)
           return new Response(
             JSON.stringify({ success: false, error: ownerError.message }),
             {
@@ -142,7 +207,8 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             data: newOwner,
-            message: 'Owner created successfully'
+            user: userData,
+            message: 'Owner created successfully with authentication. Owner can now login to the dashboard.'
           }),
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
