@@ -154,6 +154,7 @@ export interface AnalyticsData {
 
 class ApiService {
   private token: string | null = null
+  private pendingRequests = new Map<string, Promise<any>>()
 
   constructor() {
     // Check for stored token on initialization
@@ -173,54 +174,84 @@ class ApiService {
     this.token = null
   }
 
+  // Request deduplication method
+  private async deduplicatedRequest<T>(
+    key: string, 
+    request: () => Promise<T>
+  ): Promise<T> {
+    // Check if request is already pending
+    if (this.pendingRequests.has(key)) {
+      return this.pendingRequests.get(key)!
+    }
+
+    // Create and store the promise
+    const promise = request().finally(() => {
+      this.pendingRequests.delete(key)
+    })
+
+    this.pendingRequests.set(key, promise)
+    return promise
+  }
+
+  // Generate request key for deduplication
+  private getRequestKey(endpoint: string, options?: RequestInit): string {
+    const method = options?.method || 'GET'
+    const body = options?.body ? JSON.stringify(options.body) : ''
+    return `${method}:${endpoint}:${body}`
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`
+    const requestKey = this.getRequestKey(endpoint, options)
     
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      ...(options.headers as Record<string, string>),
-    }
-
-    // Check for token in localStorage if not set in memory
-    if (!this.token && typeof window !== 'undefined') {
-      const storedToken = localStorage.getItem('auth_token')
-      if (storedToken) {
-        this.token = storedToken
-      }
-    }
-
-    if (this.token) {
-      headers.Authorization = `Bearer ${this.token}`
-    } else {
-      console.warn('No authentication token available for request to:', endpoint)
-    }
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
+    return this.deduplicatedRequest(requestKey, async () => {
+      const url = `${API_BASE_URL}${endpoint}`
       
-      // Handle 401 Unauthorized - token expired
-      if (response.status === 401) {
-        // Clear token and redirect to login
-        this.clearToken()
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('auth_token')
-          // Redirect to login page
-          window.location.href = '/login'
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(options.headers as Record<string, string>),
+      }
+
+      // Check for token in localStorage if not set in memory
+      if (!this.token && typeof window !== 'undefined') {
+        const storedToken = localStorage.getItem('auth_token')
+        if (storedToken) {
+          this.token = storedToken
         }
       }
-      
-      throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
-    }
 
-    return response.json()
+      if (this.token) {
+        headers.Authorization = `Bearer ${this.token}`
+      } else {
+        console.warn('No authentication token available for request to:', endpoint)
+      }
+
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        
+        // Handle 401 Unauthorized - token expired
+        if (response.status === 401) {
+          // Clear token and redirect to login
+          this.clearToken()
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('auth_token')
+            // Redirect to login page
+            window.location.href = '/login'
+          }
+        }
+        
+        throw new Error(errorData.detail || `HTTP error! status: ${response.status}`)
+      }
+
+      return response.json()
+    })
   }
 
   // Authentication

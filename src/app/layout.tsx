@@ -7,8 +7,10 @@ import Script from 'next/script'
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '500', '600'], // Reduced font weights
   variable: '--font-poppins',
+  display: 'swap', // Optimize font loading
+  preload: true,
 })
 
 export const metadata: Metadata = {
@@ -56,13 +58,35 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
+                  navigator.serviceWorker.register('/sw.js', {
+                    scope: '/'
+                  })
                     .then(function(registration) {
-                      console.log('SW registered: ', registration);
+                      console.log('SW registered successfully: ', registration);
+                      
+                      // Check for updates
+                      registration.addEventListener('updatefound', function() {
+                        const newWorker = registration.installing;
+                        if (newWorker) {
+                          newWorker.addEventListener('statechange', function() {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              // New content is available, notify user
+                              if (confirm('New version available! Reload to update?')) {
+                                window.location.reload();
+                              }
+                            }
+                          });
+                        }
+                      });
                     })
                     .catch(function(registrationError) {
                       console.log('SW registration failed: ', registrationError);
                     });
+                });
+                
+                // Handle service worker updates
+                navigator.serviceWorker.addEventListener('controllerchange', function() {
+                  window.location.reload();
                 });
               }
             `,
