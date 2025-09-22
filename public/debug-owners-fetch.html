@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Owners Fetch</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .error { color: red; }
+        .success { color: green; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Debug Owners and Cars Fetch</h1>
+    <p>This page will test the API endpoints that the owners page uses.</p>
+    
+    <button onclick="testOwnersAPI()">Test Owners API</button>
+    <button onclick="testCarsAPI()">Test Cars API</button>
+    <button onclick="testBoth()">Test Both APIs</button>
+    <button onclick="clearLog()">Clear Log</button>
+    
+    <div id="log" class="log" style="display: none;">
+        <h3>Debug Log:</h3>
+        <div id="logContent"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const logContent = document.getElementById('logContent');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logContent.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            log.style.display = 'block';
+        }
+        
+        function clearLog() {
+            logContent.innerHTML = '';
+            log.style.display = 'none';
+        }
+        
+        async function testOwnersAPI() {
+            addLog('Testing Owners API...');
+            
+            try {
+                const response = await fetch('/api/owners', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                addLog(`Response status: ${response.status}`);
+                addLog(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`Success! Found ${data.owners?.length || 0} owners`, 'success');
+                    addLog(`Data: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    const errorData = await response.text();
+                    addLog(`Error: ${errorData}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`Network error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+        
+        async function testCarsAPI() {
+            addLog('Testing Cars API...');
+            
+            try {
+                const response = await fetch('/api/cars', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                addLog(`Response status: ${response.status}`);
+                addLog(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addLog(`Success! Found ${data.cars?.length || 0} cars`, 'success');
+                    addLog(`Data: ${JSON.stringify(data, null, 2)}`);
+                } else {
+                    const errorData = await response.text();
+                    addLog(`Error: ${errorData}`, 'error');
+                }
+                
+            } catch (error) {
+                addLog(`Network error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        }
+        
+        async function testBoth() {
+            addLog('Testing both APIs...');
+            await testOwnersAPI();
+            await testCarsAPI();
+        }
+        
+        // Log current URL and any potential issues
+        addLog(`Current URL: ${window.location.href}`);
+        addLog('Page loaded. Ready to test API endpoints.');
+    </script>
+</body>
+</html>

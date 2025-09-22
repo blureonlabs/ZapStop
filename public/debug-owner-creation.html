@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Owner Creation</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input, textarea { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .log { background: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; margin-top: 20px; border-radius: 4px; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Debug Owner Creation</h1>
+    <p>This page will help debug the owner creation issue. Check the console and network tab for details.</p>
+    
+    <form id="ownerForm">
+        <div class="form-group">
+            <label for="name">Name *</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">Email *</label>
+            <input type="email" id="email" name="email" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="phone">Phone</label>
+            <input type="tel" id="phone" name="phone">
+        </div>
+        
+        <div class="form-group">
+            <label for="address">Address</label>
+            <textarea id="address" name="address" rows="3"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="document_expiry_date">Document Expiry Date</label>
+            <input type="date" id="document_expiry_date" name="document_expiry_date">
+        </div>
+        
+        <button type="submit">Create Owner</button>
+    </form>
+    
+    <div id="log" class="log" style="display: none;">
+        <h3>Debug Log:</h3>
+        <div id="logContent"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('ownerForm');
+        const log = document.getElementById('log');
+        const logContent = document.getElementById('logContent');
+        
+        function addLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logContent.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            log.style.display = 'block';
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            addLog('Starting owner creation...');
+            addLog(`Data: ${JSON.stringify(data, null, 2)}`);
+            
+            try {
+                addLog('Making API request to /api/owners...');
+                
+                const response = await fetch('/api/owners', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data),
+                });
+                
+                addLog(`Response status: ${response.status}`);
+                addLog(`Response headers: ${JSON.stringify([...response.headers.entries()])}`);
+                
+                // Check if response is a redirect
+                if (response.redirected) {
+                    addLog(`WARNING: Response was redirected to: ${response.url}`, 'error');
+                }
+                
+                // Check if response is HTML (which might indicate a redirect)
+                const contentType = response.headers.get('content-type');
+                addLog(`Content-Type: ${contentType}`);
+                
+                if (contentType && contentType.includes('text/html')) {
+                    addLog('WARNING: Response is HTML, not JSON. This might indicate a redirect.', 'error');
+                    const html = await response.text();
+                    addLog(`HTML Response: ${html.substring(0, 500)}...`);
+                } else {
+                    const result = await response.json();
+                    addLog(`Response data: ${JSON.stringify(result, null, 2)}`);
+                    
+                    if (response.ok) {
+                        addLog('Owner created successfully!', 'success');
+                    } else {
+                        addLog(`Error: ${result.error || 'Unknown error'}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                addLog(`Network error: ${error.message}`, 'error');
+                console.error('Error:', error);
+            }
+        });
+        
+        // Log current URL and any potential redirects
+        addLog(`Current URL: ${window.location.href}`);
+        addLog('Page loaded. Ready to test owner creation.');
+    </script>
+</body>
+</html>

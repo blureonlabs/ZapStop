@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -48,6 +49,7 @@ interface Car {
 }
 
 export default function OwnersPage() {
+  const { user, loading: authLoading } = useAuth();
   const [owners, setOwners] = useState<Owner[]>([]);
   const [cars, setCars] = useState<Car[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,8 +70,17 @@ export default function OwnersPage() {
 
   // Fetch owners data
   const fetchOwners = async () => {
+    console.log('Fetching owners...');
     try {
-      const response = await fetch('/api/owners');
+      const response = await fetch('/api/owners', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Owners response status:', response.status);
+      console.log('Owners response headers:', [...response.headers.entries()]);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -79,6 +90,7 @@ export default function OwnersPage() {
       }
 
       const data = await response.json();
+      console.log('Owners data received:', data);
       setOwners(data.owners || []);
     } catch (error) {
       console.error('Error fetching owners:', error);
@@ -90,10 +102,19 @@ export default function OwnersPage() {
 
   // Fetch available cars
   const fetchCars = async (excludeOwnerId?: string) => {
+    console.log('Fetching cars...', { excludeOwnerId });
     setCarsLoading(true);
     try {
       const url = excludeOwnerId ? `/api/cars?excludeOwnerId=${excludeOwnerId}` : '/api/cars';
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      console.log('Cars response status:', response.status);
+      console.log('Cars response headers:', [...response.headers.entries()]);
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -103,6 +124,7 @@ export default function OwnersPage() {
       }
 
       const data = await response.json();
+      console.log('Cars data received:', data);
       setCars(data.cars || []);
     } catch (error) {
       console.error('Error fetching cars:', error);
@@ -113,9 +135,25 @@ export default function OwnersPage() {
   };
 
   useEffect(() => {
-    fetchOwners();
-    fetchCars();
-  }, []);
+    // Only fetch data if user is authenticated and not loading
+    if (!authLoading && user) {
+      console.log('User authenticated, fetching data...');
+      fetchOwners();
+      fetchCars();
+    } else if (!authLoading && !user) {
+      console.log('User not authenticated, skipping data fetch');
+      setLoading(false);
+    }
+  }, [user, authLoading]);
+
+  // Show loading state while authenticating
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   // Calculate statistics
   const totalOwners = owners.length;

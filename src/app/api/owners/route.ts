@@ -79,6 +79,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    // Log request details for debugging
+    console.log('=== OWNER CREATION REQUEST ===');
+    console.log('URL:', request.url);
+    console.log('Method:', request.method);
+    console.log('Headers:', Object.fromEntries(request.headers.entries()));
+    
     // Use admin client for server-side operations
     const client = supabaseAdmin || supabase;
     
@@ -86,9 +92,20 @@ export async function POST(request: NextRequest) {
     let body;
     try {
       body = await request.json();
+      console.log('Request body:', body);
     } catch (parseError) {
       console.error('Error parsing request body:', parseError);
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
+    }
+    
+    // Security check: Look for suspicious content
+    const bodyString = JSON.stringify(body).toLowerCase();
+    if (bodyString.includes('youtube') || bodyString.includes('youtu.be') || bodyString.includes('redirect')) {
+      console.error('SECURITY ALERT: Suspicious content detected in request body');
+      return NextResponse.json({ 
+        error: 'Suspicious request detected',
+        details: 'Request contains potentially malicious content'
+      }, { status: 400 });
     }
 
     const { name, email, phone, address, documents, document_expiry_date } = body;
