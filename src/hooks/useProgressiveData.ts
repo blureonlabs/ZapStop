@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { dataCache, cacheKeys, cacheTags } from '@/lib/dataCache'
+import { dashboardAPI } from '@/lib/edge-functions'
 
 interface ProgressiveDataState<T> {
   criticalData: T | null
@@ -135,9 +136,9 @@ export function useProgressiveData<T, S>(
 export function useDashboardProgressiveData(timeFilter: string) {
   return useProgressiveData(
     cacheKeys.dashboard(timeFilter),
-    () => import('@/lib/edge-functions').then(module => module.dashboardAPI.getStats(timeFilter)),
+    () => dashboardAPI.getStats(timeFilter),
     `dashboard:charts:${timeFilter}`,
-    () => import('@/lib/edge-functions').then(module => module.dashboardAPI.getStats(timeFilter)),
+    () => dashboardAPI.getStats(timeFilter),
     {
       criticalTTL: 5 * 60 * 1000, // 5 minutes
       secondaryTTL: 10 * 60 * 1000, // 10 minutes

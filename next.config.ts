@@ -86,16 +86,7 @@ const nextConfig: NextConfig = {
   
   // Experimental features for performance
   experimental: {
-    optimizeCss: true,
     optimizePackageImports: ['lucide-react', '@radix-ui/react-*', 'recharts'],
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
   },
   
   // PWA optimizations

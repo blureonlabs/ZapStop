@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/contexts/AuthContext'
-import { supabase, User, Car } from '@/lib/supabase'
+import { useBackendAuth } from '@/contexts/BackendAuthContext'
+import { supabase } from '@/lib/supabase'
+import { User, Car, Owner } from '@/lib/api'
+import { apiService } from '@/lib/api'
 import { userAPI } from '@/lib/edge-functions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
