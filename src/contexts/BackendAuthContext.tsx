@@ -20,12 +20,21 @@ export function BackendAuthProvider({ children }: { children: React.ReactNode })
     // Check if there's a stored token
     const token = localStorage.getItem('auth_token')
     if (token) {
-      // Verify token by getting current user
+      // Set token immediately to avoid re-fetching
+      apiService.setToken(token)
+      
+      // Verify token by getting current user with timeout
+      const timeoutId = setTimeout(() => {
+        setLoading(false)
+      }, 3000) // 3 second timeout
+      
       apiService.getCurrentUser()
         .then((userData) => {
+          clearTimeout(timeoutId)
           setUser(userData)
         })
         .catch(() => {
+          clearTimeout(timeoutId)
           // Token is invalid, clear it
           localStorage.removeItem('auth_token')
           apiService.clearToken()

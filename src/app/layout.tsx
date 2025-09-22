@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from 'next'
 import { Poppins } from 'next/font/google'
+import './critical.css'
 import './globals.css'
 import { BackendAuthProvider } from '@/contexts/BackendAuthContext'
 import { Toaster } from '@/components/ui/sonner'
+import PerformanceMonitor from '@/components/PerformanceMonitor'
 import Script from 'next/script'
 
 const poppins = Poppins({
@@ -39,14 +41,29 @@ export default function RootLayout({
   return (
     <html lang="en" className={poppins.variable}>
       <head>
+        {/* Preload critical resources */}
+        <link rel="preload" href="/fonts/poppins-400.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/poppins-500.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/poppins-600.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
+        
+        {/* DNS prefetch for external resources */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+        
+        {/* PWA meta tags */}
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#3b82f6" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Zap Stop" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        
+        {/* Performance hints */}
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
       </head>
       <body className={`${poppins.className} antialiased`}>
+        <PerformanceMonitor />
         <BackendAuthProvider>
           {children}
           <Toaster />

@@ -1,0 +1,140 @@
+/* Critical CSS for above-the-fold content */
+/* This prevents layout shift and improves perceived performance */
+
+/* Reset and base styles */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #f8fafc;
+  color: #1f2937;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Loading spinner styles */
+.loading-spinner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+}
+
+.spinner {
+  width: 64px;
+  height: 64px;
+  border: 4px solid #e5e7eb;
+  border-top: 4px solid #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Landing page styles */
+.landing-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+  padding: 1rem;
+}
+
+.landing-content {
+  text-align: center;
+  max-width: 42rem;
+  margin: 0 auto;
+}
+
+.landing-title {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+}
+
+.landing-subtitle {
+  font-size: 1.25rem;
+  color: #6b7280;
+  margin-bottom: 2rem;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.feature-card {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.feature-icon {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.feature-title {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.feature-description {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .landing-title {
+    font-size: 2.25rem;
+  }
+  
+  .landing-subtitle {
+    font-size: 1.125rem;
+  }
+  
+  .feature-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Prevent flash of unstyled content */
+.font-poppins {
+  font-family: 'Poppins', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Optimize for mobile */
+@media (max-width: 640px) {
+  .landing-page {
+    padding: 0.5rem;
+  }
+  
+  .landing-content {
+    max-width: 100%;
+  }
+}
