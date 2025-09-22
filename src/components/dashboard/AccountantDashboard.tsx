@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { supabase, DriverExpense, DriverEarning, User, Car } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +11,7 @@ import { Receipt, Users, TrendingUp, CheckCircle, XCircle, Clock } from 'lucide-
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 
-export default function AccountantDashboard() {
+const AccountantDashboard = memo(function AccountantDashboard() {
   const [expenses, setExpenses] = useState<DriverExpense[]>([])
   const [earnings, setEarnings] = useState<DriverEarning[]>([])
   const [drivers, setDrivers] = useState<User[]>([])
@@ -455,4 +455,6 @@ export default function AccountantDashboard() {
       </Dialog>
     </div>
   )
-}
+})
+
+export default AccountantDashboard

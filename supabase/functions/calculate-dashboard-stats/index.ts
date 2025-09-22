@@ -81,23 +81,42 @@ function getDateRange(timeFilter: string) {
   }
 }
 
+// Connection pooling for better performance
+let supabaseClient: any = null;
+
+function getSupabaseClient(authHeader: string) {
+  if (!supabaseClient) {
+    supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+        db: {
+          schema: 'public',
+        },
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    );
+  }
+  return supabaseClient;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
+  const startTime = performance.now();
+  
   try {
-    // Create Supabase client
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
-    )
+    // Create Supabase client with connection pooling
+    const supabaseClient = getSupabaseClient(req.headers.get('Authorization')!);
 
     // Get request body
     const { timeFilter = 'monthly' } = await req.json()
@@ -134,13 +153,22 @@ serve(async (req) => {
         .eq('date', new Date().toISOString().split('T')[0])
     ])
 
-    // Check for errors
-    if (driversError) throw new Error(`Drivers error: ${driversError.message}`)
-    if (carsError) throw new Error(`Cars error: ${carsError.message}`)
-    if (ownersError) throw new Error(`Owners error: ${ownersError.message}`)
-    if (earningsError) throw new Error(`Earnings error: ${earningsError.message}`)
-    if (expensesError) throw new Error(`Expenses error: ${expensesError.message}`)
-    if (attendanceError) throw new Error(`Attendance error: ${attendanceError.message}`)
+    // Check for errors with detailed logging
+    const errors = [
+      { name: 'drivers', error: driversError },
+      { name: 'cars', error: carsError },
+      { name: 'owners', error: ownersError },
+      { name: 'earnings', error: earningsError },
+      { name: 'expenses', error: expensesError },
+      { name: 'attendance', error: attendanceError }
+    ].filter(item => item.error);
+
+    if (errors.length > 0) {
+      console.error('Database query errors:', errors);
+      // Return partial data instead of failing completely
+      const errorDetails = errors.map(e => `${e.name}: ${e.error?.message}`).join(', ');
+      console.warn(`Continuing with partial data. Errors: ${errorDetails}`);
+    }
 
     // Calculate company stats
     const totalCars = cars?.length || 0
@@ -256,10 +284,36 @@ serve(async (req) => {
       expensesByType
     }
 
+    const endTime = performance.now();
+    const executionTime = endTime - startTime;
+    
+    console.log(`Dashboard stats calculated in ${executionTime.toFixed(2)}ms`);
+    
     return new Response(
-      JSON.stringify({ success: true, data: dashboardStats }),
+      JSON.stringify({ 
+        success: true, 
+        data: dashboardStats,
+        meta: {
+          executionTime: `${executionTime.toFixed(2)}ms`,
+          timestamp: new Date().toISOString(),
+          timeFilter,
+          dataCounts: {
+            drivers: drivers?.length || 0,
+            cars: cars?.length || 0,
+            owners: owners?.length || 0,
+            earnings: earnings?.length || 0,
+            expenses: expenses?.length || 0,
+            attendance: attendance?.length || 0
+          }
+        }
+      }),
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json',
+          'X-Execution-Time': `${executionTime.toFixed(2)}ms`,
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=60'
+        },
         status: 200,
       },
     )

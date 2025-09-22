@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { CACHE_HEADERS, generateETag, isClientCacheFresh, addPerformanceHeaders } from '@/lib/api-utils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,7 +43,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch cars' }, { status: 500 });
     }
 
-    return NextResponse.json({ cars: cars || [] });
+    const responseData = { cars: cars || [] };
+    const etag = generateETag(responseData);
+    
+    // Check if client has fresh data
+    if (isClientCacheFresh(request, etag)) {
+      return new NextResponse(null, { 
+        status: 304,
+        headers: CACHE_HEADERS.STATIC
+      });
+    }
+
+    const response = NextResponse.json(responseData);
+    
+    // Add caching headers
+    Object.entries(CACHE_HEADERS.STATIC).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    response.headers.set('ETag', etag);
+    
+    return addPerformanceHeaders(response);
   } catch (error) {
     console.error('Error in GET /api/cars:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, memo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -59,7 +59,7 @@ interface Attendance {
   created_at: string
 }
 
-export default function DriverDashboard() {
+const DriverDashboard = memo(function DriverDashboard() {
   const { appUser } = useAuth()
   const router = useRouter()
   const [car, setCar] = useState<Car | null>(null)
@@ -909,4 +909,6 @@ export default function DriverDashboard() {
           </div>
                 </div>
   )
-}
+})
+
+export default DriverDashboard

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, memo } from 'react'
 import { supabase, User, Car, DriverEarning, DriverExpense, Attendance } from '@/lib/supabase'
 import { dataCache, AdminDashboardData } from '@/lib/dataCache'
 import { PerformanceMonitor } from '@/lib/performance'
@@ -14,7 +14,7 @@ import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 import { DashboardSkeleton } from '@/components/ui/loading-skeleton'
 
-export default function AdminDashboard() {
+const AdminDashboard = memo(function AdminDashboard() {
   const [drivers, setDrivers] = useState<User[]>([])
   const [cars, setCars] = useState<Car[]>([])
   const [owners, setOwners] = useState<any[]>([])
@@ -82,79 +82,69 @@ export default function AdminDashboard() {
         
         console.log('AdminDashboard: No cached data, fetching from database...')
 
-      // Fetch all users
-      console.log('AdminDashboard: Fetching users...')
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false })
-      
-      if (usersError) {
-        console.error('AdminDashboard: Error fetching users:', usersError)
-      } else {
-        console.log('AdminDashboard: Users fetched successfully:', usersData?.length || 0, 'users')
-      }
+        // Fetch all data in parallel for better performance
+        const dateRange = getDateRange()
+        console.log('AdminDashboard: Fetching data in parallel...')
+        
+        const [
+          { data: usersData, error: usersError },
+          { data: carsData, error: carsError },
+          { data: ownersData, error: ownersError },
+          { data: earningsData, error: earningsError },
+          { data: expensesData, error: expensesError },
+          { data: attendanceData, error: attendanceError }
+        ] = await Promise.all([
+          supabase
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false }),
+          supabase
+            .from('cars')
+            .select('*'),
+          supabase
+            .from('owners_with_cars')
+            .select('*'),
+          supabase
+            .from('driver_earnings')
+            .select('*')
+            .gte('date', dateRange.start)
+            .lte('date', dateRange.end),
+          supabase
+            .from('driver_expenses')
+            .select('*')
+            .eq('status', 'approved')
+            .gte('date', dateRange.start)
+            .lte('date', dateRange.end),
+          supabase
+            .from('attendance')
+            .select('*')
+            .eq('date', new Date().toISOString().split('T')[0])
+        ])
 
-      // Fetch all cars
-      console.log('AdminDashboard: Fetching cars...')
-      const { data: carsData, error: carsError } = await supabase
-        .from('cars')
-        .select('*')
-      
-      if (carsError) {
-        console.error('AdminDashboard: Error fetching cars:', carsError)
-      } else {
-        console.log('AdminDashboard: Cars fetched successfully:', carsData?.length || 0, 'cars')
-      }
+        // Log results
+        console.log('AdminDashboard: Parallel fetch completed')
+        console.log('Users:', usersData?.length || 0, 'Cars:', carsData?.length || 0, 'Owners:', ownersData?.length || 0)
+        console.log('Earnings:', earningsData?.length || 0, 'Expenses:', expensesData?.length || 0, 'Attendance:', attendanceData?.length || 0)
 
-      // Fetch all owners
-      console.log('AdminDashboard: Fetching owners...')
-      const { data: ownersData, error: ownersError } = await supabase
-        .from('owners_with_cars')
-        .select('*')
-      
-      if (ownersError) {
-        console.error('AdminDashboard: Error fetching owners:', ownersError)
-      } else {
-        console.log('AdminDashboard: Owners fetched successfully:', ownersData?.length || 0, 'owners')
-      }
-
-      // Fetch all earnings
-      console.log('AdminDashboard: Fetching earnings...')
-      const { data: earningsData, error: earningsError } = await supabase
-        .from('driver_earnings')
-        .select('*')
-      
-      if (earningsError) {
-        console.error('AdminDashboard: Error fetching earnings:', earningsError)
-      } else {
-        console.log('AdminDashboard: Earnings fetched successfully:', earningsData?.length || 0, 'earnings')
-      }
-
-      // Fetch all expenses
-      console.log('AdminDashboard: Fetching expenses...')
-      const { data: expensesData, error: expensesError } = await supabase
-        .from('driver_expenses')
-        .select('*')
-      
-      if (expensesError) {
-        console.error('AdminDashboard: Error fetching expenses:', expensesError)
-      } else {
-        console.log('AdminDashboard: Expenses fetched successfully:', expensesData?.length || 0, 'expenses')
-      }
-
-      // Fetch today's attendance
-      const today = new Date().toISOString().split('T')[0]
-      console.log('AdminDashboard: Fetching attendance for today:', today)
-      const { data: attendanceData, error: attendanceError } = await supabase
-        .from('attendance')
-        .select('*')
-      
-      if (attendanceError) {
-        console.error('AdminDashboard: Error fetching attendance:', attendanceError)
-      } else {
-        console.log('AdminDashboard: Attendance fetched successfully:', attendanceData?.length || 0, 'attendance records')
-      }
+        // Check for errors
+        if (usersError) {
+          console.error('AdminDashboard: Error fetching users:', usersError)
+        }
+        if (carsError) {
+          console.error('AdminDashboard: Error fetching cars:', carsError)
+        }
+        if (ownersError) {
+          console.error('AdminDashboard: Error fetching owners:', ownersError)
+        }
+        if (earningsError) {
+          console.error('AdminDashboard: Error fetching earnings:', earningsError)
+        }
+        if (expensesError) {
+          console.error('AdminDashboard: Error fetching expenses:', expensesError)
+        }
+        if (attendanceError) {
+          console.error('AdminDashboard: Error fetching attendance:', attendanceError)
+        }
 
       const drivers = usersData?.filter(u => u.role === 'driver') || []
       
@@ -167,15 +157,18 @@ export default function AdminDashboard() {
         }
       }) || []
       
-      // Cache the data for 2 minutes
-      dataCache.set('admin-dashboard-data', {
+      // Cache the data using tiered caching strategy
+      const dashboardData = {
         drivers,
         cars: carsWithDrivers,
         owners: ownersData || [],
         earnings: earningsData || [],
         expenses: expensesData || [],
         attendance: attendanceData || []
-      }, 2 * 60 * 1000)
+      }
+      
+      // Use aggregated data caching (30 minutes) for dashboard stats
+      dataCache.setAggregatedData('admin-dashboard-data', dashboardData)
 
       console.log('AdminDashboard: Data fetched successfully, setting state...')
       setDrivers(drivers)
@@ -207,17 +200,20 @@ export default function AdminDashboard() {
   }, [fetchData])
 
 
+  // Memoize filtered data to avoid recalculating on every render
+  const filteredData = useMemo(() => {
+    const dateRange = getDateRange(timeFilter)
+    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
+    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    return { filteredEarnings, filteredExpenses, dateRange }
+  }, [earnings, expenses, timeFilter])
+
   const companyStats = useMemo(() => {
     const totalCars = cars.length
     const totalOwners = owners.length
     const totalActiveDrivers = attendance.filter(a => a.start_time && !a.end_time).length
     
-    // Get date range based on filter
-    const dateRange = getDateRange(timeFilter)
-    
-    // Filter earnings and expenses based on time period
-    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
-    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    const { filteredEarnings, filteredExpenses } = filteredData
     
     const totalMandatoryDues = totalCars * 7500
     const totalEarnings = filteredEarnings.reduce((sum, e) => 
@@ -234,12 +230,10 @@ export default function AdminDashboard() {
       totalExpenses, 
       netProfit 
     }
-  }, [cars.length, owners, attendance, earnings, expenses, timeFilter])
+  }, [cars.length, owners, attendance, filteredData])
 
   const carLevelPL = useMemo(() => {
-    const dateRange = getDateRange(timeFilter)
-    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
-    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    const { filteredEarnings, filteredExpenses } = filteredData
     
     return cars.map(car => {
       const carEarnings = filteredEarnings.filter(e => {
@@ -261,12 +255,10 @@ export default function AdminDashboard() {
         due: car.monthly_due
       }
     })
-  }, [cars, earnings, expenses, drivers, timeFilter])
+  }, [cars, drivers, filteredData])
 
   const driverLevelPL = useMemo(() => {
-    const dateRange = getDateRange(timeFilter)
-    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
-    const filteredExpenses = expenses.filter(e => e.status === 'approved' && e.date >= dateRange.start && e.date <= dateRange.end)
+    const { filteredEarnings, filteredExpenses } = filteredData
     
     return drivers.map(driver => {
       const driverEarnings = filteredEarnings.filter(e => e.driver_id === driver.id)
@@ -283,11 +275,10 @@ export default function AdminDashboard() {
         net: driverEarnings - driverExpenses
       }
     })
-  }, [drivers, earnings, expenses, timeFilter])
+  }, [drivers, filteredData])
 
   const earningsByPlatform = useMemo(() => {
-    const dateRange = getDateRange(timeFilter)
-    const filteredEarnings = earnings.filter(e => e.date >= dateRange.start && e.date <= dateRange.end)
+    const { filteredEarnings } = filteredData
     
     const uberEarnings = filteredEarnings.reduce((sum, e) => sum + e.uber_cash + e.uber_account, 0)
     const boltEarnings = filteredEarnings.reduce((sum, e) => sum + e.bolt_cash + e.bolt_account, 0)
@@ -298,10 +289,10 @@ export default function AdminDashboard() {
       { name: 'Bolt', value: boltEarnings, color: '#10b981' },
       { name: 'Individual', value: individualEarnings, color: '#f59e0b' }
     ]
-  }, [earnings, timeFilter])
+  }, [filteredData])
 
   const dailyTrends = useMemo(() => {
-    const dateRange = getDateRange(timeFilter)
+    const { dateRange, filteredEarnings } = filteredData
     const startDate = new Date(dateRange.start)
     const endDate = new Date(dateRange.end)
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -313,11 +304,11 @@ export default function AdminDashboard() {
     })
 
     return days.map(date => {
-      const dayEarnings = earnings.filter(e => e.date === date)
+      const dayEarnings = filteredEarnings.filter(e => e.date === date)
         .reduce((sum, e) => 
           sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_cash, 0)
       
-      const dayExpenses = expenses.filter(e => e.date === date && e.status === 'approved')
+      const dayExpenses = filteredData.filteredExpenses.filter(e => e.date === date)
         .reduce((sum, e) => sum + e.amount, 0)
 
       return {
@@ -327,7 +318,7 @@ export default function AdminDashboard() {
         net: dayEarnings - dayExpenses
       }
     })
-  }, [earnings, expenses, timeFilter])
+  }, [filteredData])
 
 
   if (loading) {
@@ -626,4 +617,6 @@ export default function AdminDashboard() {
 
     </div>
   )
-}
+})
+
+export default AdminDashboard
