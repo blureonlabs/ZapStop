@@ -3,9 +3,9 @@
 import { useBackendAuth } from '@/contexts/BackendAuthContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
-import BackendAdminDashboard from '@/components/dashboard/BackendAdminDashboard'
-import BackendAccountantDashboard from '@/components/dashboard/BackendAccountantDashboard'
-import BackendDriverDashboard from '@/components/dashboard/BackendDriverDashboard'
+import AdminDashboardOptimized from '@/components/dashboard/AdminDashboardOptimized'
+import AccountantDashboard from '@/components/dashboard/AccountantDashboard'
+import DriverDashboard from '@/components/dashboard/DriverDashboard'
 
 export default function DashboardPage() {
   const { user, loading } = useBackendAuth()
@@ -37,9 +37,9 @@ export default function DashboardPage() {
 
   switch (user.role) {
     case 'admin':
-      return <BackendAdminDashboard />
-      case 'accountant':
-        return <BackendAccountantDashboard />
+      return <AdminDashboardOptimized />
+    case 'accountant':
+      return <AccountantDashboard />
     case 'driver':
       return <BackendDriverDashboard />
     default:

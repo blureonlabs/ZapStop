@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useBackendAuth } from '@/contexts/BackendAuthContext'
-import { apiService, User, Car, Owner } from '@/lib/api'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase, User, Car } from '@/lib/supabase'
+import { userAPI } from '@/lib/edge-functions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -136,24 +137,38 @@ export default function DriversPage() {
         return
       }
 
-      // Create new driver using the backend API
-      const newUser = await apiService.createUser({
-        name: driverForm.name,
-        email: driverForm.email,
-        phone: driverForm.phone,
-        password: driverForm.password,
-        role: 'driver',
-        assigned_car_id: driverForm.assigned_car_id === 'none' ? undefined : driverForm.assigned_car_id || undefined
-      })
+      // Check if user already exists in our system before attempting to create
+      const { data: existingUser, error: checkError } = await supabase
+        .from('users')
+        .select('id, email, name')
+        .eq('email', driverForm.email)
+        .single()
 
-      // If a car was assigned, also update the car's assigned_driver_id
-      if (driverForm.assigned_car_id && driverForm.assigned_car_id !== 'none') {
-        await apiService.updateCar(driverForm.assigned_car_id, {
-          assigned_driver_id: newUser.id
-        })
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking existing user:', checkError)
+        toast.error('Failed to validate email address')
+        setCreatingDriver(false)
+        return
       }
 
-      toast.success('Driver created successfully')
+      if (existingUser) {
+        toast.error('A driver with this email already exists in the system')
+        setCreatingDriver(false)
+        return
+      }
+
+      // Use Edge Function to create the user
+      const result = await userAPI.createDriver({
+        name: driverForm.name,
+        email: driverForm.email,
+        password: driverForm.password,
+        phone: driverForm.phone,
+        role: driverForm.role,
+        assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
+      })
+
+      console.log('User created successfully:', result)
+      toast.success('Driver created successfully! User can login immediately.')
       setShowDriverDialog(false)
       setDriverForm({ name: '', email: '', phone: '', password: '', role: 'driver', assigned_car_id: 'none' })
       fetchData()
