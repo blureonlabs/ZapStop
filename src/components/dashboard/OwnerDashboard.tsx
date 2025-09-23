@@ -12,7 +12,12 @@ import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Building2, Users, Cloc
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 
-interface OwnerCar extends Car {
+interface OwnerCar {
+  id: string
+  plate_number: string
+  model: string
+  monthly_due: number
+  assigned_driver_id?: string
   assigned_driver?: {
     id: string
     name: string
@@ -131,7 +136,7 @@ export default function OwnerDashboard() {
         return
       }
 
-      const ownerCars = carsData?.map(oc => oc.cars).filter(Boolean) as OwnerCar[] || []
+      const ownerCars = carsData?.map(oc => oc.cars).filter(Boolean).flat() as OwnerCar[] || []
       console.log('Raw cars data:', carsData)
       console.log('Owner cars data:', ownerCars)
 
@@ -147,7 +152,7 @@ export default function OwnerDashboard() {
             
             return {
               ...car,
-              assigned_driver: driverData
+              assigned_driver: driverData || undefined
             }
           }
           return car
@@ -240,12 +245,71 @@ export default function OwnerDashboard() {
           return sum
         }, 0)
 
-        // For now, use the existing earnings data (we'll improve this later)
-        // TODO: Implement proper earnings-car mapping integration
+        // Fetch earnings-car mappings for accurate attribution
+        const { data: earningsMappings } = await supabase
+          .from('earnings_car_mapping')
+          .select(`
+            id,
+            earning_id,
+            car_id,
+            date,
+            driver_earnings!earnings_car_mapping_earning_id_fkey (
+              id,
+              driver_id,
+              uber_cash,
+              uber_account,
+              bolt_cash,
+              bolt_account,
+              individual_rides_cash,
+              individual_rides_account
+            )
+          `)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', now.toISOString().split('T')[0])
 
-        // Calculate car performance with driver attribution (using assignment-based for now)
-        const carPerformanceData: CarPerformance[] = await Promise.all(ownerCars.map(async car => {
-          // Get all drivers who have worked with this car (current and historical)
+        // Get all unique driver IDs from earnings mappings AND current assigned drivers
+        const allDriverIds = new Set<string>()
+        
+        // Add drivers from earnings mappings
+        earningsMappings?.forEach(mapping => {
+          if (mapping.driver_earnings && 'driver_id' in mapping.driver_earnings) {
+            allDriverIds.add(mapping.driver_earnings.driver_id as string)
+          }
+        })
+        
+        // Add current assigned drivers from cars
+        ownerCars.forEach(car => {
+          if (car.assigned_driver_id) {
+            allDriverIds.add(car.assigned_driver_id)
+          }
+        })
+
+        // Fetch driver names for all drivers
+        const driverNames = await Promise.all(
+          Array.from(allDriverIds).map(async (driverId) => {
+            const { data: driverData } = await supabase
+              .from('users')
+              .select('id, name, email')
+              .eq('id', driverId)
+              .single()
+            return { driverId, driverData }
+          })
+        )
+
+        // Create a map for quick lookup
+        const driverNamesMap = new Map<string, { name: string; email: string }>()
+        driverNames.forEach(({ driverId, driverData }) => {
+          if (driverData) {
+            driverNamesMap.set(driverId, { name: driverData.name, email: driverData.email })
+          }
+        })
+
+        // Calculate car performance with driver attribution using earnings-car mapping
+        const carPerformanceData: CarPerformance[] = ownerCars.map(car => {
+          // Get earnings mappings for this specific car
+          const carEarningsMappings = earningsMappings?.filter(mapping => mapping.car_id === car.id) || []
+          
+          // Get all drivers who have earnings for this car
           const carDriverIds = new Set<string>()
           
           // Add current driver if assigned
@@ -253,42 +317,35 @@ export default function OwnerDashboard() {
             carDriverIds.add(car.assigned_driver_id)
           }
           
-          // Add drivers from earnings, expenses, and attendance
-          earnings.forEach(e => {
-            if (e.driver_id) carDriverIds.add(e.driver_id)
+          // Add drivers from earnings mappings
+          carEarningsMappings.forEach(mapping => {
+            if (mapping.driver_earnings && 'driver_id' in mapping.driver_earnings) {
+              carDriverIds.add(mapping.driver_earnings.driver_id as string)
+            }
           })
-          expenses.forEach(e => {
-            if (e.driver_id) carDriverIds.add(e.driver_id)
+          
+          // Also add drivers from expenses and attendance for this car
+          expenses.forEach(expense => {
+            if (expense.driver_id) carDriverIds.add(expense.driver_id)
           })
-          attendance.forEach(a => {
-            if (a.driver_id) carDriverIds.add(a.driver_id)
+          attendance.forEach(att => {
+            if (att.driver_id) carDriverIds.add(att.driver_id)
           })
-
-          // Fetch driver names for all drivers
-          const driverNames = await Promise.all(
-            Array.from(carDriverIds).map(async (driverId) => {
-              const { data: driverData } = await supabase
-                .from('users')
-                .select('id, name, email')
-                .eq('id', driverId)
-                .single()
-              
-              return {
-                driverId,
-                name: driverData?.name || 'Unknown Driver',
-                email: driverData?.email || ''
-              }
-            })
-          )
-
-          // Calculate contributions for each driver
+          
+          // Calculate contributions for each driver using earnings-car mapping
           const driverContributions: DriverContribution[] = Array.from(carDriverIds).map(driverId => {
-            // Use assignment-based earnings attribution for now
-            const driverEarnings = earnings
-              .filter(e => e.driver_id === driverId)
-              .reduce((sum, e) => sum + (e.uber_cash || 0) + (e.uber_account || 0) + 
-                       (e.bolt_cash || 0) + (e.bolt_account || 0) + 
-                       (e.individual_rides_cash || 0) + (e.individual_rides_account || 0), 0)
+            // Get earnings for this driver from the car's earnings mappings
+            const driverEarnings = carEarningsMappings
+              .filter(mapping => mapping.driver_earnings && 'driver_id' in mapping.driver_earnings && mapping.driver_earnings.driver_id === driverId)
+              .reduce((sum, mapping) => {
+                const earning = mapping.driver_earnings as any
+                if (earning) {
+                  return sum + (earning.uber_cash || 0) + (earning.uber_account || 0) + 
+                         (earning.bolt_cash || 0) + (earning.bolt_account || 0) + 
+                         (earning.individual_rides_cash || 0) + (earning.individual_rides_account || 0)
+                }
+                return sum
+              }, 0)
 
             const driverExpenses = expenses
               .filter(e => e.driver_id === driverId)
@@ -309,8 +366,8 @@ export default function OwnerDashboard() {
               .filter(a => a.driver_id === driverId && a.start_time && a.end_time)
               .length
 
-            // Get driver name from fetched data
-            const driverInfo = driverNames.find(d => d.driverId === driverId)
+            // Get driver name from the driver names map
+            const driverInfo = driverNamesMap.get(driverId)
             const driverName = driverInfo?.name || 'Unknown Driver'
 
             return {
@@ -337,11 +394,13 @@ export default function OwnerDashboard() {
             totalExpenses,
             totalNetProfit: totalEarnings - totalExpenses,
             totalWorkHours,
-            currentDriverName: car.assigned_driver?.name,
+            currentDriverName: car.assigned_driver_id ? 
+              (driverNamesMap.get(car.assigned_driver_id)?.name || 'Unknown Driver') : 
+              'Unassigned',
             isActive,
             driverContributions
           }
-        }))
+        })
 
         // Generate financial data for charts
         const financialDataByDate: { [key: string]: { earnings: number, expenses: number } } = {}
