@@ -44,16 +44,26 @@ interface FinancialData {
   net: number
 }
 
+interface DriverContribution {
+  driverId: string
+  driverName: string
+  earnings: number
+  expenses: number
+  workHours: number
+  daysWorked: number
+}
+
 interface CarPerformance {
   carId: string
   plateNumber: string
   model: string
-  earnings: number
-  expenses: number
-  netProfit: number
-  workHours: number
-  driverName?: string
+  totalEarnings: number
+  totalExpenses: number
+  totalNetProfit: number
+  totalWorkHours: number
+  currentDriverName?: string
   isActive: boolean
+  driverContributions: DriverContribution[]
 }
 
 export default function OwnerDashboard() {
@@ -230,41 +240,108 @@ export default function OwnerDashboard() {
           return sum
         }, 0)
 
-        // Calculate car performance
-        const carPerformanceData: CarPerformance[] = ownerCars.map(car => {
-          const carEarnings = earnings
-            .filter(e => e.driver_id === car.assigned_driver_id)
-            .reduce((sum, e) => sum + e.uber_cash + e.uber_account + e.bolt_cash + e.bolt_account + e.individual_rides_cash + e.individual_rides_account, 0)
+        // For now, use the existing earnings data (we'll improve this later)
+        // TODO: Implement proper earnings-car mapping integration
 
-          const carExpenses = expenses
-            .filter(e => e.driver_id === car.assigned_driver_id)
-            .reduce((sum, e) => sum + e.amount, 0)
+        // Calculate car performance with driver attribution (using assignment-based for now)
+        const carPerformanceData: CarPerformance[] = await Promise.all(ownerCars.map(async car => {
+          // Get all drivers who have worked with this car (current and historical)
+          const carDriverIds = new Set<string>()
+          
+          // Add current driver if assigned
+          if (car.assigned_driver_id) {
+            carDriverIds.add(car.assigned_driver_id)
+          }
+          
+          // Add drivers from earnings, expenses, and attendance
+          earnings.forEach(e => {
+            if (e.driver_id) carDriverIds.add(e.driver_id)
+          })
+          expenses.forEach(e => {
+            if (e.driver_id) carDriverIds.add(e.driver_id)
+          })
+          attendance.forEach(a => {
+            if (a.driver_id) carDriverIds.add(a.driver_id)
+          })
 
-          const carWorkHours = attendance
-            .filter(a => a.driver_id === car.assigned_driver_id)
-            .reduce((sum, att) => {
-              if (att.start_time && att.end_time) {
-                const start = new Date(`2000-01-01T${att.start_time}`)
-                const end = new Date(`2000-01-01T${att.end_time}`)
-                return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+          // Fetch driver names for all drivers
+          const driverNames = await Promise.all(
+            Array.from(carDriverIds).map(async (driverId) => {
+              const { data: driverData } = await supabase
+                .from('users')
+                .select('id, name, email')
+                .eq('id', driverId)
+                .single()
+              
+              return {
+                driverId,
+                name: driverData?.name || 'Unknown Driver',
+                email: driverData?.email || ''
               }
-              return sum
-            }, 0)
+            })
+          )
 
+          // Calculate contributions for each driver
+          const driverContributions: DriverContribution[] = Array.from(carDriverIds).map(driverId => {
+            // Use assignment-based earnings attribution for now
+            const driverEarnings = earnings
+              .filter(e => e.driver_id === driverId)
+              .reduce((sum, e) => sum + (e.uber_cash || 0) + (e.uber_account || 0) + 
+                       (e.bolt_cash || 0) + (e.bolt_account || 0) + 
+                       (e.individual_rides_cash || 0) + (e.individual_rides_account || 0), 0)
+
+            const driverExpenses = expenses
+              .filter(e => e.driver_id === driverId)
+              .reduce((sum, e) => sum + e.amount, 0)
+
+            const driverWorkHours = attendance
+              .filter(a => a.driver_id === driverId)
+              .reduce((sum, att) => {
+                if (att.start_time && att.end_time) {
+                  const start = new Date(`2000-01-01T${att.start_time}`)
+                  const end = new Date(`2000-01-01T${att.end_time}`)
+                  return sum + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
+                }
+                return sum
+              }, 0)
+
+            const daysWorked = attendance
+              .filter(a => a.driver_id === driverId && a.start_time && a.end_time)
+              .length
+
+            // Get driver name from fetched data
+            const driverInfo = driverNames.find(d => d.driverId === driverId)
+            const driverName = driverInfo?.name || 'Unknown Driver'
+
+            return {
+              driverId,
+              driverName,
+              earnings: driverEarnings,
+              expenses: driverExpenses,
+              workHours: driverWorkHours,
+              daysWorked
+            }
+          })
+
+          // Calculate totals
+          const totalEarnings = driverContributions.reduce((sum, d) => sum + d.earnings, 0)
+          const totalExpenses = driverContributions.reduce((sum, d) => sum + d.expenses, 0)
+          const totalWorkHours = driverContributions.reduce((sum, d) => sum + d.workHours, 0)
           const isActive = activeAttendance.some(a => a.driver_id === car.assigned_driver_id)
 
           return {
             carId: car.id,
             plateNumber: car.plate_number,
             model: car.model,
-            earnings: carEarnings,
-            expenses: carExpenses,
-            netProfit: carEarnings - carExpenses,
-            workHours: carWorkHours,
-            driverName: car.assigned_driver?.name,
-            isActive
+            totalEarnings,
+            totalExpenses,
+            totalNetProfit: totalEarnings - totalExpenses,
+            totalWorkHours,
+            currentDriverName: car.assigned_driver?.name,
+            isActive,
+            driverContributions
           }
-        })
+        }))
 
         // Generate financial data for charts
         const financialDataByDate: { [key: string]: { earnings: number, expenses: number } } = {}
@@ -638,7 +715,7 @@ export default function OwnerDashboard() {
                       const today = now.toISOString().split('T')[0]
                       
                       // Parse start time components
-                      const [hours, minutes, seconds] = attendance.start_time.split(':').map(Number)
+                      const [hours, minutes, seconds] = (attendance.start_time || '00:00:00').split(':').map(Number)
                       
                       // Create start time for today using local timezone
                       const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds)
@@ -721,7 +798,7 @@ export default function OwnerDashboard() {
                               <h3 className="font-semibold">{car.plateNumber}</h3>
                               <p className="text-sm text-gray-600">{car.model}</p>
                               <p className="text-xs text-gray-500">
-                                Driver: {car.driverName || 'Unassigned'}
+                                Current Driver: {car.currentDriverName || 'Unassigned'}
                               </p>
                             </div>
                           </div>
@@ -739,26 +816,55 @@ export default function OwnerDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                           <div className="text-center p-3 bg-green-50 rounded">
-                            <div className="text-lg font-bold text-green-600">${car.earnings.toLocaleString()}</div>
-                            <div className="text-xs text-green-700">Earnings</div>
+                            <div className="text-lg font-bold text-green-600">${car.totalEarnings.toLocaleString()}</div>
+                            <div className="text-xs text-green-700">Total Earnings</div>
                           </div>
                           <div className="text-center p-3 bg-red-50 rounded">
-                            <div className="text-lg font-bold text-red-600">${car.expenses.toLocaleString()}</div>
-                            <div className="text-xs text-red-700">Expenses</div>
+                            <div className="text-lg font-bold text-red-600">${car.totalExpenses.toLocaleString()}</div>
+                            <div className="text-xs text-red-700">Total Expenses</div>
                           </div>
                           <div className="text-center p-3 bg-blue-50 rounded">
-                            <div className={`text-lg font-bold ${car.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ${car.netProfit.toLocaleString()}
+                            <div className={`text-lg font-bold ${car.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              ${car.totalNetProfit.toLocaleString()}
                             </div>
                             <div className="text-xs text-gray-700">Net Profit</div>
                           </div>
                           <div className="text-center p-3 bg-purple-50 rounded">
-                            <div className="text-lg font-bold text-purple-600">{car.workHours.toFixed(1)}h</div>
-                            <div className="text-xs text-purple-700">Work Hours</div>
+                            <div className="text-lg font-bold text-purple-600">{car.totalWorkHours.toFixed(1)}h</div>
+                            <div className="text-xs text-purple-700">Total Hours</div>
                           </div>
                         </div>
+
+                        {/* Driver Attribution */}
+                        {car.driverContributions.length > 0 && (
+                          <div className="border-t pt-3">
+                            <div className="text-xs font-medium text-gray-600 mb-2">Driver Contributions:</div>
+                            <div className="space-y-2">
+                              {car.driverContributions.map((driver, index) => (
+                                <div key={driver.driverId} className="flex items-center justify-between text-xs bg-gray-50 p-2 rounded">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                      <span className="text-blue-600 font-semibold text-xs">
+                                        {driver.driverName.charAt(0)}
+                                      </span>
+                                    </div>
+                                    <span className="font-medium">{driver.driverName}</span>
+                                    {driver.driverId === car.currentDriverName && (
+                                      <Badge className="bg-blue-100 text-blue-800 text-xs">Current</Badge>
+                                    )}
+                                  </div>
+                                  <div className="flex space-x-4 text-gray-600">
+                                    <span>${driver.earnings.toFixed(0)}</span>
+                                    <span>{driver.workHours.toFixed(1)}h</span>
+                                    <span>{driver.daysWorked}d</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

@@ -151,7 +151,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       path: appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave',
       icon: Calendar,
       roles: ['admin', 'driver']
-    }
+    },
   ]
 
   const filteredItems = navigationItems.filter(item => 
