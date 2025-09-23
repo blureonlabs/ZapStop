@@ -110,12 +110,7 @@ export default function OwnerDashboard() {
             plate_number,
             model,
             monthly_due,
-            assigned_driver_id,
-            users!cars_assigned_driver_id_fkey (
-              id,
-              name,
-              email
-            )
+            assigned_driver_id
           )
         `)
         .eq('owner_id', ownerData.id)
@@ -127,7 +122,30 @@ export default function OwnerDashboard() {
       }
 
       const ownerCars = carsData?.map(oc => oc.cars).filter(Boolean) as OwnerCar[] || []
-      setCars(ownerCars)
+      console.log('Raw cars data:', carsData)
+      console.log('Owner cars data:', ownerCars)
+
+      // Get driver information for each car
+      const enrichedCars = await Promise.all(
+        ownerCars.map(async (car) => {
+          if (car.assigned_driver_id) {
+            const { data: driverData } = await supabase
+              .from('users')
+              .select('id, name, email')
+              .eq('id', car.assigned_driver_id)
+              .single()
+            
+            return {
+              ...car,
+              assigned_driver: driverData
+            }
+          }
+          return car
+        })
+      )
+
+      console.log('Enriched cars data:', enrichedCars)
+      setCars(enrichedCars)
 
       // Calculate date range
       const now = new Date()
@@ -276,8 +294,15 @@ export default function OwnerDashboard() {
           }))
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
+        // Filter to only show today's active drivers
+        const todayActiveDrivers = activeAttendance.filter(att => att.date === now.toISOString().split('T')[0])
+        
         // Update state
-        setActiveDrivers(activeAttendance)
+        console.log('All active attendance data:', activeAttendance)
+        console.log('Today active drivers:', todayActiveDrivers)
+        console.log('Today date:', now.toISOString().split('T')[0])
+        console.log('Driver IDs:', driverIds)
+        setActiveDrivers(todayActiveDrivers)
         setFinancialData(financialChartData)
         setCarPerformance(carPerformanceData)
 
@@ -515,7 +540,10 @@ export default function OwnerDashboard() {
                               <Badge className="mt-1 bg-green-100 text-green-800">Assigned</Badge>
                             </div>
                           ) : (
-                            <Badge variant="secondary">Unassigned</Badge>
+                            <div>
+                              <p className="text-xs text-gray-500">Driver ID: {car.assigned_driver_id || 'None'}</p>
+                              <Badge variant="secondary">Unassigned</Badge>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -604,9 +632,32 @@ export default function OwnerDashboard() {
                   <div className="grid gap-4">
                     {activeDrivers.map((attendance) => {
                       const car = cars.find(c => c.assigned_driver_id === attendance.driver_id)
-                      const startTime = new Date(`${attendance.date}T${attendance.start_time}`)
+                      
+                      // Calculate work duration more accurately
                       const now = new Date()
-                      const workDuration = Math.round((now.getTime() - startTime.getTime()) / (1000 * 60 * 60) * 10) / 10
+                      const today = now.toISOString().split('T')[0]
+                      
+                      // Parse start time components
+                      const [hours, minutes, seconds] = attendance.start_time.split(':').map(Number)
+                      
+                      // Create start time for today using local timezone
+                      const startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, seconds)
+                      
+                      console.log(`Debug - Driver ${attendance.driver_id}:`)
+                      console.log(`  - Attendance date: ${attendance.date}`)
+                      console.log(`  - Start time: ${attendance.start_time}`)
+                      console.log(`  - Today: ${today}`)
+                      console.log(`  - Start datetime (local): ${startTime.toISOString()}`)
+                      console.log(`  - Current datetime: ${now.toISOString()}`)
+                      
+                      const timeDiffMs = now.getTime() - startTime.getTime()
+                      const totalMinutes = Math.max(0, Math.floor(timeDiffMs / (1000 * 60)))
+                      const workHours = Math.floor(totalMinutes / 60)
+                      const workMinutes = totalMinutes % 60
+                      const workDurationFormatted = `${workHours.toString().padStart(2, '0')}:${workMinutes.toString().padStart(2, '0')}`
+                      
+                      console.log(`  - Time diff (ms): ${timeDiffMs}`)
+                      console.log(`  - Work duration: ${workDurationFormatted}`)
 
                       return (
                         <div key={attendance.id} className="flex items-center justify-between p-4 border rounded-lg bg-green-50 border-green-200">
@@ -628,7 +679,7 @@ export default function OwnerDashboard() {
                             <div className="flex items-center text-green-600 mb-1">
                               <Clock className="h-4 w-4 mr-1" />
                               <span className="font-semibold">
-                                {workDuration > 0 ? `${workDuration}h` : 'Just started'}
+                                {workDurationFormatted}
                               </span>
                             </div>
                             <Badge className="bg-green-100 text-green-800">Active</Badge>
