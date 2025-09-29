@@ -72,6 +72,7 @@ export default function LeavePage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
         body: JSON.stringify({
           driver_id: appUser.id,
           ...formData
@@ -102,6 +103,7 @@ export default function LeavePage() {
     try {
       const response = await fetch(`/api/leave-requests/${id}`, {
         method: 'DELETE',
+        cache: 'no-store',
       })
 
       const result = await response.json()

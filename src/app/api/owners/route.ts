@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
 
       if (basicError) {
         console.error('Error fetching owners (basic query):', basicError);
-        return NextResponse.json({ error: 'Failed to fetch owners' }, { status: 500 });
+        return NextResponse.json({ error: 'Failed to fetch owners' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
       }
 
       // Transform the data to match the expected format
@@ -47,13 +49,13 @@ export async function GET(request: NextRequest) {
       })) || [];
     } else if (error) {
       console.error('Error fetching owners:', error);
-      return NextResponse.json({ error: 'Failed to fetch owners' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch owners' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    return NextResponse.json({ owners: owners || [] });
+    return NextResponse.json({ owners: owners || [] }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Error in GET /api/owners:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }
 

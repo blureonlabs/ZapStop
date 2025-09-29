@@ -69,7 +69,7 @@ export default function OwnersPage() {
   // Fetch owners data
   const fetchOwners = async () => {
     try {
-      const response = await fetch('/api/owners');
+      const response = await fetch('/api/owners', { cache: 'no-store' });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -93,7 +93,7 @@ export default function OwnersPage() {
     setCarsLoading(true);
     try {
       const url = excludeOwnerId ? `/api/cars?excludeOwnerId=${excludeOwnerId}` : '/api/cars';
-      const response = await fetch(url);
+      const response = await fetch(url, { cache: 'no-store' });
       
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
@@ -135,6 +135,7 @@ export default function OwnersPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
         body: JSON.stringify(formData),
       });
 
@@ -165,6 +166,7 @@ export default function OwnersPage() {
     try {
       const response = await fetch(`/api/owners/${ownerId}`, {
         method: 'DELETE',
+        cache: 'no-store',
       });
 
       const data = await response.json();
@@ -191,6 +193,7 @@ export default function OwnersPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
         body: JSON.stringify({ carIds: selectedCars }),
       });
 
@@ -217,6 +220,7 @@ export default function OwnersPage() {
     try {
       const response = await fetch(`/api/owners/${ownerId}/cars/${carId}`, {
         method: 'DELETE',
+        cache: 'no-store',
       });
 
       const data = await response.json();

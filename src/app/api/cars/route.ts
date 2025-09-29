@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
@@ -39,12 +41,12 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('Error fetching cars:', error);
-      return NextResponse.json({ error: 'Failed to fetch cars' }, { status: 500 });
+      return NextResponse.json({ error: 'Failed to fetch cars' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
     }
 
-    return NextResponse.json({ cars: cars || [] });
+    return NextResponse.json({ cars: cars || [] }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     console.error('Error in GET /api/cars:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500, headers: { 'Cache-Control': 'no-store' } });
   }
 }

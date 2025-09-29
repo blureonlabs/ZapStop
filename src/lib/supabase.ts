@@ -1,10 +1,22 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient, createServerClient, type CookieOptions } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Browser client using PKCE with cookies (no localStorage)
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+
+// Server client for Route Handlers / Server Components if needed
+export const createSupabaseServer = (cookies: {
+  get: (name: string) => { name: string, value: string } | undefined
+  set: (name: string, value: string, options: CookieOptions) => void
+  remove: (name: string, options: CookieOptions) => void
+}) =>
+  createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies
+  })
 
 // Admin client for server-side operations (only if service key is available)
 export const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl, supabaseServiceKey, {

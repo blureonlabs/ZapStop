@@ -280,6 +280,7 @@ export default function DriversPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        cache: 'no-store',
         body: JSON.stringify({ userId: driverId }),
       })
 
