@@ -30,10 +30,22 @@ export const supabaseAdmin = supabaseServiceKey ? createClient(supabaseUrl, supa
 export interface User {
   id: string
   name: string
-  role: 'admin' | 'accountant' | 'driver'
+  role: 'admin' | 'accountant' | 'driver' | 'owner'
   email: string
   phone: string
   assigned_car_id?: string
+  documents?: Record<string, unknown>
+  document_expiry_date?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Owner {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  address?: string
   documents?: Record<string, unknown>
   document_expiry_date?: string
   created_at: string
@@ -46,6 +58,7 @@ export interface Car {
   model: string
   monthly_due: number
   assigned_driver_id?: string
+  owner_id?: string
   created_at: string
   updated_at: string
 }

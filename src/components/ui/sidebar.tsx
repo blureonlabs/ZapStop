@@ -87,6 +87,8 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
         return 'bg-blue-100 text-blue-800'
       case 'driver':
         return 'bg-green-100 text-green-800'
+      case 'owner':
+        return 'bg-purple-100 text-purple-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -106,7 +108,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       name: 'Dashboard',
       path: '/dashboard',
       icon: Home,
-      roles: ['admin', 'accountant', 'driver']
+      roles: ['admin', 'accountant', 'driver', 'owner']
     },
     {
       name: 'Cars',
@@ -149,7 +151,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       path: appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave',
       icon: Calendar,
       roles: ['admin', 'driver']
-    }
+    },
   ]
 
   const filteredItems = navigationItems.filter(item => 

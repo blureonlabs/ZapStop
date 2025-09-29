@@ -120,11 +120,15 @@ export default function ActiveDriversPage() {
     return attendance.map(att => {
       const startTime = new Date(`${att.date}T${att.start_time}`)
       const now = new Date()
-      const workDuration = Math.round((now.getTime() - startTime.getTime()) / (1000 * 60 * 60) * 10) / 10
+      const timeDiffMs = now.getTime() - startTime.getTime()
+      const totalMinutes = Math.max(0, Math.floor(timeDiffMs / (1000 * 60)))
+      const hours = Math.floor(totalMinutes / 60)
+      const minutes = totalMinutes % 60
+      const workDurationFormatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
 
       return {
         ...att,
-        workDuration: workDuration > 0 ? workDuration : 0,
+        workDurationFormatted,
         start_time: att.start_time.substring(0, 5) // Format as HH:MM
       }
     })
@@ -136,7 +140,6 @@ export default function ActiveDriversPage() {
         <PageHeader 
           title="Active Drivers" 
           description="Monitor drivers currently on duty"
-          icon={Users}
         />
         <div className="grid gap-6">
           {[...Array(3)].map((_, i) => (
@@ -163,7 +166,6 @@ export default function ActiveDriversPage() {
       <PageHeader 
         title="Active Drivers" 
         description="Monitor drivers currently on duty"
-        icon={Users}
       >
         <Button
           onClick={handleRefresh}
@@ -221,7 +223,7 @@ export default function ActiveDriversPage() {
                     <div className="flex items-center text-green-600 mb-1">
                       <Clock className="h-4 w-4 mr-1" />
                       <span className="font-semibold">
-                        {driver.workDuration}h
+                        {driver.workDurationFormatted}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500">
@@ -260,8 +262,17 @@ export default function ActiveDriversPage() {
                 <p className="text-sm font-medium text-gray-600">Avg. Work Time</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {activeDrivers.length > 0 
-                    ? Math.round(activeDrivers.reduce((sum, d) => sum + d.workDuration, 0) / activeDrivers.length * 10) / 10
-                    : 0}h
+                    ? (() => {
+                        const totalMinutes = activeDrivers.reduce((sum, d) => {
+                          const [hours, minutes] = d.workDurationFormatted.split(':').map(Number)
+                          return sum + (hours * 60 + minutes)
+                        }, 0)
+                        const avgMinutes = Math.round(totalMinutes / activeDrivers.length)
+                        const avgHours = Math.floor(avgMinutes / 60)
+                        const avgMins = avgMinutes % 60
+                        return `${avgHours.toString().padStart(2, '0')}:${avgMins.toString().padStart(2, '0')}`
+                      })()
+                    : '00:00'}
                 </p>
               </div>
             </div>

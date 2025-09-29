@@ -97,6 +97,7 @@ export default function LoginPage() {
               <div><strong>Admin:</strong> admin@zapstop.com / admin123</div>
               <div><strong>Accountant:</strong> accountant@zapstop.com / accountant123</div>
               <div><strong>Driver:</strong> driver1@zapstop.com / driver123</div>
+              <div><strong>Owner:</strong> nikitha@gmail.com / owner@123</div>
             </div>
           </div>
         </CardContent>

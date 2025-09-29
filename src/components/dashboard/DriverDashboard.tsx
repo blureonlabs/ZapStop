@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { edgeFunctions } from '@/lib/edge-functions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -82,7 +83,7 @@ export default function DriverDashboard() {
     bolt_rides_count: 0,
     individual_rides_count: 0,
     individual_rides_cash: 0,
-    individual_rides_account: 0
+    individual_rides_account: 0,
   })
 
   const [expenseForm, setExpenseForm] = useState({
@@ -187,7 +188,7 @@ export default function DriverDashboard() {
             bolt_rides_count: 0,
             individual_rides_count: 0,
             individual_rides_cash: 0,
-            individual_rides_account: 0
+            individual_rides_account: 0,
           })
         } else {
           console.error('Error fetching earnings:', {
@@ -208,7 +209,7 @@ export default function DriverDashboard() {
             bolt_rides_count: earningsData.bolt_rides_count || 0,
             individual_rides_count: earningsData.individual_rides_count || 0,
             individual_rides_cash: earningsData.individual_rides_cash || 0,
-            individual_rides_account: earningsData.individual_rides_account || 0
+            individual_rides_account: earningsData.individual_rides_account || 0,
           })
         }
       }
@@ -374,6 +375,7 @@ export default function DriverDashboard() {
     }
   }
 
+
   const handleUpdateEarnings = async () => {
     try {
       setSubmittingEarnings(true)
@@ -417,6 +419,7 @@ export default function DriverDashboard() {
           console.error('Supabase update error:', error)
           throw error
         }
+
       } else {
         // Create new earnings
         console.log('Creating new earnings record')
@@ -442,6 +445,7 @@ export default function DriverDashboard() {
           console.error('Supabase insert error:', error)
           throw error
         }
+
       }
 
       toast.success('Earnings updated successfully!')
@@ -676,6 +680,7 @@ export default function DriverDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
             <div className="space-y-4">
+
                 {/* Uber Section */}
                 <div className="grid grid-cols-3 gap-3">
                     <div>

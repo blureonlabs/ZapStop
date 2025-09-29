@@ -272,7 +272,7 @@ export default function DriversPage() {
   }
 
   const handleDeleteDriver = async (driverId: string) => {
-    if (!confirm('Are you sure you want to delete this driver?')) return
+    if (!confirm('Are you sure you want to delete this driver? Any assigned cars will be unassigned.')) return
 
     try {
       const response = await fetch('/api/admin/delete-user', {
@@ -289,7 +289,7 @@ export default function DriversPage() {
         throw new Error(error.error || 'Failed to delete driver')
       }
 
-      toast.success('Driver deleted successfully')
+      toast.success('Driver deleted successfully. Any assigned cars have been unassigned.')
       fetchData()
     } catch (error: any) {
       console.error('Error deleting driver:', error)

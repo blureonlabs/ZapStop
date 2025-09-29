@@ -28,6 +28,7 @@ export class EdgeFunctionsAPI {
     }
   }
 
+
   // User Management Functions
   async createDriver(userData: {
     name: string

@@ -73,11 +73,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
-    const { name, email, phone, address, documents, document_expiry_date } = body;
+    const { name, email, password, phone, address, documents, document_expiry_date } = body;
 
     // Validate required fields
-    if (!name || !email) {
-      return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
+    if (!name || !email || !password) {
+      return NextResponse.json({ error: 'Name, email, and password are required' }, { status: 400 });
     }
 
     // Validate email format
@@ -86,26 +86,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid email format' }, { status: 400 });
     }
 
-    // Check if email already exists
-    const { data: existingOwner, error: checkError } = await client
-      .from('owners')
-      .select('id')
-      .eq('email', email)
+    // Check if email already exists in both owners and users tables
+    const [ownersCheck, usersCheck] = await Promise.all([
+      client.from('owners').select('id').eq('email', email).single(),
+      client.from('users').select('id').eq('email', email).single()
+    ]);
+
+    if (ownersCheck.data || usersCheck.data) {
+      return NextResponse.json({ error: 'User with this email already exists' }, { status: 400 });
+    }
+
+    // Create user in Supabase Auth using Admin API
+    const { data: authData, error: authError } = await client.auth.admin.createUser({
+      email: email.trim().toLowerCase(),
+      password,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        name: name.trim(),
+        role: 'owner'
+      },
+      app_metadata: {
+        role: 'owner'
+      }
+    });
+
+    if (authError) {
+      console.error('Auth error:', authError);
+      if (authError.message.includes('already registered')) {
+        return NextResponse.json({ error: 'A user with this email already exists' }, { status: 400 });
+      }
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
+
+    if (!authData.user) {
+      return NextResponse.json({ error: 'Failed to create user in Supabase Auth' }, { status: 500 });
+    }
+
+    // Create user record in users table
+    const { data: userData, error: userError } = await client
+      .from('users')
+      .insert([{
+        id: authData.user.id,
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
+        phone: phone?.trim() || null,
+        role: 'owner'
+      }])
+      .select()
       .single();
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking existing owner:', checkError);
-      return NextResponse.json({ error: 'Failed to check existing owner' }, { status: 500 });
+    if (userError) {
+      console.error('User creation error:', userError);
+      // If user record creation fails, clean up the auth user
+      await client.auth.admin.deleteUser(authData.user.id);
+      return NextResponse.json({ error: userError.message }, { status: 500 });
     }
 
-    if (existingOwner) {
-      return NextResponse.json({ error: 'Owner with this email already exists' }, { status: 400 });
-    }
-
-    // Create new owner
-    const { data: owner, error } = await client
+    // Create owner record in owners table
+    const { data: owner, error: ownerError } = await client
       .from('owners')
       .insert({
+        id: authData.user.id, // Use same ID as user
         name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone?.trim() || null,
@@ -116,27 +157,24 @@ export async function POST(request: NextRequest) {
       .select()
       .single();
 
-    if (error) {
-      console.error('Error creating owner:', error);
+    if (ownerError) {
+      console.error('Error creating owner:', ownerError);
       
-      // Handle specific database errors
-      if (error.code === '23505') {
-        return NextResponse.json({ error: 'Owner with this email already exists' }, { status: 400 });
-      }
-      
-      if (error.code === 'PGRST116') {
-        return NextResponse.json({ error: 'Owners table not found. Please run the database migration first.' }, { status: 500 });
-      }
+      // If owner record creation fails, clean up both auth user and user record
+      await client.auth.admin.deleteUser(authData.user.id);
+      await client.from('users').delete().eq('id', authData.user.id);
       
       return NextResponse.json({ 
         error: 'Failed to create owner', 
-        details: error.message 
+        details: ownerError.message 
       }, { status: 500 });
     }
 
     return NextResponse.json({ 
+      success: true,
       owner,
-      message: 'Owner created successfully' 
+      user: userData,
+      message: 'Owner created successfully with authentication. Owner can now login to the dashboard.' 
     });
   } catch (error) {
     console.error('Error in POST /api/owners:', error);

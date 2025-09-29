@@ -14,7 +14,18 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access not available' }, { status: 503 })
     }
 
-    // Delete from users table first
+    // First, unassign any cars assigned to this driver
+    const { error: unassignError } = await supabaseAdmin
+      .from('cars')
+      .update({ assigned_driver_id: null })
+      .eq('assigned_driver_id', userId)
+
+    if (unassignError) {
+      console.warn('Could not unassign cars:', unassignError)
+      // Continue anyway, but log the warning
+    }
+
+    // Delete from users table
     const { error: userError } = await supabaseAdmin
       .from('users')
       .delete()
