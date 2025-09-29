@@ -36,7 +36,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session?.user?.id)
       
       // Only process auth changes for the current user
@@ -48,7 +48,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log('SIGNED_IN or TOKEN_REFRESHED event, fetching app user...')
         setUser(session.user)
-        await fetchAppUser(session.user.id)
+        // Fire-and-forget to avoid blocking the auth state change callback
+        fetchAppUser(session.user.id).catch((error) => {
+          console.error('Error in fetchAppUser from onAuthStateChange:', error)
+        })
       }
       // Ignore other events like 'USER_UPDATED' or 'PASSWORD_RECOVERY' 
       // that shouldn't affect the current user's session
