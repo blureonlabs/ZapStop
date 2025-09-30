@@ -608,9 +608,9 @@ export default function OwnerDashboard() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${stats.totalEarnings.toLocaleString()}</div>
+            <div className="text-2xl font-bold">AED {stats.totalEarnings.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              ${stats.averageEarningsPerCar} avg per car
+              AED {stats.averageEarningsPerCar} avg per car
             </p>
           </CardContent>
         </Card>
@@ -622,7 +622,7 @@ export default function OwnerDashboard() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${stats.netProfit.toLocaleString()}
+              AED {stats.netProfit.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
               {stats.totalWorkHours}h total work time
@@ -703,16 +703,16 @@ export default function OwnerDashboard() {
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 gap-4">
                     <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">${stats.totalEarnings.toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-green-600">AED {stats.totalEarnings.toLocaleString()}</div>
                       <div className="text-sm text-green-700">Total Earnings</div>
                     </div>
                     <div className="text-center p-4 bg-red-50 rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">${stats.totalExpenses.toLocaleString()}</div>
+                      <div className="text-2xl font-bold text-red-600">AED {stats.totalExpenses.toLocaleString()}</div>
                       <div className="text-sm text-red-700">Total Expenses</div>
                     </div>
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        ${stats.netProfit.toLocaleString()}
+                        AED {stats.netProfit.toLocaleString()}
                       </div>
                       <div className="text-sm text-gray-700">Net Profit</div>
                     </div>
@@ -877,16 +877,16 @@ export default function OwnerDashboard() {
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
                           <div className="text-center p-3 bg-green-50 rounded">
-                            <div className="text-lg font-bold text-green-600">${car.totalEarnings.toLocaleString()}</div>
+                            <div className="text-lg font-bold text-green-600">AED {car.totalEarnings.toLocaleString()}</div>
                             <div className="text-xs text-green-700">Total Earnings</div>
                           </div>
                           <div className="text-center p-3 bg-red-50 rounded">
-                            <div className="text-lg font-bold text-red-600">${car.totalExpenses.toLocaleString()}</div>
+                            <div className="text-lg font-bold text-red-600">AED {car.totalExpenses.toLocaleString()}</div>
                             <div className="text-xs text-red-700">Total Expenses</div>
                           </div>
                           <div className="text-center p-3 bg-blue-50 rounded">
                             <div className={`text-lg font-bold ${car.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              ${car.totalNetProfit.toLocaleString()}
+                              AED {car.totalNetProfit.toLocaleString()}
                             </div>
                             <div className="text-xs text-gray-700">Net Profit</div>
                           </div>

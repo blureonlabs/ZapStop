@@ -114,7 +114,7 @@ serve(async (req) => {
       { data: expenses, error: expensesError },
       { data: attendance, error: attendanceError }
     ] = await Promise.all([
-      supabaseClient.from('users').select('id, name, assigned_car_id, role'),
+      supabaseClient.from('users').select('id, name, assigned_car_id, role').eq('role', 'driver'),
       supabaseClient.from('cars').select('id, plate_number, monthly_due, assigned_driver_id'),
       supabaseClient.from('owners').select('id'),
       supabaseClient

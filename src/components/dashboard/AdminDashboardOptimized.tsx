@@ -243,9 +243,9 @@ export default function AdminDashboardOptimized() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${companyStats.totalEarnings.toLocaleString()}</div>
+            <div className="text-2xl font-bold">AED {companyStats.totalEarnings.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              Mandatory dues: ${companyStats.totalMandatoryDues.toLocaleString()}
+              Mandatory dues: AED {companyStats.totalMandatoryDues.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -257,10 +257,10 @@ export default function AdminDashboardOptimized() {
           </CardHeader>
           <CardContent>
             <div className={`text-2xl font-bold ${companyStats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              ${companyStats.netProfit.toLocaleString()}
+              AED {companyStats.netProfit.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              Expenses: ${companyStats.totalExpenses.toLocaleString()}
+              Expenses: AED {companyStats.totalExpenses.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -299,7 +299,7 @@ export default function AdminDashboardOptimized() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                    <Tooltip formatter={(value) => `AED ${value.toLocaleString()}`} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -316,7 +316,7 @@ export default function AdminDashboardOptimized() {
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" />
                     <YAxis />
-                    <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                    <Tooltip formatter={(value) => `AED ${value.toLocaleString()}`} />
                     <Line type="monotone" dataKey="uber" stroke="#3b82f6" name="Uber" />
                     <Line type="monotone" dataKey="bolt" stroke="#10b981" name="Bolt" />
                     <Line type="monotone" dataKey="individual" stroke="#f59e0b" name="Individual" />
@@ -340,13 +340,13 @@ export default function AdminDashboardOptimized() {
                   <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h3 className="font-medium">{car.car}</h3>
-                      <p className="text-sm text-gray-600">Monthly Due: ${car.due.toLocaleString()}</p>
+                      <p className="text-sm text-gray-600">Monthly Due: AED {car.due.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">Earnings: ${car.earnings.toLocaleString()}</p>
-                      <p className="text-sm text-gray-600">Expenses: ${car.expenses.toLocaleString()}</p>
+                      <p className="font-medium">Earnings: AED {car.earnings.toLocaleString()}</p>
+                      <p className="text-sm text-gray-600">Expenses: AED {car.expenses.toLocaleString()}</p>
                       <p className={`font-bold ${car.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        Net: ${car.net.toLocaleString()}
+                        Net: AED {car.net.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -370,10 +370,10 @@ export default function AdminDashboardOptimized() {
                       <h3 className="font-medium">{driver.driver}</h3>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">Earnings: ${driver.earnings.toLocaleString()}</p>
-                      <p className="text-sm text-gray-600">Expenses: ${driver.expenses.toLocaleString()}</p>
+                      <p className="font-medium">Earnings: AED {driver.earnings.toLocaleString()}</p>
+                      <p className="text-sm text-gray-600">Expenses: AED {driver.expenses.toLocaleString()}</p>
                       <p className={`font-bold ${driver.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        Net: ${driver.net.toLocaleString()}
+                        Net: AED {driver.net.toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -395,7 +395,7 @@ export default function AdminDashboardOptimized() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="type" />
                   <YAxis />
-                  <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+                  <Tooltip formatter={(value) => `AED ${value.toLocaleString()}`} />
                   <Bar dataKey="amount" fill="#ef4444" />
                 </BarChart>
               </ResponsiveContainer>

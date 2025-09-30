@@ -1,0 +1,6 @@
+# Quick fix for the Edge Function
+# Copy this line and replace line 117 in your calculate-dashboard-stats Edge Function:
+
+supabaseClient.from('users').select('id, name, assigned_car_id, role').eq('role', 'driver'),
+
+# This will filter out admin and accountant users from the driver performance view
