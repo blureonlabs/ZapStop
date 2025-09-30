@@ -57,6 +57,7 @@ CREATE TABLE driver_expenses (
     date DATE NOT NULL,
     expense_type VARCHAR(255) NOT NULL,
     amount DECIMAL(10,2) NOT NULL,
+    description TEXT,
     proof_url TEXT,
     status expense_status DEFAULT 'pending',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

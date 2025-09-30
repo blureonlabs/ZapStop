@@ -28,7 +28,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Building2
+  Building2,
+  Edit3
 } from 'lucide-react'
 import Logo from './logo'
 import { toast } from 'sonner'
@@ -151,6 +152,12 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       path: appUser?.role === 'admin' ? '/dashboard/leave-management' : '/dashboard/leave',
       icon: Calendar,
       roles: ['admin', 'driver']
+    },
+    {
+      name: 'Manual Update',
+      path: '/dashboard/manual-update',
+      icon: Edit3,
+      roles: ['admin', 'accountant']
     },
   ]
 
