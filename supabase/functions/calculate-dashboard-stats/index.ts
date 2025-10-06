@@ -48,10 +48,17 @@ interface DashboardStats {
   }>
 }
 
+function formatDateLocal(d: Date) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 function getDateRange(timeFilter: string) {
   const now = new Date()
   const start = new Date()
-  
+
   switch (timeFilter) {
     case 'daily':
       start.setDate(now.getDate() - 1)
@@ -74,10 +81,10 @@ function getDateRange(timeFilter: string) {
     default:
       start.setMonth(now.getMonth() - 1)
   }
-  
+
   return {
-    start: start.toISOString().split('T')[0],
-    end: now.toISOString().split('T')[0]
+    start: formatDateLocal(start),
+    end: formatDateLocal(now)
   }
 }
 
@@ -100,10 +107,15 @@ serve(async (req) => {
     )
 
     // Get request body
-    const { timeFilter = 'monthly' } = await req.json()
+    const body = await req.json()
+    const { timeFilter = 'monthly', startDate, endDate } = body || {}
 
-    // Get date range
-    const dateRange = getDateRange(timeFilter)
+    // Get date range - prefer explicit start/end if provided
+    const dateRange = (startDate && endDate)
+      ? { start: String(startDate), end: String(endDate) }
+      : getDateRange(timeFilter)
+
+    console.log('calculate-dashboard-stats dateRange =>', dateRange)
 
     // Fetch all required data in parallel
     const [
@@ -131,7 +143,7 @@ serve(async (req) => {
       supabaseClient
         .from('attendance')
         .select('*')
-        .eq('date', new Date().toISOString().split('T')[0])
+        .eq('date', formatDateLocal(new Date()))
     ])
 
     // Check for errors
@@ -256,8 +268,25 @@ serve(async (req) => {
       expensesByType
     }
 
+    // Meta/debug information to validate filters end-to-end
+    const meta = {
+      dateRange,
+      earnings: {
+        count: earnings?.length || 0,
+        minDate: earnings && earnings.length ? earnings.reduce((min, e) => e.date < min ? e.date : min, earnings[0].date) : null,
+        maxDate: earnings && earnings.length ? earnings.reduce((max, e) => e.date > max ? e.date : max, earnings[0].date) : null,
+        total: totalEarnings
+      },
+      expenses: {
+        count: expenses?.length || 0,
+        minDate: expenses && expenses.length ? expenses.reduce((min, e) => e.date < min ? e.date : min, expenses[0].date) : null,
+        maxDate: expenses && expenses.length ? expenses.reduce((max, e) => e.date > max ? e.date : max, expenses[0].date) : null,
+        total: totalExpenses
+      }
+    }
+
     return new Response(
-      JSON.stringify({ success: true, data: dashboardStats }),
+      JSON.stringify({ success: true, data: dashboardStats, meta }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

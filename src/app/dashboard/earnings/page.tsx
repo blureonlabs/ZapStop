@@ -97,7 +97,13 @@ export default function EarningsPage() {
         if (reset) {
           setEarnings(newEarnings)
         } else {
-          setEarnings(prev => [...prev, ...newEarnings])
+          // Merge uniquely by id to avoid duplicate keys when paginating
+          setEarnings(prev => {
+            const byId = new Map<string, DriverEarning>()
+            for (const e of prev) byId.set(e.id, e)
+            for (const e of newEarnings) byId.set(e.id, e)
+            return Array.from(byId.values())
+          })
         }
         
         setHasMore(newEarnings.length === itemsPerPage)
