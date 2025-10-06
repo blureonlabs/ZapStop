@@ -94,6 +94,20 @@ export default function OwnerDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly'>('monthly')
 
+  // Safely compute total earnings for a single earning record, tolerating missing columns
+  const getEarningTotal = useCallback((earning: Partial<DriverEarning> & Record<string, any>) => {
+    const uberCash = Number(earning.uber_cash) || 0
+    const uberAccount = Number(earning.uber_account) || 0
+    const boltCash = Number(earning.bolt_cash) || 0
+    const boltAccount = Number(earning.bolt_account) || 0
+
+    // Fallback to individual_cash if newer individual_rides_* fields are absent
+    const individualCash = Number(earning.individual_rides_cash ?? earning.individual_cash) || 0
+    const individualAccount = Number(earning.individual_rides_account ?? 0) || 0
+
+    return uberCash + uberAccount + boltCash + boltAccount + individualCash + individualAccount
+  }, [])
+
   const fetchOwnerData = useCallback(async () => {
     if (!appUser || appUser.role !== 'owner') return
 
@@ -229,8 +243,7 @@ export default function OwnerDashboard() {
         const activeAttendance = activeAttendanceData.data || []
 
         // Calculate financial data
-        const totalEarnings = earnings.reduce((sum, earning) => 
-          sum + earning.uber_cash + earning.uber_account + earning.bolt_cash + earning.bolt_account + earning.individual_rides_cash + earning.individual_rides_account, 0)
+        const totalEarnings = earnings.reduce((sum, earning) => sum + getEarningTotal(earning), 0)
 
         const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
         const netProfit = totalEarnings - totalExpenses
@@ -262,6 +275,24 @@ export default function OwnerDashboard() {
               bolt_account,
               individual_rides_cash,
               individual_rides_account
+            )
+          `)
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', now.toISOString().split('T')[0])
+
+        // Fetch expenses-car mappings for accurate attribution
+        const { data: expensesMappings } = await supabase
+          .from('expenses_car_mapping')
+          .select(`
+            id,
+            expense_id,
+            car_id,
+            date,
+            driver_expenses!expenses_car_mapping_expense_id_fkey (
+              id,
+              driver_id,
+              amount,
+              status
             )
           `)
           .gte('date', startDate.toISOString().split('T')[0])
@@ -304,10 +335,12 @@ export default function OwnerDashboard() {
           }
         })
 
-        // Calculate car performance with driver attribution using earnings-car mapping
+        // Calculate car performance with driver attribution using earnings/expenses car mappings
         const carPerformanceData: CarPerformance[] = ownerCars.map(car => {
           // Get earnings mappings for this specific car
           const carEarningsMappings = earningsMappings?.filter(mapping => mapping.car_id === car.id) || []
+          // Get expenses mappings for this specific car
+          const carExpensesMappings = expensesMappings?.filter(mapping => mapping.car_id === car.id) || []
           
           // Get all drivers who have earnings for this car
           const carDriverIds = new Set<string>()
@@ -324,9 +357,11 @@ export default function OwnerDashboard() {
             }
           })
           
-          // Also add drivers from expenses and attendance for this car
-          expenses.forEach(expense => {
-            if (expense.driver_id) carDriverIds.add(expense.driver_id)
+          // Also add drivers from expenses mappings and attendance for this car
+          carExpensesMappings.forEach(mapping => {
+            if (mapping.driver_expenses && 'driver_id' in mapping.driver_expenses) {
+              carDriverIds.add(mapping.driver_expenses.driver_id as string)
+            }
           })
           attendance.forEach(att => {
             if (att.driver_id) carDriverIds.add(att.driver_id)
@@ -347,9 +382,16 @@ export default function OwnerDashboard() {
                 return sum
               }, 0)
 
-            const driverExpenses = expenses
-              .filter(e => e.driver_id === driverId)
-              .reduce((sum, e) => sum + e.amount, 0)
+            // Get expenses for this driver from the car's expenses mappings (approved only)
+            const driverExpenses = carExpensesMappings
+              .filter(mapping => mapping.driver_expenses && 'driver_id' in mapping.driver_expenses && mapping.driver_expenses.driver_id === driverId)
+              .reduce((sum, mapping) => {
+                const exp = mapping.driver_expenses as any
+                if (exp && (exp.status === 'approved' || exp.status === 'approved' as any)) {
+                  return sum + (Number(exp.amount) || 0)
+                }
+                return sum
+              }, 0)
 
             const driverWorkHours = attendance
               .filter(a => a.driver_id === driverId)
@@ -410,7 +452,7 @@ export default function OwnerDashboard() {
           if (!financialDataByDate[date]) {
             financialDataByDate[date] = { earnings: 0, expenses: 0 }
           }
-          financialDataByDate[date].earnings += earning.uber_cash + earning.uber_account + earning.bolt_cash + earning.bolt_account + earning.individual_rides_cash + earning.individual_rides_account
+          financialDataByDate[date].earnings += getEarningTotal(earning)
         })
 
         expenses.forEach(expense => {
