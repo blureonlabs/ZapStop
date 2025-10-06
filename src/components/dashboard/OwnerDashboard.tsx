@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, startTransition } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase, Owner, Car, DriverEarning, DriverExpense, Attendance } from '@/lib/supabase'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,6 +40,8 @@ interface OwnerStats {
   totalWorkHours: number
   averageEarningsPerCar: number
   averageEarningsPerDriver: number
+  totalDue: number
+  monthlyProfit: number
 }
 
 interface FinancialData {
@@ -66,6 +68,8 @@ interface CarPerformance {
   totalExpenses: number
   totalNetProfit: number
   totalWorkHours: number
+  monthlyDue: number
+  monthlyProfit: number
   currentDriverName?: string
   isActive: boolean
   driverContributions: DriverContribution[]
@@ -88,11 +92,32 @@ export default function OwnerDashboard() {
     unassignedCars: 0,
     totalWorkHours: 0,
     averageEarningsPerCar: 0,
-    averageEarningsPerDriver: 0
+    averageEarningsPerDriver: 0,
+    totalDue: 0,
+    monthlyProfit: 0
   })
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly'>('monthly')
+  const [selectedTab, setSelectedTab] = useState<'fleet' | 'financial' | 'drivers' | 'performance'>('fleet')
+
+  // Load saved tab on mount and persist on change
+  useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('ownerSelectedTab') : null
+      if (saved === 'fleet' || saved === 'financial' || saved === 'drivers' || saved === 'performance') {
+        setSelectedTab(saved as any)
+      }
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('ownerSelectedTab', selectedTab)
+      }
+    } catch {}
+  }, [selectedTab])
 
   // Safely compute total earnings for a single earning record, tolerating missing columns
   const getEarningTotal = useCallback((earning: Partial<DriverEarning> & Record<string, any>) => {
@@ -246,7 +271,6 @@ export default function OwnerDashboard() {
         const totalEarnings = earnings.reduce((sum, earning) => sum + getEarningTotal(earning), 0)
 
         const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
-        const netProfit = totalEarnings - totalExpenses
 
         // Calculate work hours
         const totalWorkHours = attendance.reduce((sum, att) => {
@@ -435,6 +459,8 @@ export default function OwnerDashboard() {
             totalEarnings,
             totalExpenses,
             totalNetProfit: totalEarnings - totalExpenses,
+            monthlyDue: Number(car.monthly_due) || 0,
+            monthlyProfit: (totalEarnings - totalExpenses) - (Number(car.monthly_due) || 0),
             totalWorkHours,
             currentDriverName: car.assigned_driver_id ? 
               (driverNamesMap.get(car.assigned_driver_id)?.name || 'Unknown Driver') : 
@@ -480,38 +506,52 @@ export default function OwnerDashboard() {
         console.log('Today active drivers:', todayActiveDrivers)
         console.log('Today date:', now.toISOString().split('T')[0])
         console.log('Driver IDs:', driverIds)
-        setActiveDrivers(todayActiveDrivers)
-        setFinancialData(financialChartData)
-        setCarPerformance(carPerformanceData)
+        startTransition(() => {
+          setActiveDrivers(todayActiveDrivers)
+          setFinancialData(financialChartData)
+          setCarPerformance(carPerformanceData)
+        })
 
         const assignedCars = ownerCars.filter(car => car.assigned_driver_id).length
         const unassignedCars = ownerCars.length - assignedCars
+        const totalDue = ownerCars.reduce((sum, car) => sum + (Number(car.monthly_due) || 0), 0)
+        const netProfit = totalEarnings - totalExpenses
+        const monthlyProfit = totalEarnings - totalExpenses - totalDue
 
-        setStats({
-          totalCars: ownerCars.length,
-          totalEarnings,
-          totalExpenses,
-          netProfit,
-          activeDrivers: activeAttendance.length,
-          assignedCars,
-          unassignedCars,
-          totalWorkHours: Math.round(totalWorkHours * 10) / 10,
-          averageEarningsPerCar: ownerCars.length > 0 ? Math.round(totalEarnings / ownerCars.length) : 0,
-          averageEarningsPerDriver: driverIds.length > 0 ? Math.round(totalEarnings / driverIds.length) : 0
+        startTransition(() => {
+          setStats({
+            totalCars: ownerCars.length,
+            totalEarnings,
+            totalExpenses,
+            netProfit,
+            activeDrivers: activeAttendance.length,
+            assignedCars,
+            unassignedCars,
+            totalWorkHours: Math.round(totalWorkHours * 10) / 10,
+            averageEarningsPerCar: ownerCars.length > 0 ? Math.round(totalEarnings / ownerCars.length) : 0,
+            averageEarningsPerDriver: driverIds.length > 0 ? Math.round(totalEarnings / driverIds.length) : 0,
+            totalDue,
+            monthlyProfit
+          })
         })
       } else {
         // No drivers assigned
-        setStats({
-          totalCars: ownerCars.length,
-          totalEarnings: 0,
-          totalExpenses: 0,
-          netProfit: 0,
-          activeDrivers: 0,
-          assignedCars: 0,
-          unassignedCars: ownerCars.length,
-          totalWorkHours: 0,
-          averageEarningsPerCar: 0,
-          averageEarningsPerDriver: 0
+        startTransition(() => {
+          const totalDue = ownerCars.reduce((sum, car) => sum + (Number(car.monthly_due) || 0), 0)
+          setStats({
+            totalCars: ownerCars.length,
+            totalEarnings: 0,
+            totalExpenses: 0,
+            netProfit: 0,
+            activeDrivers: 0,
+            assignedCars: 0,
+            unassignedCars: ownerCars.length,
+            totalWorkHours: 0,
+            averageEarningsPerCar: 0,
+            averageEarningsPerDriver: 0,
+            totalDue,
+            monthlyProfit: -totalDue
+          })
         })
       }
 
@@ -528,11 +568,13 @@ export default function OwnerDashboard() {
     fetchOwnerData()
   }, [fetchOwnerData])
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 30 seconds (only when tab is visible)
   useEffect(() => {
     const interval = setInterval(() => {
-      setRefreshing(true)
-      fetchOwnerData()
+      if (typeof document === 'undefined' || document.visibilityState === 'visible') {
+        setRefreshing(true)
+        fetchOwnerData()
+      }
     }, 30000)
 
     return () => clearInterval(interval)
@@ -617,7 +659,7 @@ export default function OwnerDashboard() {
       </div>
 
       {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Fleet Size</CardTitle>
@@ -659,6 +701,30 @@ export default function OwnerDashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">AED {stats.totalExpenses.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Approved expenses in period</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Profit</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${stats.monthlyProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              AED {stats.monthlyProfit.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">Earnings - Expenses - Dues (monthly)</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -674,7 +740,7 @@ export default function OwnerDashboard() {
       </div>
 
       {/* Tabs for different views */}
-      <Tabs defaultValue="fleet" className="space-y-6">
+      <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)} className="space-y-6">
         <TabsList>
           <TabsTrigger value="fleet">Fleet Overview</TabsTrigger>
           <TabsTrigger value="financial">Financial Analysis</TabsTrigger>
@@ -917,23 +983,27 @@ export default function OwnerDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
-                          <div className="text-center p-3 bg-green-50 rounded">
-                            <div className="text-lg font-bold text-green-600">AED {car.totalEarnings.toLocaleString()}</div>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+                          <div className="text-center p-2 bg-amber-50 rounded">
+                            <div className="text-base font-bold text-amber-600">AED {car.monthlyProfit.toLocaleString()}</div>
+                            <div className="text-xs text-amber-700">Monthly Profit</div>
+                          </div>
+                          <div className="text-center p-2 bg-green-50 rounded">
+                            <div className="text-base font-bold text-green-600">AED {car.totalEarnings.toLocaleString()}</div>
                             <div className="text-xs text-green-700">Total Earnings</div>
                           </div>
-                          <div className="text-center p-3 bg-red-50 rounded">
-                            <div className="text-lg font-bold text-red-600">AED {car.totalExpenses.toLocaleString()}</div>
+                          <div className="text-center p-2 bg-red-50 rounded">
+                            <div className="text-base font-bold text-red-600">AED {car.totalExpenses.toLocaleString()}</div>
                             <div className="text-xs text-red-700">Total Expenses</div>
                           </div>
-                          <div className="text-center p-3 bg-blue-50 rounded">
-                            <div className={`text-lg font-bold ${car.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          <div className="text-center p-2 bg-blue-50 rounded">
+                            <div className={`text-base font-bold ${car.totalNetProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                               AED {car.totalNetProfit.toLocaleString()}
                             </div>
                             <div className="text-xs text-gray-700">Net Profit</div>
                           </div>
-                          <div className="text-center p-3 bg-purple-50 rounded">
-                            <div className="text-lg font-bold text-purple-600">{car.totalWorkHours.toFixed(1)}h</div>
+                          <div className="text-center p-2 bg-purple-50 rounded">
+                            <div className="text-base font-bold text-purple-600">{car.totalWorkHours.toFixed(1)}h</div>
                             <div className="text-xs text-purple-700">Total Hours</div>
                           </div>
                         </div>
@@ -957,7 +1027,7 @@ export default function OwnerDashboard() {
                                     )}
                                   </div>
                                   <div className="flex space-x-4 text-gray-600">
-                                    <span>${driver.earnings.toFixed(0)}</span>
+                                    <span>AED {driver.earnings.toFixed(0)}</span>
                                     <span>{driver.workHours.toFixed(1)}h</span>
                                     <span>{driver.daysWorked}d</span>
                                   </div>
