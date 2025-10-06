@@ -11,21 +11,20 @@ export class EdgeFunctionsAPI {
   }
 
   // Analytics Functions
-  async calculateDashboardStats(timeFilter: string = 'monthly') {
+  async calculateDashboardStats(timeFilter: string = 'monthly', options?: { startDate?: string; endDate?: string }) {
     const { data, error } = await supabase.functions.invoke('calculate-dashboard-stats', {
-      body: { timeFilter }
+      body: { timeFilter, startDate: options?.startDate, endDate: options?.endDate }
     })
 
     if (error) {
       throw new Error(`Dashboard stats error: ${error.message}`)
     }
 
-    // Handle the response format from Edge Function
-    if (data.success && data.data) {
-      return data.data
-    } else {
-      throw new Error(data.error || 'Failed to fetch dashboard data')
+    // Return full payload (includes meta like dateRange)
+    if (data.success) {
+      return data
     }
+    throw new Error(data.error || 'Failed to fetch dashboard data')
   }
 
 
@@ -168,9 +167,8 @@ export const edgeFunctions = new EdgeFunctionsAPI()
 
 // Helper functions for common operations
 export const dashboardAPI = {
-  async getStats(timeFilter: string = 'monthly') {
-    const result = await edgeFunctions.calculateDashboardStats(timeFilter)
-    return result
+  async getStats(timeFilter: string = 'monthly', options?: { startDate?: string; endDate?: string }) {
+    return await edgeFunctions.calculateDashboardStats(timeFilter, options)
   }
 }
 
