@@ -191,11 +191,11 @@ export default function OwnerDashboard() {
     return uberCash + uberAccount + boltCash + boltAccount + individualCash + individualAccount
   }, [])
 
-  const fetchOwnerData = useCallback(async () => {
+  const fetchOwnerData = useCallback(async (silent = false) => {
     if (!appUser || appUser.role !== 'owner') return
 
     try {
-      if (!refreshing) setLoading(true)
+      if (!refreshing && !silent) setLoading(true)
       
       // Get owner details
       const { data: ownerData, error: ownerError } = await supabase
@@ -650,10 +650,14 @@ export default function OwnerDashboard() {
 
     } catch (error) {
       console.error('Error fetching owner data:', error)
-      toast.error('Failed to load owner dashboard data')
+      if (!silent) {
+        toast.error('Failed to load owner dashboard data')
+      }
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      if (!silent) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }, [appUser, dateRange, refreshing])
 
@@ -669,12 +673,12 @@ export default function OwnerDashboard() {
     fetchOwnerData()
   }, [fetchOwnerData])
 
-  // Auto-refresh every 30 seconds (only when tab is visible)
+  // Auto-refresh every 30 seconds (only when tab is visible) - silent refresh
   useEffect(() => {
     const interval = setInterval(() => {
       if (typeof document === 'undefined' || document.visibilityState === 'visible') {
-        setRefreshing(true)
-        fetchOwnerData()
+        // Silent refresh - don't show refreshing state
+        fetchOwnerData(true)
       }
     }, 30000)
 

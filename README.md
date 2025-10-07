@@ -43,9 +43,12 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://hawlxjipneluhzcxzpps.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhhd2x4amlwbmVsdWh6Y3h6cHBzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY5MTM1NTIsImV4cCI6MjA3MjQ4OTU1Mn0.oAzTG8sgtx9iTvpqeegcc-kC-zq7keNLDgUNWzlzbmI
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
+
+**⚠️ Important**: Never commit your `.env.local` file to version control!
 
 ### 3. Database Setup
 
@@ -58,13 +61,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzd
 You'll need to create user accounts through Supabase Auth:
 
 1. Go to Authentication > Users in your Supabase dashboard
-2. Create users with these emails:
-   - `admin@zapstop.com` (Admin role)
-   - `accountant@zapstop.com` (Accountant role)
-   - `driver1@zapstop.com` (Driver role)
-   - `driver2@zapstop.com` (Driver role)
-   - `driver3@zapstop.com` (Driver role)
-
+2. Create users with appropriate roles
 3. Update the user records in the `users` table to match the IDs from Supabase Auth
 
 ### 5. Run the Application
@@ -74,14 +71,6 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Demo Accounts
-
-The application comes with pre-configured demo accounts:
-
-- **Admin**: `admin@zapstop.com` / `admin123`
-- **Accountant**: `accountant@zapstop.com` / `accountant123`
-- **Driver**: `driver1@zapstop.com` / `driver123`
 
 ## Database Schema
 

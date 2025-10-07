@@ -90,16 +90,6 @@ export default function LoginPage() {
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
-          
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h4 className="font-medium text-sm text-gray-700 mb-2">Demo Accounts:</h4>
-            <div className="text-xs text-gray-600 space-y-1">
-              <div><strong>Admin:</strong> admin@zapstop.com / admin123</div>
-              <div><strong>Accountant:</strong> accountant@zapstop.com / accountant123</div>
-              <div><strong>Driver:</strong> driver1@zapstop.com / driver123</div>
-              <div><strong>Owner:</strong> nikitha@gmail.com / owner@123</div>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
