@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Building2, Users, Clock, MapPin, RefreshCw, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+import { Car as CarIcon, TrendingUp, DollarSign, Receipt, Building2, Users, Clock, MapPin, RefreshCw, AlertCircle, CheckCircle, XCircle, Calendar as CalendarIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts'
 
@@ -42,6 +42,8 @@ interface OwnerStats {
   averageEarningsPerDriver: number
   totalDue: number
   monthlyProfit: number
+  ownerNetEarnings: number
+  totalDriverCommission: number
 }
 
 interface FinancialData {
@@ -94,18 +96,29 @@ export default function OwnerDashboard() {
     averageEarningsPerCar: 0,
     averageEarningsPerDriver: 0,
     totalDue: 0,
-    monthlyProfit: 0
+    monthlyProfit: 0,
+    ownerNetEarnings: 0,
+    totalDriverCommission: 0
   })
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly'>('monthly')
-  const [selectedTab, setSelectedTab] = useState<'fleet' | 'financial' | 'drivers' | 'performance'>('fleet')
+  const [preset, setPreset] = useState<'today' | 'yesterday' | 'current_week' | 'current_month' | 'last_month' | 'custom'>('current_month')
+  const [timeFilter, setTimeFilter] = useState<'custom' | 'preset'>('preset')
+  const [dateRange, setDateRange] = useState<{ start: string; end: string }>(() => {
+    const now = new Date()
+    const start = new Date(now.getFullYear(), now.getMonth(), 1)
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const startStr = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`
+    const endStr = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, '0')}-${String(end.getDate()).padStart(2, '0')}`
+    return { start: startStr, end: endStr }
+  })
+  const [selectedTab, setSelectedTab] = useState<'fleet' | 'financial' | 'drivers' | 'performance' | 'daily-profit'>('fleet')
 
   // Load saved tab on mount and persist on change
   useEffect(() => {
     try {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('ownerSelectedTab') : null
-      if (saved === 'fleet' || saved === 'financial' || saved === 'drivers' || saved === 'performance') {
+      if (saved === 'fleet' || saved === 'financial' || saved === 'drivers' || saved === 'performance' || saved === 'daily-profit') {
         setSelectedTab(saved as any)
       }
     } catch {}
@@ -118,6 +131,51 @@ export default function OwnerDashboard() {
       }
     } catch {}
   }, [selectedTab])
+
+  const formatDate = (d: Date) => {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
+  const formatDisplayDate = (iso: string) => {
+    const d = new Date(iso + 'T00:00:00')
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' })
+  }
+
+  const applyPreset = (p: typeof preset) => {
+    const now = new Date()
+    let start = new Date(now)
+    let end = new Date(now)
+
+    switch (p) {
+      case 'today':
+        // start and end are today
+        break
+      case 'yesterday':
+        start.setDate(now.getDate() - 1)
+        end.setDate(now.getDate() - 1)
+        break
+      case 'current_week': {
+        // Start on Monday, end on Sunday in local time
+        const day = (now.getDay() + 6) % 7 // 0->Mon, 6->Sun
+        start.setDate(now.getDate() - day)
+        end = new Date(start)
+        end.setDate(start.getDate() + 6)
+        break
+      }
+      case 'current_month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1)
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        break
+      case 'last_month':
+        start = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        end = new Date(now.getFullYear(), now.getMonth(), 0)
+        break
+      case 'custom':
+        return // do not change range here
+    }
+
+    setDateRange({ start: formatDate(start), end: formatDate(end) })
+  }
 
   // Safely compute total earnings for a single earning record, tolerating missing columns
   const getEarningTotal = useCallback((earning: Partial<DriverEarning> & Record<string, any>) => {
@@ -201,30 +259,9 @@ export default function OwnerDashboard() {
       console.log('Enriched cars data:', enrichedCars)
       setCars(enrichedCars)
 
-      // Calculate date range
-      const now = new Date()
-      const startDate = new Date()
-      
-      switch (timeFilter) {
-        case 'daily':
-          startDate.setDate(now.getDate() - 1)
-          break
-        case 'weekly':
-          startDate.setDate(now.getDate() - 7)
-          break
-        case 'monthly':
-          startDate.setMonth(now.getMonth() - 1)
-          break
-        case '3months':
-          startDate.setMonth(now.getMonth() - 3)
-          break
-        case '6months':
-          startDate.setMonth(now.getMonth() - 6)
-          break
-        case 'yearly':
-          startDate.setFullYear(now.getFullYear() - 1)
-          break
-      }
+      // Use date range from state
+      const startDate = new Date(dateRange.start)
+      const endDate = new Date(dateRange.end)
 
       // Get driver IDs for owner's cars
       const driverIds = ownerCars
@@ -239,25 +276,25 @@ export default function OwnerDashboard() {
             .select('*')
             .in('driver_id', driverIds)
             .gte('date', startDate.toISOString().split('T')[0])
-            .lte('date', now.toISOString().split('T')[0]),
+            .lte('date', endDate.toISOString().split('T')[0]),
           supabase
             .from('driver_expenses')
             .select('*')
             .in('driver_id', driverIds)
             .eq('status', 'approved')
             .gte('date', startDate.toISOString().split('T')[0])
-            .lte('date', now.toISOString().split('T')[0]),
+            .lte('date', endDate.toISOString().split('T')[0]),
           supabase
             .from('attendance')
             .select('*')
             .in('driver_id', driverIds)
             .gte('date', startDate.toISOString().split('T')[0])
-            .lte('date', now.toISOString().split('T')[0]),
+            .lte('date', endDate.toISOString().split('T')[0]),
           supabase
             .from('attendance')
             .select('*')
             .in('driver_id', driverIds)
-            .eq('date', now.toISOString().split('T')[0])
+            .eq('date', new Date().toISOString().split('T')[0])
             .eq('status', 'present')
             .is('end_time', null)
         ])
@@ -266,11 +303,6 @@ export default function OwnerDashboard() {
         const expenses = expensesData.data || []
         const attendance = attendanceData.data || []
         const activeAttendance = activeAttendanceData.data || []
-
-        // Calculate financial data
-        const totalEarnings = earnings.reduce((sum, earning) => sum + getEarningTotal(earning), 0)
-
-        const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0)
 
         // Calculate work hours
         const totalWorkHours = attendance.reduce((sum, att) => {
@@ -302,7 +334,7 @@ export default function OwnerDashboard() {
             )
           `)
           .gte('date', startDate.toISOString().split('T')[0])
-          .lte('date', now.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
 
         // Fetch expenses-car mappings for accurate attribution
         const { data: expensesMappings } = await supabase
@@ -320,7 +352,7 @@ export default function OwnerDashboard() {
             )
           `)
           .gte('date', startDate.toISOString().split('T')[0])
-          .lte('date', now.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
 
         // Get all unique driver IDs from earnings mappings AND current assigned drivers
         const allDriverIds = new Set<string>()
@@ -499,12 +531,12 @@ export default function OwnerDashboard() {
           .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
         // Filter to only show today's active drivers
-        const todayActiveDrivers = activeAttendance.filter(att => att.date === now.toISOString().split('T')[0])
+        const todayActiveDrivers = activeAttendance.filter(att => att.date === new Date().toISOString().split('T')[0])
         
         // Update state
         console.log('All active attendance data:', activeAttendance)
         console.log('Today active drivers:', todayActiveDrivers)
-        console.log('Today date:', now.toISOString().split('T')[0])
+        console.log('Today date:', new Date().toISOString().split('T')[0])
         console.log('Driver IDs:', driverIds)
         startTransition(() => {
           setActiveDrivers(todayActiveDrivers)
@@ -512,11 +544,46 @@ export default function OwnerDashboard() {
           setCarPerformance(carPerformanceData)
         })
 
+        // Calculate financial data using car performance data for consistency
+        const totalEarnings = carPerformanceData.reduce((sum, car) => sum + car.totalEarnings, 0)
+        const totalExpenses = carPerformanceData.reduce((sum, car) => sum + car.totalExpenses, 0)
+
         const assignedCars = ownerCars.filter(car => car.assigned_driver_id).length
         const unassignedCars = ownerCars.length - assignedCars
-        const totalDue = ownerCars.reduce((sum, car) => sum + (Number(car.monthly_due) || 0), 0)
+        
+        // Calculate timeframe-specific dues (not monthly dues)
+        const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+        
+        // Calculate daily due based on actual days in each month of the period
+        let timeframeDue = 0
+        let currentDate = new Date(startDate)
+
+        while (currentDate <= endDate) {
+          const daysInCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+          
+          // Calculate days in this month that are within our range
+          const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+          const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+          
+          const rangeStart = currentDate > startDate ? currentDate : startDate
+          const rangeEnd = endDate < monthEnd ? endDate : monthEnd
+          const daysInRange = Math.max(0, Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+          
+          // Add due for this month's portion for all cars
+          const monthlyDueForAllCars = ownerCars.reduce((sum, car) => sum + (Number(car.monthly_due) || 0), 0)
+          const dailyDueForThisMonth = monthlyDueForAllCars / daysInCurrentMonth
+          timeframeDue += dailyDueForThisMonth * daysInRange
+          
+          // Move to next month
+          currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+        }
+        
         const netProfit = totalEarnings - totalExpenses
-        const monthlyProfit = totalEarnings - totalExpenses - totalDue
+        const monthlyProfit = totalEarnings - totalExpenses - timeframeDue
+
+        // Calculate total driver commission and owner net earnings for the period
+        const totalDriverCommission = netProfit * 0.30; // 30% of net profit before dues
+        const ownerNetEarnings = netProfit - totalDriverCommission - timeframeDue; // Owner profit after commission and timeframe dues
 
         startTransition(() => {
           setStats({
@@ -530,14 +597,38 @@ export default function OwnerDashboard() {
             totalWorkHours: Math.round(totalWorkHours * 10) / 10,
             averageEarningsPerCar: ownerCars.length > 0 ? Math.round(totalEarnings / ownerCars.length) : 0,
             averageEarningsPerDriver: driverIds.length > 0 ? Math.round(totalEarnings / driverIds.length) : 0,
-            totalDue,
-            monthlyProfit
+            totalDue: timeframeDue,
+            monthlyProfit,
+            ownerNetEarnings, // Added new stat
+            totalDriverCommission // Added new stat
           })
         })
       } else {
         // No drivers assigned
         startTransition(() => {
-          const totalDue = ownerCars.reduce((sum, car) => sum + (Number(car.monthly_due) || 0), 0)
+          // Calculate timeframe-specific dues for no drivers case
+          const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+          
+          let timeframeDue = 0
+          let currentDate = new Date(startDate)
+
+          while (currentDate <= endDate) {
+            const daysInCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+            
+            const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+            const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+            
+            const rangeStart = currentDate > startDate ? currentDate : startDate
+            const rangeEnd = endDate < monthEnd ? endDate : monthEnd
+            const daysInRange = Math.max(0, Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+            
+            const monthlyDueForAllCars = ownerCars.reduce((sum, car) => sum + (Number(car.monthly_due) || 0), 0)
+            const dailyDueForThisMonth = monthlyDueForAllCars / daysInCurrentMonth
+            timeframeDue += dailyDueForThisMonth * daysInRange
+            
+            currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+          }
+          
           setStats({
             totalCars: ownerCars.length,
             totalEarnings: 0,
@@ -549,8 +640,10 @@ export default function OwnerDashboard() {
             totalWorkHours: 0,
             averageEarningsPerCar: 0,
             averageEarningsPerDriver: 0,
-            totalDue,
-            monthlyProfit: -totalDue
+            totalDue: timeframeDue,
+            monthlyProfit: -timeframeDue,
+            ownerNetEarnings: -timeframeDue, // Added new stat
+            totalDriverCommission: 0 // Added new stat
           })
         })
       }
@@ -562,7 +655,15 @@ export default function OwnerDashboard() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [appUser, timeFilter, refreshing])
+  }, [appUser, dateRange, refreshing])
+
+  // Recompute date range when preset changes
+  useEffect(() => {
+    if (preset !== 'custom') {
+      applyPreset(preset)
+      setTimeFilter('preset')
+    }
+  }, [preset])
 
   useEffect(() => {
     fetchOwnerData()
@@ -584,10 +685,6 @@ export default function OwnerDashboard() {
     setRefreshing(true)
     await fetchOwnerData()
   }, [fetchOwnerData])
-
-  const handleTimeFilterChange = (value: 'daily' | 'weekly' | 'monthly' | '3months' | '6months' | 'yearly') => {
-    setTimeFilter(value)
-  }
 
   if (loading) {
     return (
@@ -626,43 +723,65 @@ export default function OwnerDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header with Refresh */}
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Owner Dashboard</h1>
-          <p className="text-gray-600 mt-1">Welcome back, {owner.name}</p>
+          <h1 className="text-3xl font-bold text-gray-900">Owner Dashboard</h1>
+          <p className="text-gray-600">Welcome back, {owner.name}</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <Button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            variant="outline"
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          <Select value={timeFilter} onValueChange={handleTimeFilterChange}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">Daily</SelectItem>
-              <SelectItem value="weekly">Weekly</SelectItem>
-              <SelectItem value="monthly">Monthly</SelectItem>
-              <SelectItem value="3months">3 Months</SelectItem>
-              <SelectItem value="6months">6 Months</SelectItem>
-              <SelectItem value="yearly">Yearly</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col items-end gap-1">
+          <div className="flex gap-3 items-center">
+            <Select value={preset} onValueChange={(value: any) => setPreset(value)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Today</SelectItem>
+                <SelectItem value="yesterday">Yesterday</SelectItem>
+                <SelectItem value="current_week">Current Week</SelectItem>
+                <SelectItem value="current_month">Current Month</SelectItem>
+                <SelectItem value="last_month">Last Month</SelectItem>
+                <SelectItem value="custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
+            {preset === 'custom' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={dateRange.start}
+                  onChange={(e) => setDateRange(r => ({ ...r, start: e.target.value }))}
+                  className="border rounded px-2 py-1 text-sm"
+                />
+                <span className="text-gray-500">to</span>
+                <input
+                  type="date"
+                  value={dateRange.end}
+                  onChange={(e) => setDateRange(r => ({ ...r, end: e.target.value }))}
+                  className="border rounded px-2 py-1 text-sm"
+                />
+              </div>
+            )}
+            <Button 
+              onClick={() => handleRefresh()} 
+              disabled={refreshing}
+              variant="outline"
+            >
+              {refreshing ? 'Refreshing...' : 'Refresh'}
+            </Button>
+          </div>
+          <div className="inline-flex items-center text-xs px-2 py-0.5 rounded-md bg-gray-50 text-gray-700 border border-gray-200 w-max whitespace-nowrap">
+            <CalendarIcon className="h-3.5 w-3.5 mr-1 text-gray-500" />
+            <span>{formatDisplayDate(dateRange.start)} – {formatDisplayDate(dateRange.end)}</span>
+          </div>
         </div>
       </div>
 
       {/* Enhanced Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Tile 1: Total Fleet */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Fleet Size</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Fleet</CardTitle>
             <CarIcon className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -673,9 +792,10 @@ export default function OwnerDashboard() {
           </CardContent>
         </Card>
 
+        {/* Tile 2: Total Active Drivers */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Active Drivers</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -686,19 +806,65 @@ export default function OwnerDashboard() {
           </CardContent>
         </Card>
 
+        {/* Tile 3: Net Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <CardTitle className="text-sm font-medium">Net Revenue</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">AED {stats.totalEarnings.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              AED {stats.averageEarningsPerCar} avg per car
+              Total earnings for timeframe
             </p>
           </CardContent>
         </Card>
 
+        {/* Tile 4: Net Earnings */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Net Earnings</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${(stats.ownerNetEarnings || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              AED {(stats.ownerNetEarnings || 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              After commission & dues & expenses
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Tile 5: Total Commission */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Commission</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">AED {(stats.totalDriverCommission || 0).toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              30% of net revenue
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Tile 6: Total Dues */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Dues</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">AED {(stats.totalDue || 0).toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              Timeframe-specific dues
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Tile 7: Total Expenses */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
@@ -707,34 +873,6 @@ export default function OwnerDashboard() {
           <CardContent>
             <div className="text-2xl font-bold">AED {stats.totalExpenses.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">Approved expenses in period</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Profit</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.monthlyProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              AED {stats.monthlyProfit.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">Earnings - Expenses - Dues (monthly)</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Net Profit</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className={`text-2xl font-bold ${stats.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              AED {stats.netProfit.toLocaleString()}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.totalWorkHours}h total work time
-            </p>
           </CardContent>
         </Card>
       </div>
@@ -746,6 +884,7 @@ export default function OwnerDashboard() {
           <TabsTrigger value="financial">Financial Analysis</TabsTrigger>
           <TabsTrigger value="drivers">Active Drivers</TabsTrigger>
           <TabsTrigger value="performance">Car Performance</TabsTrigger>
+          <TabsTrigger value="daily-profit">Daily Profit</TabsTrigger>
         </TabsList>
 
         {/* Fleet Overview Tab */}
@@ -1038,6 +1177,154 @@ export default function OwnerDashboard() {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Daily Profit Tab */}
+        <TabsContent value="daily-profit" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daily Profit Analysis</CardTitle>
+              <CardDescription>Daily earnings, driver commissions, dues, and owner profit breakdown</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                {carPerformance.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <TrendingUp className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                    <p>No profit data available for the selected period</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {carPerformance.map((car) => {
+                      // Calculate daily due based on the selected period
+                      const startDate = new Date(dateRange.start)
+                      const endDate = new Date(dateRange.end)
+                      const totalDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+                      
+                      // Calculate daily due based on actual days in each month of the period
+                      let totalDue = 0
+                      let currentDate = new Date(startDate)
+                      
+                      while (currentDate <= endDate) {
+                        const daysInCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
+                        const dailyDueForThisMonth = car.monthlyDue / daysInCurrentMonth
+                        
+                        // Calculate days in this month that are within our range
+                        const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+                        const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+                        
+                        const rangeStart = currentDate > startDate ? currentDate : startDate
+                        const rangeEnd = endDate < monthEnd ? endDate : monthEnd
+                        const daysInRange = Math.max(0, Math.ceil((rangeEnd.getTime() - rangeStart.getTime()) / (1000 * 60 * 60 * 24)) + 1)
+                        
+                        // Add due for this month's portion
+                        totalDue += dailyDueForThisMonth * daysInRange
+                        
+                        // Move to next month
+                        currentDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+                      }
+                      
+                      // Calculate average daily due for display
+                      const dailyDue = totalDue / totalDays
+                      
+                      // Use total amounts for the period (not daily averages)
+                      const totalEarnings = car.totalEarnings
+                      const totalExpenses = car.totalExpenses
+                      const totalNetProfit = totalEarnings - totalExpenses
+                      
+                      // Driver commission (30% of net profit before dues)
+                      const totalDriverCommission = totalNetProfit * 0.30
+                      
+                      // Owner profit after driver commission and total due
+                      const totalOwnerProfit = totalNetProfit - totalDriverCommission - totalDue
+                      
+                      return (
+                        <div key={car.carId} className="p-6 border rounded-lg bg-gradient-to-r from-blue-50 to-green-50">
+                          <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <CarIcon className="h-8 w-8 text-blue-600" />
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-bold">{car.plateNumber}</h3>
+                                <p className="text-gray-600">{car.model}</p>
+                                <p className="text-sm text-gray-500">
+                                  Driver: {car.currentDriverName || 'Unassigned'}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm text-gray-600 mb-1">Period: {totalDays} days</div>
+                              <div className="text-sm text-gray-600">Daily Due: AED {dailyDue.toFixed(2)} (weighted by month)</div>
+                            </div>
+                          </div>
+                          
+                          {/* Daily Profit Breakdown */}
+                          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+                            <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
+                              <div className="text-lg font-bold text-green-600">AED {totalEarnings.toFixed(2)}</div>
+                              <div className="text-sm text-green-700">Total Earnings</div>
+                            </div>
+                            <div className="text-center p-4 bg-red-50 rounded-lg border border-red-200">
+                              <div className="text-lg font-bold text-red-600">AED {totalExpenses.toFixed(2)}</div>
+                              <div className="text-sm text-red-700">Total Expenses</div>
+                            </div>
+                            <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
+                              <div className="text-lg font-bold text-blue-600">AED {totalNetProfit.toFixed(2)}</div>
+                              <div className="text-sm text-blue-700">Total Net Profit</div>
+                            </div>
+                            <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
+                              <div className="text-lg font-bold text-purple-600">AED {totalDriverCommission.toFixed(2)}</div>
+                              <div className="text-sm text-purple-700">Driver Commission (30%)</div>
+                            </div>
+                            <div className="text-center p-4 bg-amber-50 rounded-lg border border-amber-200">
+                              <div className={`text-lg font-bold ${totalOwnerProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                AED {totalOwnerProfit.toFixed(2)}
+                              </div>
+                              <div className="text-sm text-amber-700">Owner Total Profit</div>
+                            </div>
+                          </div>
+                          
+                          {/* Calculation Breakdown */}
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <h4 className="font-semibold text-gray-800 mb-3">Period Profit Calculation:</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Total Earnings ({totalDays} days):</span>
+                                <span className="font-medium">AED {totalEarnings.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Total Expenses:</span>
+                                <span className="font-medium">- AED {totalExpenses.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between border-t pt-2">
+                                <span>Total Net Profit:</span>
+                                <span className="font-medium">AED {totalNetProfit.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Driver Commission (30%):</span>
+                                <span className="font-medium">- AED {totalDriverCommission.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Total Due ({totalDays} days × AED {dailyDue.toFixed(2)} daily):</span>
+                                <span className="font-medium">- AED {totalDue.toFixed(2)}</span>
+                              </div>
+                              <div className="flex justify-between border-t pt-2 font-bold text-lg">
+                                <span>Owner Total Profit:</span>
+                                <span className={totalOwnerProfit >= 0 ? 'text-green-600' : 'text-red-600'}>
+                                  AED {totalOwnerProfit.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 )}
               </div>
