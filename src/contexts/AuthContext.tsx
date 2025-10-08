@@ -17,7 +17,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [appUser, setAppUser] = useState<AppUser | null>(null)
-  const [loading, setLoading] = useState(false) // Start with false for faster initial render
+  const [loading, setLoading] = useState(true) // Start with true to prevent premature redirects
 
   useEffect(() => {
     // Get initial session
@@ -31,6 +31,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAppUser(null)
         setLoading(false)
       }
+    }).catch((error) => {
+      console.error('Error getting initial session:', error)
+      setUser(null)
+      setAppUser(null)
+      setLoading(false)
     })
 
     // Listen for auth changes
