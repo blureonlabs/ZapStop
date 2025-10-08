@@ -3,6 +3,7 @@ import { Poppins } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { Toaster } from '@/components/ui/sonner'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import Script from 'next/script'
 
 const poppins = Poppins({
@@ -49,6 +50,7 @@ export default function RootLayout({
           {children}
           <Toaster />
         </AuthProvider>
+        <SpeedInsights />
         <Script
           id="register-sw"
           strategy="afterInteractive"
