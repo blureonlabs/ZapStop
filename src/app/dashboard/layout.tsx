@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import Sidebar from '@/components/ui/sidebar'
-import { Menu, User, Settings, LogOut } from 'lucide-react'
+import { Menu, User, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -44,11 +44,7 @@ export default function DashboardLayout({
   }
 
   const handleProfile = () => {
-    toast.info('Profile feature coming soon!')
-  }
-
-  const handleSettings = () => {
-    toast.info('Settings feature coming soon!')
+    router.push('/dashboard/profile')
   }
 
   const handleLogout = async () => {
@@ -137,10 +133,6 @@ export default function DashboardLayout({
                 <DropdownMenuItem onClick={handleProfile}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSettings}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
