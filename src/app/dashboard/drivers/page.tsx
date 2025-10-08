@@ -170,7 +170,7 @@ export default function DriversPage() {
         password: driverForm.password,
         phone: driverForm.phone,
         role: driverForm.role,
-        assigned_car_id: driverForm.assigned_car_id === 'none' ? null : driverForm.assigned_car_id || null
+        assigned_car_id: driverForm.assigned_car_id === 'none' ? undefined : driverForm.assigned_car_id || undefined
       })
 
       console.log('User created successfully:', result)
@@ -193,7 +193,7 @@ export default function DriversPage() {
       email: driver.email,
       phone: driver.phone || '',
       password: '', // Don't pre-fill password for editing
-      role: driver.role,
+      role: driver.role as 'driver',
       assigned_car_id: driver.assigned_car_id || 'none'
     })
     setShowDriverDialog(true)

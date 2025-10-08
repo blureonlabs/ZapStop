@@ -44,6 +44,7 @@ export interface User {
   assigned_car_id?: string
   documents?: Record<string, unknown>
   document_expiry_date?: string
+  password_updated_at?: string
   created_at: string
   updated_at: string
 }
@@ -79,6 +80,7 @@ export interface DriverEarning {
   uber_account: number
   bolt_cash: number
   bolt_account: number
+  individual_cash: number
   uber_rides_count: number
   bolt_rides_count: number
   individual_rides_count: number
