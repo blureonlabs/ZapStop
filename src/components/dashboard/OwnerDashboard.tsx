@@ -718,7 +718,7 @@ export default function OwnerDashboard() {
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold text-gray-900 mb-4">Owner Not Found</h2>
         <p className="text-gray-600 mb-4">Unable to find owner data for your account.</p>
-        <Button onClick={fetchOwnerData}>
+        <Button onClick={() => fetchOwnerData()}>
           Try Again
         </Button>
       </div>
