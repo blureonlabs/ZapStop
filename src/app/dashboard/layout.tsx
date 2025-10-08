@@ -53,12 +53,18 @@ export default function DashboardLayout({
 
   const handleLogout = async () => {
     try {
+      console.log('Dashboard layout logout initiated')
       await signOut()
-      router.push('/login')
+      
+      // Force redirect to login page
+      window.location.href = '/login'
       toast.success('Logged out successfully')
     } catch (error) {
       console.error('Logout error:', error)
       toast.error('Failed to logout')
+      
+      // Even if logout fails, try to redirect
+      window.location.href = '/login'
     }
   }
 

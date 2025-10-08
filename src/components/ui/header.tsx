@@ -31,12 +31,18 @@ export default function Header({ title, showUserMenu = true }: HeaderProps) {
 
   const handleLogout = async () => {
     try {
+      console.log('Header logout initiated')
       await signOut()
       toast.success('Logged out successfully')
-      router.push('/login')
+      
+      // Force redirect to login page
+      window.location.href = '/login'
     } catch (error) {
       console.error('Logout error:', error)
       toast.error('Failed to logout')
+      
+      // Even if logout fails, try to redirect
+      window.location.href = '/login'
     }
   }
 
