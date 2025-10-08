@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Settings, Key, Mail, Save } from 'lucide-react'
+import { Settings, Save } from 'lucide-react'
 import { toast } from 'sonner'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface AdminSettingsPanelProps {
   userId: string
@@ -17,7 +18,6 @@ interface AdminSettingsPanelProps {
 
 export function AdminSettingsPanel({ userId, userName, userEmail, userRole }: AdminSettingsPanelProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'password' | 'email'>('password')
   const [loading, setLoading] = useState(false)
   
   // Password form state
@@ -65,6 +65,7 @@ export function AdminSettingsPanel({ userId, userName, userEmail, userRole }: Ad
 
       toast.success(`Password for ${userName} (${userEmail}) changed successfully!`)
       setPasswordData({ newPassword: '', confirmPassword: '' })
+      setIsOpen(false)
     } catch (error) {
       console.error('Admin password change error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to change password')
@@ -106,9 +107,10 @@ export function AdminSettingsPanel({ userId, userName, userEmail, userRole }: Ad
         throw new Error(error.error || 'Failed to change email')
       }
 
-      toast.success(`Email for ${userName} changed to ${emailData.newEmail} successfully!`)
+      const result = await response.json()
+      toast.success(result.message || `Email for ${userName} changed to ${emailData.newEmail} successfully!`)
       setEmailData({ newEmail: '' })
-      setIsOpen(false) // Close the dialog on success
+      setIsOpen(false)
     } catch (error) {
       console.error('Admin email change error:', error)
       toast.error(error instanceof Error ? error.message : 'Failed to change email')
@@ -131,99 +133,75 @@ export function AdminSettingsPanel({ userId, userName, userEmail, userRole }: Ad
             Manage password and email for {userName} ({userEmail}). Role: {userRole}.
           </DialogDescription>
         </DialogHeader>
-        
-        {/* Tab Navigation */}
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg">
-          <button
-            onClick={() => setActiveTab('password')}
-            className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'password'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Key className="h-4 w-4 inline mr-1" />
-            Password
-          </button>
-          <button
-            onClick={() => setActiveTab('email')}
-            className={`flex-1 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              activeTab === 'email'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Mail className="h-4 w-4 inline mr-1" />
-            Email
-          </button>
-        </div>
-
-        {/* Password Tab */}
-        {activeTab === 'password' && (
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
-                placeholder="Enter new password"
-                required
-                minLength={6}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
-                placeholder="Confirm new password"
-                required
-                minLength={6}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Set New Password
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-
-        {/* Email Tab */}
-        {activeTab === 'email' && (
-          <form onSubmit={handleEmailSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="newEmail">New Email</Label>
-              <Input
-                id="newEmail"
-                type="email"
-                value={emailData.newEmail}
-                onChange={(e) => setEmailData({newEmail: e.target.value})}
-                placeholder="Enter new email"
-                required
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                ) : (
-                  <Save className="h-4 w-4 mr-2" />
-                )}
-                Set New Email
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
+        <Tabs defaultValue="password" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="password">Password</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
+          </TabsList>
+          <TabsContent value="password" className="pt-4">
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  placeholder="Enter new password"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  placeholder="Confirm new password"
+                  required
+                  minLength={6}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Set New Password
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+          <TabsContent value="email" className="pt-4">
+            <form onSubmit={handleEmailSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newEmail">New Email</Label>
+                <Input
+                  id="newEmail"
+                  type="email"
+                  value={emailData.newEmail}
+                  onChange={(e) => setEmailData({ ...emailData, newEmail: e.target.value })}
+                  placeholder="Enter new email"
+                  required
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" disabled={loading}>
+                  {loading ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  ) : (
+                    <Save className="h-4 w-4 mr-2" />
+                  )}
+                  Set New Email
+                </Button>
+              </DialogFooter>
+            </form>
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   )

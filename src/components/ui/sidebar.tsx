@@ -23,7 +23,6 @@ import {
   Calendar, 
   LogOut, 
   User, 
-  Settings, 
   Menu, 
   X,
   ChevronLeft,
@@ -62,9 +61,6 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     router.push('/dashboard/profile')
   }
 
-  const handleSettings = () => {
-    router.push('/dashboard/settings')
-  }
 
   const handleNavigation = (path: string) => {
     router.push(path)
@@ -294,10 +290,6 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                           <User className="mr-2 h-4 w-4" />
                           <span>Profile</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleSettings}>
-                          <Settings className="mr-2 h-4 w-4" />
-                          <span>Settings</span>
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>
                           <LogOut className="mr-2 h-4 w-4" />
@@ -350,10 +342,6 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                         <DropdownMenuItem onClick={handleProfile}>
                           <User className="mr-2 h-4 w-4" />
                           <span>Profile</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleSettings}>
-                          <Settings className="mr-2 h-4 w-4" />
-                          <span>Settings</span>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>

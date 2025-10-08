@@ -12,8 +12,12 @@ export default function DashboardPage() {
   const { appUser, loading } = useAuth()
   const router = useRouter()
 
+  // Debug logging
+  console.log('Dashboard render - loading:', loading, 'appUser:', appUser?.id, appUser?.role)
+
   useEffect(() => {
     if (!loading && !appUser) {
+      console.log('No appUser found, redirecting to login')
       router.push('/login')
     }
   }, [appUser, loading, router])
