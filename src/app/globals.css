@@ -56,6 +56,13 @@
   body {
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
+    font-display: swap; /* Improve font loading performance */
+  }
+  
+  /* Optimize font loading */
+  @font-face {
+    font-family: 'Poppins';
+    font-display: swap;
   }
 }
 

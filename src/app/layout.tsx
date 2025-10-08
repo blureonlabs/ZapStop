@@ -8,8 +8,9 @@ import Script from 'next/script'
 
 const poppins = Poppins({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['400', '600'], // Reduced from 5 weights to 2 most critical ones
   variable: '--font-poppins',
+  display: 'swap', // Add font-display: swap for better performance
 })
 
 export const metadata: Metadata = {
