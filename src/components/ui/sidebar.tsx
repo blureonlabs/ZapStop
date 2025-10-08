@@ -29,7 +29,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  Edit3
+  Edit3,
+  FileText
 } from 'lucide-react'
 import Logo from './logo'
 import { toast } from 'sonner'
@@ -158,6 +159,18 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
       path: '/dashboard/manual-update',
       icon: Edit3,
       roles: ['admin', 'accountant']
+    },
+    {
+      name: 'Earnings History',
+      path: '/dashboard/admin/earnings-history',
+      icon: FileText,
+      roles: ['admin', 'accountant']
+    },
+    {
+      name: 'Earnings History',
+      path: '/dashboard/owner/earnings-history',
+      icon: FileText,
+      roles: ['owner']
     },
   ]
 
