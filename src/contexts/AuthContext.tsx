@@ -39,9 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state change:', event, session?.user?.id)
       
-      // Only process auth changes for the current user
-      // Ignore events that don't affect the current session
+      // Handle different auth events
       if (event === 'SIGNED_OUT' || !session?.user) {
+        console.log('User signed out or no session')
         setUser(null)
         setAppUser(null)
         setLoading(false)
@@ -52,9 +52,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         fetchAppUser(session.user.id).catch((error) => {
           console.error('Error in fetchAppUser from onAuthStateChange:', error)
         })
+      } else if (event === 'USER_UPDATED') {
+        console.log('USER_UPDATED event - keeping current session')
+        // Don't change user state on USER_UPDATED events (like password changes)
+        // Just refresh the app user data if we have a current user
+        if (session.user && user?.id === session.user.id) {
+          fetchAppUser(session.user.id).catch((error) => {
+            console.error('Error refreshing app user after USER_UPDATED:', error)
+          })
+        }
+      } else {
+        console.log('Unhandled auth event:', event)
       }
-      // Ignore other events like 'USER_UPDATED' or 'PASSWORD_RECOVERY' 
-      // that shouldn't affect the current user's session
     })
 
     return () => subscription.unsubscribe()
@@ -231,6 +240,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
+      console.log('AuthContext signIn called with email:', email)
+      console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL)
+      console.log('Supabase Anon Key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,

@@ -59,11 +59,11 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   }
 
   const handleProfile = () => {
-    toast.info('Profile feature coming soon!')
+    router.push('/dashboard/profile')
   }
 
   const handleSettings = () => {
-    toast.info('Settings feature coming soon!')
+    router.push('/dashboard/settings')
   }
 
   const handleNavigation = (path: string) => {

@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Edit, Trash2, Users } from 'lucide-react'
 import { toast } from 'sonner'
+import { AdminSettingsPanel } from '@/components/admin/AdminSettingsPanel'
 
 export default function DriversPage() {
   const { appUser, loading: authLoading } = useAuth()
@@ -535,6 +536,12 @@ export default function DriversPage() {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
+          <AdminSettingsPanel
+            userId={driver.id}
+            userName={driver.name}
+            userEmail={driver.email}
+            userRole={driver.role}
+          />
                           <Button 
                             size="sm" 
                             variant="destructive"

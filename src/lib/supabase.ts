@@ -6,16 +6,24 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // Browser client using PKCE with cookies (no localStorage)
-export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    detectSessionInUrl: false,
+    persistSession: true,
+    autoRefreshToken: true
+  }
+})
 
 // Server client for Route Handlers / Server Components if needed
 export const createSupabaseServer = (cookies: {
-  get: (name: string) => { name: string, value: string } | undefined
-  set: (name: string, value: string, options: CookieOptions) => void
-  remove: (name: string, options: CookieOptions) => void
+  getAll: () => { name: string, value: string }[]
+  setAll: (cookies: { name: string, value: string, options?: CookieOptions }[]) => void
 }) =>
   createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies
+    cookies: {
+      getAll: cookies.getAll,
+      setAll: cookies.setAll
+    }
   })
 
 // Admin client for server-side operations (only if service key is available)

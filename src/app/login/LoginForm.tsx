@@ -27,17 +27,21 @@ export function LoginForm() {
     setLoading(true)
 
     try {
+      console.log('Attempting login with email:', email)
       const { error } = await signIn(email, password)
       
       if (error) {
+        console.error('Login error:', error)
         toast.error('Invalid credentials')
         setLoading(false)
       } else {
+        console.log('Login successful')
         toast.success('Login successful')
         // Don't redirect immediately - let the AuthContext handle the redirect
         // The useEffect in the main page will handle the redirect when user state is ready
       }
-    } catch {
+    } catch (err) {
+      console.error('Login exception:', err)
       toast.error('An error occurred during login')
       setLoading(false)
     }

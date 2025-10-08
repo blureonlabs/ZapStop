@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trash2, Edit, Plus, Car, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AdminSettingsPanel } from '@/components/admin/AdminSettingsPanel';
 
 interface Owner {
   id: string;
@@ -462,6 +463,12 @@ export default function OwnersPage() {
                       >
                         <Car className="h-4 w-4" />
                       </Button>
+          <AdminSettingsPanel
+            userId={owner.id}
+            userName={owner.name}
+            userEmail={owner.email}
+            userRole="owner"
+          />
                       <Button
                         size="sm"
                         variant="ghost"
