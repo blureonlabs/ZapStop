@@ -142,10 +142,16 @@ export default function AdminEarningsHistoryPage() {
       end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
     }
     
-    return {
+    const result = {
       start: formatDate(start),
       end: formatDate(end)
     }
+    
+    console.log(`Date range for ${dateRange}:`, result)
+    console.log('Start date object:', start)
+    console.log('End date object:', end)
+    
+    return result
   }
 
   // Fetch all cars
@@ -203,6 +209,7 @@ export default function AdminEarningsHistoryPage() {
       }
 
       const { start, end } = getDateRange()
+      console.log('Fetching earnings history for date range:', { start, end })
       
       // Fetch earnings-car mappings for all cars
       const { data: earningsMappings } = await supabase
@@ -283,6 +290,7 @@ export default function AdminEarningsHistoryPage() {
       console.log('Earnings mappings:', earningsMappings)
       console.log('Expenses mappings:', expensesMappings)
       console.log('Drivers data:', driversData)
+      console.log('Total earnings mappings found:', earningsMappings?.length || 0)
       console.log('Cars data:', carsData)
 
       // Process transactions
@@ -309,10 +317,10 @@ export default function AdminEarningsHistoryPage() {
       })
 
       earningsMappings?.forEach(mapping => {
-        const earning = mapping.driver_earnings
+        const earning = mapping.driver_earnings as any
         const carInfo = carMap.get(mapping.car_id)
         
-        if (!earning || !carInfo || !('driver_id' in earning)) return
+        if (!earning || !carInfo || !earning.driver_id) return
         
         const driverName = driverMap.get(earning.driver_id) || 'Unknown Driver'
         const ownerName = carInfo.owner?.name || 'Unknown Owner'
@@ -328,7 +336,10 @@ export default function AdminEarningsHistoryPage() {
         // Get expenses for this date and car
         const dailyExpenses = expensesMappings?.filter(exp => 
           exp.car_id === mapping.car_id && exp.date === mapping.date
-        ).reduce((sum, exp) => sum + (exp.driver_expenses?.amount || 0), 0) || 0
+        ).reduce((sum, exp) => {
+          const expense = exp.driver_expenses as any
+          return sum + (expense?.amount || 0)
+        }, 0) || 0
         
         // Calculate daily dues
         const daysInMonth = new Date(new Date(mapping.date).getFullYear(), new Date(mapping.date).getMonth() + 1, 0).getDate()
