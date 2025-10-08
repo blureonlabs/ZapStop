@@ -93,7 +93,7 @@ export default function ManualUpdatePanel() {
   const [expensesForm, setExpensesForm] = useState<ExpensesFormData>({
     driver_id: '',
     date: new Date().toISOString().split('T')[0],
-    expense_type: 'fuel',
+    expense_type: 'charging',
     amount: 0,
     description: '',
     proof_url: '',
@@ -128,11 +128,11 @@ export default function ManualUpdatePanel() {
     try {
       setLoading(true)
       
-      // Fetch drivers
+      // Fetch only drivers for expense management (not owners)
       const { data: driversData, error: driversError } = await supabase
         .from('users')
         .select('*')
-        .eq('role', 'driver')
+        .eq('role', 'driver') // Only drivers, not owners
         .order('name')
       
       if (driversError) throw driversError
@@ -249,7 +249,7 @@ export default function ManualUpdatePanel() {
 
   const handleExpensesSubmit = async () => {
     try {
-      // Validation
+      // Simple validation
       if (!expensesForm.driver_id || !expensesForm.date || !expensesForm.amount) {
         toast.error('Driver, date, and amount are required')
         return
@@ -259,41 +259,46 @@ export default function ManualUpdatePanel() {
         toast.error('Amount must be greater than 0')
         return
       }
-      
+
+      // Clean data object
+      const expenseData = {
+        driver_id: expensesForm.driver_id,
+        date: expensesForm.date,
+        expense_type: expensesForm.expense_type,
+        amount: Number(expensesForm.amount),
+        description: expensesForm.description || '',
+        proof_url: expensesForm.proof_url || null,
+        status: expensesForm.status || 'pending'
+      }
+
+      console.log('Saving expense:', expenseData)
+
       if (editingExpense) {
         // Update existing expense
         const { error } = await supabase
           .from('driver_expenses')
-          .update({
-            expense_type: expensesForm.expense_type,
-            amount: expensesForm.amount,
-            description: expensesForm.description,
-            proof_url: expensesForm.proof_url,
-            status: expensesForm.status,
-            updated_at: new Date().toISOString()
-          })
+          .update(expenseData)
           .eq('id', editingExpense.id)
         
-        if (error) throw error
+        if (error) {
+          console.error('Update error:', error)
+          throw error
+        }
         toast.success('Expense updated successfully')
       } else {
         // Create new expense
         const { error } = await supabase
           .from('driver_expenses')
-          .insert([expensesForm])
+          .insert([expenseData])
         
-        if (error) throw error
+        if (error) {
+          console.error('Insert error:', error)
+          throw error
+        }
         toast.success('Expense created successfully')
       }
       
-      // Log the action
-      await logAction('expenses', editingExpense ? 'update' : 'create', {
-        driver_id: expensesForm.driver_id,
-        date: expensesForm.date,
-        amount: expensesForm.amount,
-        type: expensesForm.expense_type
-      })
-      
+      // Close dialog and refresh
       setShowExpensesDialog(false)
       setEditingExpense(null)
       resetExpensesForm()
@@ -301,8 +306,7 @@ export default function ManualUpdatePanel() {
       
     } catch (error) {
       console.error('Error saving expense:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
-      toast.error(`Failed to save expense: ${errorMessage}`)
+      toast.error(`Failed to save expense: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -385,7 +389,8 @@ export default function ManualUpdatePanel() {
 
   const logAction = async (type: 'earnings' | 'expenses', action: string, data: any) => {
     try {
-      await supabase
+      // Check if admin_audit_logs table exists before trying to insert
+      const { error } = await supabase
         .from('admin_audit_logs')
         .insert([{
           admin_id: appUser?.id,
@@ -395,8 +400,14 @@ export default function ManualUpdatePanel() {
           details: JSON.stringify(data),
           created_at: new Date().toISOString()
         }])
+      
+      if (error) {
+        console.warn('Could not log action to admin_audit_logs:', error.message)
+        // Don't throw error - this is not critical for the main functionality
+      }
     } catch (error) {
-      console.error('Error logging action:', error)
+      console.warn('Error logging action (non-critical):', error)
+      // Don't throw error - this is not critical for the main functionality
     }
   }
 
@@ -421,7 +432,7 @@ export default function ManualUpdatePanel() {
     setExpensesForm({
       driver_id: '',
       date: new Date().toISOString().split('T')[0],
-      expense_type: 'fuel',
+      expense_type: 'charging',
       amount: 0,
       description: '',
       proof_url: '',
@@ -819,7 +830,7 @@ export default function ManualUpdatePanel() {
                                 earning.individual_rides_cash + earning.individual_rides_account
                     return (
                       <TableRow key={earning.id}>
-                        <TableCell>{earning.users?.name || 'Unknown'}</TableCell>
+                        <TableCell>{(earning as any).users?.name || 'Unknown'}</TableCell>
                         <TableCell>{earning.date}</TableCell>
                         <TableCell>
                           <div className="text-sm">
@@ -977,7 +988,7 @@ export default function ManualUpdatePanel() {
                           }}
                         />
                       </TableCell>
-                      <TableCell>{expense.users?.name || 'Unknown'}</TableCell>
+                      <TableCell>{(expense as any).users?.name || 'Unknown'}</TableCell>
                       <TableCell>{expense.date}</TableCell>
                       <TableCell>{expense.expense_type}</TableCell>
                       <TableCell className="font-medium">{expense.amount.toFixed(2)}</TableCell>
@@ -1485,7 +1496,7 @@ export default function ManualUpdatePanel() {
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="fuel">Fuel</SelectItem>
+                      <SelectItem value="charging">Charging</SelectItem>
                       <SelectItem value="maintenance">Maintenance</SelectItem>
                       <SelectItem value="insurance">Insurance</SelectItem>
                       <SelectItem value="toll">Toll</SelectItem>

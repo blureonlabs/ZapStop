@@ -88,7 +88,8 @@ export default function DriverDashboard() {
 
   const [expenseForm, setExpenseForm] = useState({
     amount: 0,
-    expense_type: 'fuel'
+    expense_type: 'charging',
+    description: ''
   })
   const [noExpenses, setNoExpenses] = useState(false)
 
@@ -109,10 +110,12 @@ export default function DriverDashboard() {
         .eq('status', 'approved')
         .lte('start_date', today)
         .gte('end_date', today)
-        .single()
+        .maybeSingle()
 
-      if (leaveError && leaveError.code !== 'PGRST116') {
+      if (leaveError) {
         console.error('Error checking leave status:', leaveError)
+        setIsOnLeave(false)
+        setLeaveInfo(null)
         return
       }
 
@@ -125,6 +128,8 @@ export default function DriverDashboard() {
       }
     } catch (error) {
       console.error('Error checking leave status:', error)
+      setIsOnLeave(false)
+      setLeaveInfo(null)
     }
   }
 
@@ -172,7 +177,7 @@ export default function DriverDashboard() {
         .select('*')
         .eq('driver_id', authUserId)
         .eq('date', today)
-        .single()
+        .maybeSingle()
       
       if (earningsError) {
         // If no earnings record exists for today, that's normal - don't log as error
@@ -220,7 +225,7 @@ export default function DriverDashboard() {
         .select('*')
         .eq('driver_id', authUserId)
         .eq('date', today)
-        .single()
+        .maybeSingle()
 
       if (expenseError) {
         // If no expense record exists for today, that's normal - don't log as error
@@ -229,7 +234,8 @@ export default function DriverDashboard() {
           setTodayExpense(null)
           setExpenseForm({
             amount: 0,
-            expense_type: 'fuel'
+            expense_type: 'charging',
+            description: ''
           })
         } else {
           console.error('Error fetching expense:', {
@@ -244,7 +250,8 @@ export default function DriverDashboard() {
         if (expenseData) {
           setExpenseForm({
             amount: expenseData.amount || 0,
-            expense_type: expenseData.expense_type || 'fuel'
+            expense_type: expenseData.expense_type || 'charging',
+            description: expenseData.description || ''
           })
         }
       }
@@ -255,7 +262,7 @@ export default function DriverDashboard() {
         .select('*')
         .eq('driver_id', authUserId)
         .eq('date', today)
-        .single()
+        .maybeSingle()
       
       if (attendanceError) {
         // If no attendance record exists for today, that's normal - don't log as error
@@ -462,59 +469,57 @@ export default function DriverDashboard() {
     try {
       setSubmittingExpense(true)
       
-      // Validate form
+      // Simple validation
       if (expenseForm.amount <= 0) {
         toast.error('Expense amount must be greater than 0')
-                      return
-                    }
+        return
+      }
+      
+      if (!appUser?.id) {
+        toast.error('User not authenticated')
+        return
+      }
                     
       const today = new Date().toISOString().split('T')[0]
-      console.log('Updating expense for date:', today)
-      console.log('Expense form data:', expenseForm)
-      console.log('App user ID:', appUser?.id)
+
+      // Clean data object
+      const expenseData = {
+        driver_id: appUser.id,
+        date: today,
+        amount: Number(expenseForm.amount),
+        expense_type: expenseForm.expense_type,
+        description: expenseForm.description || 'Daily expense',
+        status: 'pending'
+      }
 
       if (todayExpense) {
         // Update existing expense
-        console.log('Updating existing expense with ID:', todayExpense.id)
-                    const { data, error } = await supabase
-                      .from('driver_expenses')
-          .update({
-            amount: expenseForm.amount,
-            expense_type: expenseForm.expense_type
-          })
+        const { error } = await supabase
+          .from('driver_expenses')
+          .update(expenseData)
           .eq('id', todayExpense.id)
-                      .select()
                     
-        console.log('Expense update result:', { data, error })
-                    if (error) {
-          console.error('Supabase expense update error:', error)
+        if (error) {
+          console.error('Update error:', error)
           throw error
         }
-                    } else {
+      } else {
         // Create new expense
-        console.log('Creating new expense record')
-                    const { data, error } = await supabase
-                      .from('driver_expenses')
-                      .insert({
-            driver_id: appUser?.id,
-            date: today,
-            amount: expenseForm.amount,
-            expense_type: expenseForm.expense_type
-                      })
-                      .select()
+        const { error } = await supabase
+          .from('driver_expenses')
+          .insert([expenseData])
                     
-        console.log('Expense insert result:', { data, error })
-                    if (error) {
-          console.error('Supabase expense insert error:', error)
+        if (error) {
+          console.error('Insert error:', error)
           throw error
         }
       }
 
-      toast.success('Expense updated successfully!')
-                      fetchDriverData()
-                  } catch (error) {
-      console.error('Error updating expense:', error)
-      toast.error(`Failed to update expense: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      toast.success('Expense saved successfully!')
+      fetchDriverData()
+    } catch (error) {
+      console.error('Error saving expense:', error)
+      toast.error(`Failed to save expense: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setSubmittingExpense(false)
     }
@@ -857,11 +862,23 @@ export default function DriverDashboard() {
                   className="w-full h-9 px-3 py-2 border border-gray-300 rounded-md text-sm"
                   disabled={!isWorking || noExpenses}
                 >
-                  <option value="fuel">Fuel</option>
+                  <option value="charging">Charging</option>
                   <option value="maintenance">Maintenance</option>
                   <option value="food">Food</option>
                   <option value="other">Other</option>
                 </select>
+              </div>
+              <div>
+                <Label htmlFor="expense_description" className="text-xs">Description (Optional)</Label>
+                <Input
+                  id="expense_description"
+                  type="text"
+                  value={expenseForm.description}
+                  onChange={(e) => setExpenseForm({...expenseForm, description: e.target.value})}
+                  placeholder="Enter expense description"
+                  className="h-9"
+                  disabled={!isWorking || noExpenses}
+                />
               </div>
             </div>
             <Button 

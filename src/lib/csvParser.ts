@@ -238,7 +238,7 @@ function parseExpensesRow(headers: string[], values: string[], rowNumber: number
   }
 
   // Validate expense type
-  const validExpenseTypes = ['fuel', 'maintenance', 'insurance', 'toll', 'parking', 'other']
+  const validExpenseTypes = ['charging', 'maintenance', 'insurance', 'toll', 'parking', 'other']
   if (!validExpenseTypes.includes(row.expense_type)) {
     throw new Error(`Invalid expense type. Must be one of: ${validExpenseTypes.join(', ')}`)
   }
@@ -267,6 +267,6 @@ export function generateCSVTemplate(type: 'earnings' | 'expenses'): string {
 John Doe,john@example.com,2024-01-15,150.00,200.00,120.00,180.00,8,12,5,100.00,50.00,Good day`
   } else {
     return `driver_name,driver_email,date,expense_type,amount,description,proof_url,status
-John Doe,john@example.com,2024-01-15,fuel,45.50,Fuel for the day,,pending`
+John Doe,john@example.com,2024-01-15,charging,45.50,Charging for the day,,pending`
   }
 }

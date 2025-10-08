@@ -76,7 +76,7 @@ export default function EarningsPage() {
         .from('driver_earnings')
         .select(`
           *,
-          users!inner(name, email)
+          users!driver_earnings_driver_id_fkey(name, email)
         `)
         .order('date', { ascending: false })
         .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)

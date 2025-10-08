@@ -63,7 +63,7 @@ export default function ExpensesPage() {
         .from('driver_expenses')
         .select(`
           *,
-          users!inner(name, email)
+          users!driver_expenses_driver_id_fkey(name, email)
         `)
         .order('date', { ascending: false })
         .range((page - 1) * itemsPerPage, page * itemsPerPage - 1)
@@ -81,8 +81,14 @@ export default function ExpensesPage() {
       const { data: expensesData, error: expensesError } = await query
 
       if (expensesError) {
-        console.error('Error fetching expenses:', expensesError)
-        toast.error('Failed to load expenses data')
+        console.error('Error fetching expenses:', {
+          message: expensesError.message,
+          code: expensesError.code,
+          details: expensesError.details,
+          hint: expensesError.hint,
+          fullError: expensesError
+        })
+        toast.error(`Failed to load expenses: ${expensesError.message}`)
       } else {
         const newExpenses = expensesData || []
         
@@ -198,7 +204,7 @@ export default function ExpensesPage() {
 
   const getCategoryColor = (category: string) => {
     const colors = {
-      fuel: 'bg-red-100 text-red-800',
+      charging: 'bg-red-100 text-red-800',
       maintenance: 'bg-blue-100 text-blue-800',
       food: 'bg-green-100 text-green-800',
       other: 'bg-gray-100 text-gray-800'

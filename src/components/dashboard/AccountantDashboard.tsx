@@ -31,7 +31,7 @@ export default function AccountantDashboard() {
         .from('driver_expenses')
         .select(`
           *,
-          users!inner(name, email)
+          users!driver_expenses_driver_id_fkey(name, email)
         `)
         .order('created_at', { ascending: false })
 
@@ -40,7 +40,7 @@ export default function AccountantDashboard() {
         .from('driver_earnings')
         .select(`
           *,
-          users!inner(name, email)
+          users!driver_earnings_driver_id_fkey(name, email)
         `)
         .order('date', { ascending: false })
 

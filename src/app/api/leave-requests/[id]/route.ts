@@ -4,11 +4,11 @@ import { supabase, supabaseAdmin } from '@/lib/supabase'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { status, admin_notes, approved_by } = await request.json()
-    const leaveRequestId = params.id
+    const { id: leaveRequestId } = await params
 
     if (!status || !['approved', 'rejected'].includes(status)) {
       return NextResponse.json({ 
@@ -106,10 +106,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const leaveRequestId = params.id
+    const { id: leaveRequestId } = await params
 
     // Check if the leave request exists and is pending
     const client = supabaseAdmin || supabase
