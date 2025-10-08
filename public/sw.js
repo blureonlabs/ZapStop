@@ -3,8 +3,6 @@ const urlsToCache = [
   '/',
   '/login',
   '/dashboard',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
   '/manifest.json'
 ]
 
